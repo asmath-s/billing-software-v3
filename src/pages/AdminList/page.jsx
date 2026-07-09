@@ -20,18 +20,16 @@ import {
   getAdminExpenseAmounts,
   updateAdminExpense,
 } from "../../api/adminExpense";
+import AdminCard from "../../components/AdminCard/AdminCard";
 import Button from "../../components/Button/Button";
-import CardUI from "../../components/CardUI/CardUI";
 import Datepicker, {
   DateUiPicker,
 } from "../../components/Datepicker/Datepicker";
 import DeletePopup from "../../components/DeletePopup/DeletePopup";
 import EditButton from "../../components/EditButton/EditButton";
 import {
-  CashIcon,
   CheckBoxIcon,
   CheckIcon,
-  GpayIcon,
   LeftArrowIcon,
   RightIcon,
   SaveIcon,
@@ -40,6 +38,7 @@ import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
 import MainLayout from "../../layouts/MainLayout";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
 
 function labelDisplayedRows({ from, to, count }) {
@@ -54,7 +53,7 @@ const AdminList = () => {
   const [method, setMethod] = useState("expense");
   const [amount, setAmount] = useState("");
   const [expenseData, setExpenseData] = useState([]);
-  const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
+  const [adminExpenseAmount, setAdminExpenseAmount] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editId, setEditId] = useState("");
   const [page, setPage] = useState(0);
@@ -62,6 +61,7 @@ const AdminList = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
+  const [searchText, setSearchText] = useState("");
 
   const buildQuery = () => {
     const query = [];
@@ -71,6 +71,10 @@ const AdminList = () => {
     query.push(`sort[0]=date:desc`);
     query.push(`filters[approved][$eq]=true`);
     query.push(`filters[current_status][$eq]=admin`);
+
+    if (searchText) {
+      query.push(`filters[instruction][$containsi]=${searchText}`);
+    }
 
     if (fromDate && toDate) {
       query.push(
@@ -100,9 +104,9 @@ const AdminList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, fromDate, toDate]);
+  }, [page, rowsPerPage, fromDate, toDate, searchText]);
 
-  const loadLocalTotalAmount = useCallback(async () => {
+  const LoadAdminAmount = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -111,6 +115,10 @@ const AdminList = () => {
       query.push(`sort[0]=date:desc`);
       query.push(`filters[approved][$eq]=true`);
       query.push(`filters[current_status][$eq]=admin`);
+
+      if (searchText) {
+        query.push(`filters[instruction][$containsi]=${searchText}`);
+      }
 
       if (fromDate && toDate) {
         query.push(
@@ -124,22 +132,22 @@ const AdminList = () => {
 
       const res = await getAdminExpenseAmounts(queryString);
 
-      setLocalExpenseAmount(res);
+      setAdminExpenseAmount(res);
     } catch (error) {
       console.error("Admin amounts fetch failed:", error);
-      setLocalExpenseAmount([]);
+      setAdminExpenseAmount([]);
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, searchText]);
 
   useEffect(() => {
     loadExpenseData();
   }, [loadExpenseData]);
 
   useEffect(() => {
-    loadLocalTotalAmount();
-  }, [loadLocalTotalAmount]);
+    LoadAdminAmount();
+  }, [LoadAdminAmount]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -171,6 +179,7 @@ const AdminList = () => {
     }
 
     loadExpenseData();
+    LoadAdminAmount();
 
     setEditId("");
     setDate(new Date());
@@ -227,38 +236,42 @@ const AdminList = () => {
       </div>
 
       {showOverview && (
-        <motion.div
-          className="flex gap-4 items-center justify-start mt-6 mb-6"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
-        >
-          <CardUI
-            title="Total Expense Cash"
-            amount={localExpenseAmount?.expense_cash}
-            icon={<CashIcon color="#292D32" width="34" height="34" />}
-            titleColor="text-red-800"
-          />
-          <CardUI
-            title="Total Expense Gpay"
-            amount={localExpenseAmount?.expense_gpay}
-            icon={<GpayIcon color="#292D32" width="34" height="34" />}
-            titleColor="text-red-800"
-          />
-          <CardUI
-            title="Total Received Cash"
-            amount={localExpenseAmount?.receive_cash}
-            icon={<CashIcon color="#292D32" width="34" height="34" />}
-            titleColor="text-green-800"
-          />
-          <CardUI
-            title="Total Received Gpay"
-            amount={localExpenseAmount?.receive_gpay}
-            icon={<GpayIcon color="#292D32" width="34" height="34" />}
-            titleColor="text-green-800"
-          />
-        </motion.div>
+        <>
+          <motion.div
+            className="grid grid-cols-2 gap-4 mt-6 mb-6"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+          >
+            <AdminCard
+              title="Asmath"
+              titleColor={"text-sky-800"}
+              receivedAmount={adminExpenseAmount.asmathTotalGet}
+              expenseAmount={adminExpenseAmount.asmathTotalGive}
+              balanceAmount={adminExpenseAmount.asmathTotalBalance}
+              getCash={adminExpenseAmount.asmathGetInCash}
+              getGpay={adminExpenseAmount.asmathGetInGapy}
+              getAccount={adminExpenseAmount.asmathGetInGst}
+              giveCash={adminExpenseAmount.asmathGiveInCash}
+              giveGpay={adminExpenseAmount.asmathGiveInGapy}
+              giveAccount={adminExpenseAmount.asmathGiveInAccount}
+            />
+            <AdminCard
+              title="Ibu"
+              titleColor={"text-sky-800"}
+              receivedAmount={adminExpenseAmount.ibuTotalGet}
+              expenseAmount={adminExpenseAmount.ibuTotalGive}
+              balanceAmount={adminExpenseAmount.ibuTotalBalance}
+              getCash={adminExpenseAmount.ibuGetInCash}
+              getGpay={adminExpenseAmount.ibuGetInGapy}
+              getAccount={adminExpenseAmount.ibuGetInGst}
+              giveCash={adminExpenseAmount.ibuGiveInCash}
+              giveGpay={adminExpenseAmount.ibuGiveInGapy}
+              giveAccount={adminExpenseAmount.ibuGiveInAccount}
+            />
+          </motion.div>
+        </>
       )}
       <div className="flex gap-4 items-center">
         <Datepicker
@@ -269,6 +282,19 @@ const AdminList = () => {
           setToDate={setToDate}
         />
       </div>
+      <div className="flex justify-end items-end gap-4 mt-6">
+        <div className="w-80">
+          <InputField
+            placeholder="Search Instruction"
+            value={searchText}
+            onChange={(e) =>
+              setSearchText(capitalizeFirstLetter(e.target.value))
+            }
+            required={true}
+          />
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="mt-6">
         <div className="grid grid-cols-6 gap-4 ">
           <DateUiPicker
@@ -282,7 +308,9 @@ const AdminList = () => {
           <InputField
             placeholder="Instruction"
             value={instruction}
-            onChange={(e) => setInstruction(e.target.value)}
+            onChange={(e) =>
+              setInstruction(capitalizeFirstLetter(e.target.value))
+            }
             required={true}
           />
 
@@ -367,8 +395,10 @@ const AdminList = () => {
                   <span
                     className={`p-1 rounded-md flex justify-center capitalize  ${
                       item.custom_type === "cash"
-                        ? "bg-[#E2E5ED] text-[#405189]"
-                        : "bg-stone-200 text-stone-800"
+                        ? "bg-[#E2E5ED] text-[#000e3b]"
+                        : item.custom_type === "gpay"
+                          ? "bg-stone-200 text-stone-800"
+                          : "bg-[#a2bbfd] text-[#122455]"
                     }`}
                   >
                     {item.custom_type}

@@ -40,6 +40,6 @@ export const deleteAdminExpense = async (documentId) => {
 };
 
 export const getAdminExpenseAmounts = async (params = "") => {
-  const response = await axiosInstance.get(`/local-expense-amounts${params}`);
+  const response = await axiosInstance.get(`/admin-expense-amounts${params}`);
   return response.data;
 };
