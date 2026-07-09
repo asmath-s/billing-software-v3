@@ -237,6 +237,7 @@ const LocalExpenseEntry = () => {
           // eslint-disable-next-line no-unused-vars
           const { id, documentId, publishedAt, updatedAt, createdAt, ...rest } =
             item;
+          rest.approved = true;
           await createAdminExpense(rest);
           await deleteLocalExpense(item.documentId);
         } else {
