@@ -34,6 +34,6 @@ export const deleteGstExpenseList = async (documentId) => {
 };
 
 export const getGstExpenseSummary = async (params = "") => {
-  const response = await axiosInstance.get(`/gst-expenses-summary${params}`);
+  const response = await axiosInstance.get(`/gst-expenses-amount${params}`);
   return response.data;
 };

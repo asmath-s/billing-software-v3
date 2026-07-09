@@ -342,6 +342,7 @@ const GstEntry = () => {
           label="Add New"
           onClick={resetForm}
           icon1={<AddIcon color="#fff" />}
+          icon2={<AddIcon color="#fff" />}
           className="bg-blue-600 text-white"
         />
       </div>
@@ -358,8 +359,8 @@ const GstEntry = () => {
           <DateUiPicker
             value={date}
             label="Date"
-            disabled={role !== "superadmin"}
             onChange={(d) => setDate(setCurrentTime(d))}
+            minDate={role === "superadmin" ? false : new Date()}
           />
 
           <InputField

@@ -1,7 +1,6 @@
 import {
   ADMINLIST,
   DASHBOARD,
-  DEBTLIST,
   GSTDELIVERYSLIP,
   GSTEXPENSEENTRY,
   GSTEXPENSELIST,
@@ -38,7 +37,6 @@ import {
   ListIcon,
   LocalExpenseIcon,
   LocalSalesIcon,
-  MoneyExpenseIcon,
   OutstandingIcon,
   PartyIcon,
   PendingIcon,
@@ -205,15 +203,6 @@ export const appConfig = [
     path: ADMINLIST,
     elementKey: "AdminList",
     roles: [ROLES.SuperAdmin],
-  },
-
-  {
-    type: "link",
-    label: "Debt",
-    icon: MoneyExpenseIcon,
-    path: DEBTLIST,
-    elementKey: "DebtList",
-    roles: [ROLES.SuperAdmin, ROLES.Authenticated],
   },
 
   {

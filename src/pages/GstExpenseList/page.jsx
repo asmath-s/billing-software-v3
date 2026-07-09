@@ -24,11 +24,9 @@ import Datepicker, {
 import DeletePopup from "../../components/DeletePopup/DeletePopup";
 import EditButton from "../../components/EditButton/EditButton";
 import MainLayout from "../../layouts/MainLayout";
-import { GSTSALESENTRY } from "../../router/paths";
+import { GSTEXPENSEENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
 import { formattedAmount } from "../../utils/FormatAmount";
-
-import { getGstCustomers } from "../../api/gstCustomer";
 
 import {
   createGstExpenseList,
@@ -37,6 +35,7 @@ import {
   getGstExpenseSummary,
   updateGstExpenseList,
 } from "../../api/gstExpense";
+import { getVendors } from "../../api/vendor";
 import Button from "../../components/Button/Button";
 import Filter from "../../components/Fitler/Filter";
 import {
@@ -89,10 +88,10 @@ const STATUS_OPTIONS = [
 const INITIAL_FORM_STATE = {
   date: null,
   customType: "gpay",
-  receivedAmount: "",
+  sendedAmount: "",
   particulars: "",
   editId: null,
-  recvBillNo: [],
+  sendedBillNo: [],
 };
 
 /* ─────────────────────────────────────────────
@@ -137,8 +136,8 @@ const GstExpenseList = () => {
   );
 
   const totalBillAmount = useMemo(
-    () => form.recvBillNo.reduce((sum, item) => sum + (item.amount || 0), 0),
-    [form.recvBillNo],
+    () => form.sendedBillNo.reduce((sum, item) => sum + (item.amount || 0), 0),
+    [form.sendedBillNo],
   );
 
   const buildQuery = useCallback(
@@ -150,10 +149,7 @@ const GstExpenseList = () => {
       params.set("sort[0]", "date:desc");
 
       if (searchCustomer?.value) {
-        params.set(
-          "filters[gst_customer][documentId][$eq]",
-          searchCustomer.value,
-        );
+        params.set("filters[vendor][documentId][$eq]", searchCustomer.value);
       }
 
       if (fromDate && toDate) {
@@ -185,7 +181,7 @@ const GstExpenseList = () => {
 
   const loadGstCustomers = useCallback(async () => {
     try {
-      const res = await getGstCustomers();
+      const res = await getVendors();
       setGstCustomers(res || []);
     } catch (err) {
       console.error("Customer fetch failed:", err);
@@ -213,10 +209,7 @@ const GstExpenseList = () => {
       const params = new URLSearchParams();
 
       if (searchCustomer?.value) {
-        params.set(
-          "filters[gst_customer][documentId][$eq]",
-          searchCustomer.value,
-        );
+        params.set("filters[vendor][documentId][$eq]", searchCustomer.value);
       }
 
       if (fromDate && toDate) {
@@ -258,12 +251,13 @@ const GstExpenseList = () => {
     setForm({ ...INITIAL_FORM_STATE, date: setCurrentTime(new Date()) });
 
   const buildPayload = () => {
+    console.log(form.sendedBillNo, "form.sendedBillNo");
     return {
       date: form.date,
-      gst_customer: searchCustomer?.value ?? null,
-      received_bill_nos: form.recvBillNo,
-      received_method: form.customType,
-      received_amount: Number(form.receivedAmount),
+      vendor: searchCustomer?.value ?? null,
+      sended_bill_nos: form.sendedBillNo,
+      sended_method: form.customType,
+      sended_amount: Number(form.sendedAmount),
     };
   };
 
@@ -283,7 +277,7 @@ const GstExpenseList = () => {
 
         // Update all selected bills to paid
         await Promise.all(
-          form.recvBillNo.map((bill) =>
+          form.sendedBillNo.map((bill) =>
             updateGstExpenseList(bill.value, {
               current_status: "paid",
             }),
@@ -295,7 +289,7 @@ const GstExpenseList = () => {
         await updateGstExpenseList(form.editId, payload);
 
         await Promise.all(
-          form.recvBillNo.map((bill) =>
+          form.sendedBillNo.map((bill) =>
             updateGstExpenseList(bill.value, {
               current_status: "paid",
             }),
@@ -316,17 +310,19 @@ const GstExpenseList = () => {
 
   const handleEdit = (item) => {
     setSearchCustomer(
-      item.gst_customer
-        ? { label: item.gst_customer.name, value: item.gst_customer.documentId }
+      item.vendor
+        ? { label: item.vendor.name, value: item.vendor.documentId }
         : null,
     );
+
+    console.log(item);
 
     setForm({
       editId: item.documentId,
       date: setCurrentTime(new Date(item.date)),
-      customType: item.received_method ?? "cash",
-      receivedAmount: item.received_amount || "",
-      recvBillNo: item.received_bill_nos || [],
+      customType: item.sended_method ?? "cash",
+      sendedAmount: item.sended_amount || "",
+      sendedBillNo: item.sended_bill_nos || [],
     });
   };
 
@@ -335,11 +331,11 @@ const GstExpenseList = () => {
       // If this is a receipt entry
       if (
         !item.bill_no &&
-        Array.isArray(item.received_bill_nos) &&
-        item.received_bill_nos.length
+        Array.isArray(item.sended_bill_nos) &&
+        item.sended_bill_nos.length
       ) {
         await Promise.all(
-          item.received_bill_nos.map((bill) =>
+          item.sended_bill_nos.map((bill) =>
             updateGstExpenseList(bill.value, {
               current_status: "status",
             }),
@@ -438,8 +434,8 @@ const GstExpenseList = () => {
           transition={{ duration: 0.5, ease: "easeInOut" }}
         >
           <CardUI
-            title="Total Sales"
-            amount={gstSalesSummary?.total_sales}
+            title="Total Expense"
+            amount={gstSalesSummary?.total_expense}
             icon={<MoneyReceiveIcon color="#292D32" width="34" height="34" />}
             titleColor="text-violet-900"
             className="w-full"
@@ -549,7 +545,7 @@ const GstExpenseList = () => {
             onChange={(_, val) => {
               setSearchCustomer(val);
               setPage(0);
-              setFormField("recvBillNo", []);
+              setFormField("sendedBillNo", []);
             }}
             required
           />
@@ -567,8 +563,8 @@ const GstExpenseList = () => {
             <Autocomplete
               multiple
               options={billNosData}
-              value={form.recvBillNo}
-              onChange={(_, newValue) => setFormField("recvBillNo", newValue)}
+              value={form.sendedBillNo}
+              onChange={(_, newValue) => setFormField("sendedBillNo", newValue)}
               disableCloseOnSelect
               getOptionLabel={(option) => option.label}
               placeholder="Select bill numbers"
@@ -598,24 +594,24 @@ const GstExpenseList = () => {
 
           {/* Payment method */}
           <SelectField
-            label="Received In"
+            label="Sended In"
             selectName="custom_type"
             options={PAYMENT_METHOD_OPTIONS}
             value={form.customType}
             onChange={(e) => setFormField("customType", e.target.value)}
-            placeholder="Received In"
+            placeholder="Sended In"
             required
           />
 
-          {/* Received amount */}
+          {/* Sended amount */}
           <InputField
-            label="Received Amount"
-            name="received_amount"
+            label="Sended Amount"
+            name="sended_amount"
             type="number"
             min={0}
             placeholder="Enter amount"
-            value={form.receivedAmount}
-            onChange={(e) => setFormField("receivedAmount", e.target.value)}
+            value={form.sendedAmount}
+            onChange={(e) => setFormField("sendedAmount", e.target.value)}
             required
           />
 
@@ -644,9 +640,9 @@ const GstExpenseList = () => {
               <th style={{ width: "8%" }}>Base Amount</th>
               <th style={{ width: "8%" }}>Tax</th>
               <th style={{ width: "9%" }}>Total Amount</th>
-              <th style={{ width: "14%" }}>Received Bill Nos</th>
-              <th style={{ width: "14%" }}>Received Method</th>
-              <th style={{ width: "10%" }}>Received Amount</th>
+              <th style={{ width: "14%" }}>Sended Bill Nos</th>
+              <th style={{ width: "14%" }}>Sended Method</th>
+              <th style={{ width: "10%" }}>Sended Amount</th>
               <th style={{ width: "8%" }}>Action</th>
               {role === "superadmin" && (
                 <th style={{ width: "12%" }}>Status</th>
@@ -679,17 +675,17 @@ const GstExpenseList = () => {
                   <td
                     className={`${item.current_status === "status" && "text-red-600"}`}
                   >
-                    {item.gst_customer?.name || "-"}
+                    {item.vendor?.name || "-"}
                   </td>
                   <td>{formattedAmount(item.base_amount)}</td>
                   <td>{formattedAmount(item.tax_amount)}</td>
                   <td>{formattedAmount(item.total_amount)}</td>
-                  <td>{parseBillNos(item.received_bill_nos)}</td>
-                  <td>{item.received_method || "-"}</td>
+                  <td>{parseBillNos(item.sended_bill_nos)}</td>
+                  <td>{item.sended_method || "-"}</td>
                   <td>
-                    {item.received_amount === 0 || item.received_amount === null
+                    {item.sended_amount === 0 || item.sended_amount === null
                       ? "-"
-                      : formattedAmount(item.received_amount)}
+                      : formattedAmount(item.sended_amount)}
                   </td>
                   <td>
                     <div className="flex gap-2">
@@ -697,7 +693,7 @@ const GstExpenseList = () => {
                         onClick={() =>
                           item.bill_no
                             ? navigate(
-                                `${GSTSALESENTRY}?editId=${item.documentId}`,
+                                `${GSTEXPENSEENTRY}?editId=${item.documentId}`,
                               )
                             : handleEdit(item)
                         }
