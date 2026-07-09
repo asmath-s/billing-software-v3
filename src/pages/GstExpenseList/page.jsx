@@ -165,7 +165,7 @@ const GstExpenseList = () => {
       }
 
       if (statusFilter.type === "method") {
-        params.set("filters[received_method][$eq]", statusFilter.value);
+        params.set("filters[sended_method][$eq]", statusFilter.value);
       }
 
       Object.entries(extraParams).forEach(([k, v]) => params.set(k, v));
