@@ -447,6 +447,7 @@ const LocalList = () => {
                 label="Confirm"
                 onClick={handleApproveConfirm}
                 className="w-full hover:bg-green-600 border-green-600 text-green-600"
+                disabled={loading}
               />
               <Button
                 label="Cancel"

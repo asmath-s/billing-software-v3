@@ -4,7 +4,7 @@ export const getLocalExpense = async (params = "") => {
   const response = await axiosInstance.get(
     `/local-expenses?populate=*&${params}`,
   );
-  return response.data;
+  return response;
 };
 
 export const getLastLocalExpense = async () => {

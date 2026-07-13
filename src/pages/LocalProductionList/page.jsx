@@ -90,8 +90,8 @@ const LocalProductionList = () => {
     try {
       const res = await getLocalExpense(buildQuery());
 
-      setExpenseData(res?.data || []);
-      setTotalCount(res?.meta?.pagination?.total || 0);
+      setExpenseData(res?.data.data || []);
+      setTotalCount(res?.data.meta?.pagination?.total || 0);
     } catch (error) {
       console.error("Local expense fetch failed:", error);
       toast.error("Failed to load local expense list");
@@ -148,7 +148,7 @@ const LocalProductionList = () => {
       instruction,
       method,
       custom_type: customType,
-      amount: parseInt(amount),
+      amount: amount,
       approved: true,
       current_status: "production",
     };

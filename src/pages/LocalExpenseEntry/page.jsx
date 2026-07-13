@@ -32,6 +32,7 @@ import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
 import MainLayout from "../../layouts/MainLayout";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 
 const LocalExpenseEntry = () => {
   const { role, showOverview, toggleOverview } = useAuth();
@@ -58,8 +59,6 @@ const LocalExpenseEntry = () => {
   /* ================= LOAD DATA ================= */
 
   const loadExpenseData = useCallback(async () => {
-    setLoading(true);
-
     const query = [];
     query.push(`sort[0]=date:desc`);
     query.push(`filters[approved][$eq]=false`);
@@ -72,10 +71,30 @@ const LocalExpenseEntry = () => {
         `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
       );
     }
+    const pageSize = 100;
+    let page = 1;
+    let pageCount = 1;
+    let allData = [];
 
+    setLoading(true);
     try {
-      const res = await getLocalExpense(query.join("&"));
-      setExpenseData(res?.data || []);
+      do {
+        const params = [
+          `pagination[page]=${page}`,
+          `pagination[pageSize]=${pageSize}`,
+          ...query,
+        ].join("&");
+
+        const res = await getLocalExpense(params);
+        console.log(res.data);
+
+        allData.push(...(res.data.data || []));
+        pageCount = res.data.meta.pagination.pageCount;
+
+        page++;
+      } while (page <= pageCount);
+
+      setExpenseData(allData);
     } catch (error) {
       console.error("Local expense fetch failed:", error);
       toast.error("Failed to load local expense list");
@@ -147,7 +166,7 @@ const LocalExpenseEntry = () => {
       instruction,
       method,
       custom_type: customType,
-      amount: parseInt(amount),
+      amount: amount,
     };
 
     try {
@@ -337,7 +356,9 @@ const LocalExpenseEntry = () => {
           <InputField
             placeholder="Instruction"
             value={instruction}
-            onChange={(e) => setInstruction(e.target.value)}
+            onChange={(e) =>
+              setInstruction(capitalizeFirstLetter(e.target.value))
+            }
             required={true}
           />
 
@@ -355,7 +376,7 @@ const LocalExpenseEntry = () => {
           />
 
           <SelectField
-            label={"Received In"}
+            label={"Expense In"}
             selectName={"custom_type"}
             options={[
               { value: "cash", label: "Cash" },
@@ -363,15 +384,15 @@ const LocalExpenseEntry = () => {
             ]}
             value={customType}
             onChange={(e) => setCustomType(e.target.value)}
-            placeholder={"Received In"}
+            placeholder={"Expense In"}
             required={true}
           />
 
           <InputField
-            name={"received amount"}
-            placeholder={"Received Amount"}
+            name={"Expense amount"}
+            placeholder={"Expense Amount"}
             value={amount === 0 ? "" : amount}
-            onChange={(e) => setAmount(e.target.value) || 0}
+            onChange={(e) => setAmount(e.target.value)}
             required={true}
           />
 
@@ -484,7 +505,11 @@ const LocalExpenseEntry = () => {
             <h3 className="text-lg font-semibold mb-3">Confirm Approval</h3>
 
             <div className="flex gap-3 mt-4">
-              <Button label="Confirm" onClick={handleApproveConfirm} />
+              <Button
+                label="Confirm"
+                onClick={handleApproveConfirm}
+                disabled={loading}
+              />
               <Button label="Cancel" onClick={() => setConfirmOpen(false)} />
             </div>
           </div>
