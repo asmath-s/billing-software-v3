@@ -58,20 +58,53 @@ const LocalList = () => {
   }, []);
 
   /* ================= LOAD LOCAL LIST ================= */
+
   const loadLocalEntriesData = useCallback(async () => {
+    const query = [];
+
+    if (searchCustomer) {
+      query.push(`filters[customer][documentId][$eq]=${searchCustomer.value}`);
+    }
+
+    if (fromDate && toDate) {
+      query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
+      query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
+    }
+
+    query.push("sort[0]=date:desc");
+    query.push("filters[approved][$eq]=false");
+
+    const pageSize = 100;
+    let page = 1;
+    let pageCount = 1;
+    let allData = [];
+
     setLoading(true);
+
     try {
-      const res = await getLocalList(
-        "sort[0]=date:desc&filters[approved][$eq]=false",
-      );
-      setLocalData(res.data || []);
+      do {
+        const params = [
+          `pagination[page]=${page}`,
+          `pagination[pageSize]=${pageSize}`,
+          ...query,
+        ].join("&");
+
+        const res = await getLocalList(params);
+
+        allData.push(...(res.data.data || []));
+        pageCount = res.data.meta.pagination.pageCount;
+
+        page++;
+      } while (page <= pageCount);
+
+      setLocalData(allData);
     } catch (error) {
       console.error("Local list fetch failed:", error);
       setLocalData([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchCustomer, fromDate, toDate]);
 
   /* ================= LOAD LOCAL Amounts ================= */
   const loadLocalTotalAmount = useCallback(async () => {
