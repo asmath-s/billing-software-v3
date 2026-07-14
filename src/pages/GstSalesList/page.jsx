@@ -680,9 +680,21 @@ const GstSalesList = () => {
                   >
                     {item.gst_customer?.name || "-"}
                   </td>
-                  <td>{formattedAmount(item.base_amount)}</td>
-                  <td>{formattedAmount(item.tax_amount)}</td>
-                  <td>{formattedAmount(item.total_amount)}</td>
+                  <td>
+                    {item.base_amount === 0 || item.base_amount === null
+                      ? "-"
+                      : formattedAmount(item.base_amount)}
+                  </td>
+                  <td>
+                    {item.tax_amount === 0 || item.tax_amount === null
+                      ? "-"
+                      : formattedAmount(item.tax_amount)}
+                  </td>
+                  <td>
+                    {item.total_amount === 0 || item.total_amount === null
+                      ? "-"
+                      : formattedAmount(item.total_amount)}
+                  </td>
                   <td>{parseBillNos(item.received_bill_nos)}</td>
                   <td>{item.received_method || "-"}</td>
                   <td>

@@ -91,8 +91,8 @@ const LocalList = () => {
 
         const res = await getLocalList(params);
 
-        allData.push(...(res.data.data || []));
-        pageCount = res.data.meta.pagination.pageCount;
+        allData.push(...(res.data || []));
+        pageCount = res.meta.pagination.pageCount;
 
         page++;
       } while (page <= pageCount);

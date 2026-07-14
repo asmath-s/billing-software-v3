@@ -57,6 +57,7 @@ const GstExpenseEntry = () => {
   const loadEditData = async (id) => {
     try {
       const data = await getGstExpenseListById(id);
+      console.log(data);
 
       if (!data) return;
 
@@ -64,8 +65,8 @@ const GstExpenseEntry = () => {
       setDate(data.date);
       setBillNo(data.bill_no);
       setVendorId(data.vendor?.documentId || "");
-      setVendorName(data.vendor_name);
-      setAmount(data.amount);
+      setVendorName(data.vendor?.name);
+      setAmount(data.base_amount);
       setGstPercentage(data.gst_percentage);
     } catch {
       toast.error("Failed to load expense");
