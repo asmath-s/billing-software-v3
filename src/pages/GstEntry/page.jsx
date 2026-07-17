@@ -25,7 +25,7 @@ import {
 } from "../../components/icons";
 
 import { useAuth } from "../../context/auth-context";
-import { LOCALENTRY } from "../../router/paths";
+import { GSTSALESENTRY } from "../../router/paths";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { formattedAmount } from "../../utils/FormatAmount";
 import { transformBillingData } from "../../utils/transformBillingData";
@@ -327,7 +327,7 @@ const GstEntry = () => {
     setSizeData([]);
 
     await loadLastBillNo();
-    navigate(LOCALENTRY);
+    navigate(GSTSALESENTRY);
   };
 
   /* ================= UI ================= */

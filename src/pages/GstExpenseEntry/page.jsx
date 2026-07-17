@@ -218,7 +218,7 @@ const GstExpenseEntry = () => {
 
           <InputField
             placeholder="Total Amount"
-            value={gstSummary.finalAmount}
+            value={Math.round(Number(gstSummary.finalAmount))}
             readOnly
           />
 
