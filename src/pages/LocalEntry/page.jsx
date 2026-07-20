@@ -109,7 +109,7 @@ const LocalEntry = () => {
   }, [cashData, gpayData]);
 
   const balanceAmount = useMemo(() => {
-    return totalAmount - receivedAmount;
+    return Math.round(totalAmount) - receivedAmount;
   }, [totalAmount, receivedAmount]);
 
   useEffect(() => {
@@ -456,10 +456,13 @@ const LocalEntry = () => {
         <FormDataInput sizeData={sizeData} setSizeData={setSizeData} />
 
         <div className="grid grid-cols-4 gap-4 mt-4 mb-12">
-          <CurrencyConverter amount={totalAmount} label="Total Amount" />
+          <CurrencyConverter
+            amount={Math.round(totalAmount)}
+            label="Total Amount"
+          />
           <CurrencyConverter amount={receivedAmount} label="Received Amount" />
           <CurrencyConverter
-            amount={balanceAmount}
+            amount={Math.round(balanceAmount)}
             label="Balance Amount"
             error={error}
           />
