@@ -634,7 +634,7 @@ const GstSalesList = () => {
 
       {/* ── Table ── */}
       <div className="mt-8 overflow-x-auto">
-        <Table borderAxis="both" hoverRow stickyHeader>
+        <Table borderAxis="both" hoverRow>
           <thead>
             <tr>
               <th style={{ width: "9%" }}>Date</th>
