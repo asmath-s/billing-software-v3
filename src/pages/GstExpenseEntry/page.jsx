@@ -103,7 +103,7 @@ const GstExpenseEntry = () => {
         total_amount:
           vendorName === "Tax"
             ? Number(amount)
-            : Number(gstSummary.finalAmount),
+            : Math.round(Number(gstSummary.finalAmount)),
         current_status: "status",
       };
 

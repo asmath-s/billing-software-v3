@@ -449,7 +449,7 @@ const GstExpenseList = () => {
           />
           <CardUI
             title="Total Tax"
-            amount={gstSalesSummary?.total_tax}
+            amount={Math.round(gstSalesSummary?.total_tax)}
             icon={<MoneyExpenseIcon color="#292D32" width="34" height="34" />}
             titleColor="text-blue-800"
             className="w-full"

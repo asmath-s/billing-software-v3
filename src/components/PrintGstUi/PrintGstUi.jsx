@@ -108,10 +108,8 @@ const PrintGstUi = forwardRef((props, ref) => {
               {sizeData?.map((data, index) => {
                 const particulars =
                   data.type?.toLowerCase() === "flex"
-                    ? `${data.width} X ${data.height} ${data.material || ""}`
-                    : data.type?.toLowerCase() === "instruction"
-                      ? data.instruction
-                      : data.instruction || "-";
+                    ? `${data.instruction?.toUpperCase() || ""} ${data.width} X ${data.height}`
+                    : data.instruction?.toUpperCase() || "-";
 
                 const rate =
                   Number(data.per_piece_amount) > 0
