@@ -31,8 +31,8 @@ import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
 import MainLayout from "../../layouts/MainLayout";
-import { setCurrentTime } from "../../utils/DatewithTime";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
+import { setCurrentTime } from "../../utils/DatewithTime";
 
 const LocalExpenseEntry = () => {
   const { role, showOverview, toggleOverview } = useAuth();
@@ -306,25 +306,25 @@ const LocalExpenseEntry = () => {
         >
           <CardUI
             title="Total Expense Cash"
-            amount={localExpenseAmount?.expense_cash}
+            amount={localExpenseAmount?.expense?.total_exp_cash}
             icon={<CashIcon color="#292D32" width="34" height="34" />}
             titleColor="text-red-800"
           />
           <CardUI
             title="Total Expense Gpay"
-            amount={localExpenseAmount?.expense_gpay}
+            amount={localExpenseAmount?.expense?.total_exp_gpay}
             icon={<GpayIcon color="#292D32" width="34" height="34" />}
             titleColor="text-red-800"
           />
           <CardUI
             title="Total Received Cash"
-            amount={localExpenseAmount?.receive_cash}
+            amount={localExpenseAmount?.expense?.total_rec_cash}
             icon={<CashIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
           />
           <CardUI
             title="Total Received Gpay"
-            amount={localExpenseAmount?.receive_gpay}
+            amount={localExpenseAmount?.expense?.total_rec_gpay}
             icon={<GpayIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
           />

@@ -106,9 +106,6 @@ const LocalHubList = () => {
 
     try {
       let query = [];
-      query.push(`sort[0]=date:desc`);
-      query.push(`filters[approved][$eq]=true`);
-      query.push(`filters[current_status][$eq]=hub`);
 
       if (fromDate && toDate) {
         query.push(
@@ -234,25 +231,25 @@ const LocalHubList = () => {
         >
           <CardUI
             title="Total Expense Cash"
-            amount={localExpenseAmount?.expense_cash}
+            amount={localExpenseAmount?.hub?.total_exp_cash}
             icon={<CashIcon color="#292D32" width="34" height="34" />}
             titleColor="text-red-800"
           />
           <CardUI
             title="Total Expense Gpay"
-            amount={localExpenseAmount?.expense_gpay}
+            amount={localExpenseAmount?.hub?.total_exp_gpay}
             icon={<GpayIcon color="#292D32" width="34" height="34" />}
             titleColor="text-red-800"
           />
           <CardUI
             title="Total Received Cash"
-            amount={localExpenseAmount?.receive_cash}
+            amount={localExpenseAmount?.hub?.total_rec_cash}
             icon={<CashIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
           />
           <CardUI
             title="Total Received Gpay"
-            amount={localExpenseAmount?.receive_gpay}
+            amount={localExpenseAmount?.hub?.total_rec_gpay}
             icon={<GpayIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
           />

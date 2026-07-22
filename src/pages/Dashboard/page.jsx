@@ -1,12 +1,13 @@
 import dayjs from "dayjs";
-import MainLayout from "../../layouts/MainLayout";
-import { getLocalAmounts } from "../../api/localAmount";
+import { motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { getAdminExpenseAmounts } from "../../api/adminExpense";
-import { motion } from "framer-motion";
+import { getLocalAmounts } from "../../api/localAmount";
+import { getLocalExpenseAmounts } from "../../api/localExpense";
 import AdminCard from "../../components/AdminCard/AdminCard";
-import { AccountIcon, CashIcon, GpayIcon } from "../../components/icons";
 import Datepicker from "../../components/Datepicker/Datepicker";
+import { AccountIcon, CashIcon, GpayIcon } from "../../components/icons";
+import MainLayout from "../../layouts/MainLayout";
 
 /* -----------------------------------------------------------------
    Shared formatting / helpers
@@ -171,6 +172,7 @@ const Dashboard = () => {
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
   const [localSalesAmount, setLocalSalesAmount] = useState({});
+  const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
   const [loading, setLoading] = useState(false);
   const [adminExpenseAmount, setAdminExpenseAmount] = useState({});
 
@@ -196,6 +198,33 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
       setLocalSalesAmount({});
+    } finally {
+      setLoading(false);
+    }
+  }, [fromDate, toDate]);
+
+  const loadLocalExpenseTotalAmount = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      let query = [];
+
+      if (fromDate && toDate) {
+        query.push(
+          `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
+        );
+        query.push(
+          `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+        );
+      }
+      const queryString = query.length ? `?${query.join("&")}` : "";
+
+      const res = await getLocalExpenseAmounts(queryString);
+
+      setLocalExpenseAmount(res);
+    } catch (error) {
+      console.error("Local amounts fetch failed:", error);
+      setLocalExpenseAmount([]);
     } finally {
       setLoading(false);
     }
@@ -233,14 +262,10 @@ const Dashboard = () => {
   }, [fromDate, toDate]);
 
   useEffect(() => {
+    loadLocalExpenseTotalAmount();
     loadLocalTotalAmount();
     LoadAdminAmount();
   }, [loadLocalTotalAmount, LoadAdminAmount]);
-
-  const clearDates = () => {
-    setFromDate(null);
-    setToDate(null);
-  };
 
   const data = localSalesAmount;
 
@@ -270,25 +295,93 @@ const Dashboard = () => {
         transition={{ duration: 0.4, ease: "easeInOut" }}
       >
         <FinanceCard
-          title="Local Cash"
+          title="Receive"
           titleColor="text-emerald-800"
           tiles={[
             {
+              title: "Total Cash",
+              value:
+                localSalesAmount?.local_total?.total_cash +
+                localExpenseAmount?.total?.total_rec_cash,
+              color: "text-green-600",
+              bg: "bg-green-50",
+            },
+          ]}
+          panels={[
+            {
+              title: "Sales Receive breakdown",
+              color: "text-green-700",
+              items: [
+                {
+                  label: "Unapproved",
+                  value: localSalesAmount?.local_list?.total_cash,
+                },
+                {
+                  label: "Paid",
+                  value: localSalesAmount?.local_paid?.total_cash,
+                },
+                {
+                  label: "Pending",
+                  value: localSalesAmount?.local_pending?.total_cash,
+                },
+                {
+                  label: "Party",
+                  value: localSalesAmount?.local_party?.total_cash,
+                },
+
+                { label: "GST Cash", value: localSalesAmount?.gstCash },
+                { label: "GST Gpay", value: localSalesAmount?.gstGpay },
+              ],
+            },
+            {
+              title: "Expense Receive breakdown",
+              color: "text-green-700",
+              items: [
+                {
+                  label: "Unapproved",
+                  value: localExpenseAmount?.expense?.total_rec_cash,
+                },
+                {
+                  label: "Approved",
+                  value: localExpenseAmount?.approved?.total_rec_cash,
+                },
+                {
+                  label: "Production",
+                  value: localExpenseAmount?.production?.total_rec_cash,
+                },
+                {
+                  label: "Hub",
+                  value: localSalesAmount?.hub?.total_rec_cash,
+                },
+                {
+                  label: "Admin",
+                  value: localSalesAmount?.admin?.total_rec_cash,
+                },
+              ],
+            },
+          ]}
+        />
+
+        <FinanceCard
+          title="Expense"
+          titleColor="text-red-700"
+          tiles={[
+            {
               title: "Sales Cash",
-              value: data.localSalesCash,
+              value: localSalesAmount.localSalesCash,
               color: "text-green-600",
               bg: "bg-green-50",
             },
             {
               title: "Cash Expenses",
-              value: data.localCashExpenses,
+              value: localSalesAmount.localCashExpenses,
               color: "text-red-600",
               bg: "bg-red-50",
             },
             {
               title: "Balance",
-              value: data.localCashBalance,
-              color: balanceColor(data.localCashBalance),
+              value: localSalesAmount.localCashBalance,
+              color: balanceColor(localSalesAmount.localCashBalance),
               bg: "bg-blue-50",
             },
           ]}
@@ -297,31 +390,46 @@ const Dashboard = () => {
               title: "Sales breakdown",
               color: "text-green-700",
               items: [
-                { label: "Local Paid", value: data.localCashPaid },
+                { label: "Local Paid", value: localSalesAmount.localCashPaid },
                 {
-                  label: "Local Paid Pending",
-                  value: data.localCashPaidPending,
+                  label: "Local Pending",
+                  value: localSalesAmount.localCashPaidPending,
                 },
-                { label: "Local Party", value: data.localCashParty },
-                { label: "Local Unapproved", value: data.localCashUnapprove },
-                { label: "Local Receive", value: data.localCashReceive },
-                { label: "Debt Receive", value: data.debtCashReceive },
-                { label: "GST Cash", value: data.gstCash },
                 {
-                  label: "Admin Public Receive",
-                  value: data.localCashAdminPublicReceive,
+                  label: "Local Party",
+                  value: localSalesAmount.localCashParty,
                 },
+                {
+                  label: "Local Unapproved",
+                  value: localSalesAmount.localCashUnapprove,
+                },
+                { label: "GST Cash", value: localSalesAmount.gstCash },
+                { label: "GST Gpay", value: localSalesAmount.gstGpay },
               ],
             },
             {
               title: "Expense breakdown",
               color: "text-red-700",
               items: [
-                { label: "Local Expenses", value: data.localCashExpense },
-                { label: "Debt Expenses", value: data.debtCashExpense },
                 {
-                  label: "Admin Public Expenses",
-                  value: data.adminPublicCashExpense,
+                  label: "Local Expenses",
+                  value: localExpenseAmount.localCashExpense,
+                },
+                {
+                  label: "Approved Expenses",
+                  value: localExpenseAmount.debtCashExpense,
+                },
+                {
+                  label: "Production Expenses",
+                  value: localExpenseAmount.adminPublicCashExpense,
+                },
+                {
+                  label: "Hub Expenses",
+                  value: localSalesAmount.localCashReceive,
+                },
+                {
+                  label: "Admin Expenses",
+                  value: localSalesAmount.debtCashReceive,
                 },
               ],
             },
