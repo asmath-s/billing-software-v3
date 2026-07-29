@@ -2,6 +2,8 @@ import dayjs from "dayjs";
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { getAdminExpenseAmounts } from "../../api/adminExpense";
+import { getGstExpenseSummary } from "../../api/gstExpense";
+import { getGstSalesSummary } from "../../api/gstList";
 import { getLocalAmounts } from "../../api/localAmount";
 import { getLocalExpenseAmounts } from "../../api/localExpense";
 import AdminCard from "../../components/AdminCard/AdminCard";
@@ -175,6 +177,44 @@ const Dashboard = () => {
   const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
   const [loading, setLoading] = useState(false);
   const [adminExpenseAmount, setAdminExpenseAmount] = useState({});
+  const [gstSalesSummary, setGstSalesSummary] = useState(null);
+  const [gstExpenseSummary, setGstExpenseSummary] = useState(null);
+
+  const loadGstExpenseSummary = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+
+      if (fromDate && toDate) {
+        params.set("fromDate", dayjs(fromDate).format("YYYY-MM-DD"));
+        params.set("toDate", dayjs(toDate).format("YYYY-MM-DD"));
+      }
+
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+      const res = await getGstExpenseSummary(queryString);
+      setGstExpenseSummary(res);
+    } catch (err) {
+      console.error("GST expense summary fetch failed:", err);
+      setGstExpenseSummary(null);
+    }
+  }, [fromDate, toDate]);
+
+  const loadGstSalesSummary = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+
+      if (fromDate && toDate) {
+        params.set("fromDate", dayjs(fromDate).format("YYYY-MM-DD"));
+        params.set("toDate", dayjs(toDate).format("YYYY-MM-DD"));
+      }
+
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+      const res = await getGstSalesSummary(queryString);
+      setGstSalesSummary(res);
+    } catch (err) {
+      console.error("GST sales summary fetch failed:", err);
+      setGstSalesSummary(null);
+    }
+  }, [fromDate, toDate]);
 
   const loadLocalTotalAmount = useCallback(async () => {
     setLoading(true);
@@ -262,6 +302,8 @@ const Dashboard = () => {
   }, [fromDate, toDate]);
 
   useEffect(() => {
+    loadGstSalesSummary();
+    loadGstExpenseSummary();
     loadLocalExpenseTotalAmount();
     loadLocalTotalAmount();
     LoadAdminAmount();
@@ -302,7 +344,8 @@ const Dashboard = () => {
               title: "Total Cash",
               value:
                 localSalesAmount?.local_total?.total_cash +
-                localExpenseAmount?.total?.total_rec_cash,
+                localExpenseAmount?.total?.total_rec_cash +
+                gstSalesSummary?.total_cash,
               color: "text-green-600",
               bg: "bg-green-50",
             },
@@ -329,7 +372,7 @@ const Dashboard = () => {
                   value: localSalesAmount?.local_party?.total_cash,
                 },
 
-                { label: "GST", value: localSalesAmount?.gstCash },
+                { label: "GST", value: gstSalesSummary?.total_cash },
               ],
             },
             {
@@ -350,11 +393,11 @@ const Dashboard = () => {
                 },
                 {
                   label: "Hub",
-                  value: localSalesAmount?.hub?.total_rec_cash,
+                  value: localExpenseAmount?.hub?.total_rec_cash,
                 },
                 {
                   label: "Admin",
-                  value: localSalesAmount?.admin?.total_rec_cash,
+                  value: localExpenseAmount?.admin?.total_rec_cash,
                 },
               ],
             },
@@ -391,11 +434,11 @@ const Dashboard = () => {
                 },
                 {
                   label: "Hub",
-                  value: localSalesAmount?.hub?.total_exp_cash,
+                  value: localExpenseAmount?.hub?.total_exp_cash,
                 },
                 {
                   label: "Admin",
-                  value: localSalesAmount?.admin?.total_exp_cash,
+                  value: localExpenseAmount?.admin?.total_exp_cash,
                 },
               ],
             },
@@ -410,7 +453,8 @@ const Dashboard = () => {
               title: "Total Gpay",
               value:
                 localSalesAmount?.local_total?.total_gpay +
-                localExpenseAmount?.total?.total_rec_gpay,
+                localExpenseAmount?.total?.total_rec_gpay +
+                gstSalesSummary?.total_gpay,
               color: "text-green-600",
               bg: "bg-green-50",
             },
@@ -437,7 +481,7 @@ const Dashboard = () => {
                   value: localSalesAmount?.local_party?.total_gpay,
                 },
 
-                { label: "GST", value: localSalesAmount?.gstGpay },
+                { label: "GST", value: gstSalesSummary?.total_gpay },
               ],
             },
             {
@@ -446,23 +490,23 @@ const Dashboard = () => {
               items: [
                 {
                   label: "Unapproved",
-                  value: localExpenseAmount?.expense?.total_rec_gpay,
+                  value: localExpenseAmount?.expense?.total_exp_gpay,
                 },
                 {
                   label: "Approved",
-                  value: localExpenseAmount?.approved?.total_rec_gpay,
+                  value: localExpenseAmount?.approved?.total_exp_gpay,
                 },
                 {
                   label: "Production",
-                  value: localExpenseAmount?.production?.total_rec_gpay,
+                  value: localExpenseAmount?.production?.total_exp_gpay,
                 },
                 {
                   label: "Hub",
-                  value: localSalesAmount?.hub?.total_rec_gpay,
+                  value: localExpenseAmount?.hub?.total_exp_gpay,
                 },
                 {
                   label: "Admin",
-                  value: localSalesAmount?.admin?.total_rec_gpay,
+                  value: localExpenseAmount?.admin?.total_exp_gpay,
                 },
               ],
             },
@@ -499,11 +543,11 @@ const Dashboard = () => {
                 },
                 {
                   label: "Hub",
-                  value: localSalesAmount?.hub?.total_exp_gpay,
+                  value: localExpenseAmount?.hub?.total_exp_gpay,
                 },
                 {
                   label: "Admin",
-                  value: localSalesAmount?.admin?.total_exp_gpay,
+                  value: localExpenseAmount?.admin?.total_exp_gpay,
                 },
               ],
             },
@@ -523,22 +567,24 @@ const Dashboard = () => {
           tiles={[
             {
               title: "GST Sales",
-              value: data.gstSalesAmount,
+              value: gstSalesSummary?.total_sales,
               color: "text-green-600",
               bg: "bg-green-50",
-              caption: `On base ₹ ${formatAmount(data.gstSalesBase)} · Tax ₹ ${formatAmount(data.gstSalesTax)}`,
+              caption: `Tax ₹ ${formatAmount(gstSalesSummary?.total_tax)}`,
             },
             {
               title: "GST Expenses",
-              value: data.gstExpenseAmount,
+              value: gstExpenseSummary?.total_expense,
               color: "text-red-600",
               bg: "bg-red-50",
-              caption: `On base ₹ ${formatAmount(data.gstExpenseBase)} · Tax ₹ ${formatAmount(data.gstExpenseTax)}`,
+              caption: `Tax ₹ ${formatAmount(gstExpenseSummary?.total_tax)}`,
             },
             {
               title: "GST Tax",
-              value: data.gstTax,
-              color: balanceColor(data.gstTax),
+              value: gstSalesSummary?.total_tax - gstExpenseSummary?.total_tax,
+              color: balanceColor(
+                gstSalesSummary?.total_tax - gstExpenseSummary?.total_tax,
+              ),
               bg: "bg-blue-50",
             },
           ]}
