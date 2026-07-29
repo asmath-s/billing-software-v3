@@ -295,7 +295,7 @@ const Dashboard = () => {
         transition={{ duration: 0.4, ease: "easeInOut" }}
       >
         <FinanceCard
-          title="Receive"
+          title="Receive Cash"
           titleColor="text-emerald-800"
           tiles={[
             {
@@ -329,8 +329,7 @@ const Dashboard = () => {
                   value: localSalesAmount?.local_party?.total_cash,
                 },
 
-                { label: "GST Cash", value: localSalesAmount?.gstCash },
-                { label: "GST Gpay", value: localSalesAmount?.gstGpay },
+                { label: "GST", value: localSalesAmount?.gstCash },
               ],
             },
             {
@@ -363,73 +362,40 @@ const Dashboard = () => {
         />
 
         <FinanceCard
-          title="Expense"
+          title="Expense Cash"
           titleColor="text-red-700"
           tiles={[
             {
-              title: "Sales Cash",
-              value: localSalesAmount.localSalesCash,
-              color: "text-green-600",
-              bg: "bg-green-50",
-            },
-            {
-              title: "Cash Expenses",
-              value: localSalesAmount.localCashExpenses,
+              title: "Total Cash",
+              value: localExpenseAmount?.total?.total_exp_cash,
               color: "text-red-600",
               bg: "bg-red-50",
             },
-            {
-              title: "Balance",
-              value: localSalesAmount.localCashBalance,
-              color: balanceColor(localSalesAmount.localCashBalance),
-              bg: "bg-blue-50",
-            },
           ]}
           panels={[
-            {
-              title: "Sales breakdown",
-              color: "text-green-700",
-              items: [
-                { label: "Local Paid", value: localSalesAmount.localCashPaid },
-                {
-                  label: "Local Pending",
-                  value: localSalesAmount.localCashPaidPending,
-                },
-                {
-                  label: "Local Party",
-                  value: localSalesAmount.localCashParty,
-                },
-                {
-                  label: "Local Unapproved",
-                  value: localSalesAmount.localCashUnapprove,
-                },
-                { label: "GST Cash", value: localSalesAmount.gstCash },
-                { label: "GST Gpay", value: localSalesAmount.gstGpay },
-              ],
-            },
             {
               title: "Expense breakdown",
               color: "text-red-700",
               items: [
                 {
-                  label: "Local Expenses",
-                  value: localExpenseAmount.localCashExpense,
+                  label: "Unapproved",
+                  value: localExpenseAmount?.expense?.total_exp_cash,
                 },
                 {
-                  label: "Approved Expenses",
-                  value: localExpenseAmount.debtCashExpense,
+                  label: "Approved",
+                  value: localExpenseAmount?.approved?.total_exp_cash,
                 },
                 {
-                  label: "Production Expenses",
-                  value: localExpenseAmount.adminPublicCashExpense,
+                  label: "Production",
+                  value: localExpenseAmount?.production?.total_exp_cash,
                 },
                 {
-                  label: "Hub Expenses",
-                  value: localSalesAmount.localCashReceive,
+                  label: "Hub",
+                  value: localSalesAmount?.hub?.total_exp_cash,
                 },
                 {
-                  label: "Admin Expenses",
-                  value: localSalesAmount.debtCashReceive,
+                  label: "Admin",
+                  value: localSalesAmount?.admin?.total_exp_cash,
                 },
               ],
             },
@@ -437,58 +403,107 @@ const Dashboard = () => {
         />
 
         <FinanceCard
-          title="Local GPay"
+          title="Receive GPay"
           titleColor="text-emerald-800"
           tiles={[
             {
-              title: "Sales GPay",
-              value: data.localSalesGpay,
+              title: "Total Gpay",
+              value:
+                localSalesAmount?.local_total?.total_gpay +
+                localExpenseAmount?.total?.total_rec_gpay,
               color: "text-green-600",
               bg: "bg-green-50",
-            },
-            {
-              title: "GPay Expenses",
-              value: data.localGpayExpenses,
-              color: "text-red-600",
-              bg: "bg-red-50",
-            },
-            {
-              title: "Balance",
-              value: data.localGpayBalance,
-              color: balanceColor(data.localGpayBalance),
-              bg: "bg-blue-50",
             },
           ]}
           panels={[
             {
-              title: "Sales breakdown",
+              title: "Sales Receive breakdown",
               color: "text-green-700",
               items: [
-                { label: "Local Paid", value: data.localGpayPaid },
                 {
-                  label: "Local Paid Pending",
-                  value: data.localGpayPaidPending,
+                  label: "Unapproved",
+                  value: localSalesAmount?.local_list?.total_gpay,
                 },
-                { label: "Local Party", value: data.localGpayParty },
-                { label: "Local Unapproved", value: data.localGpayUnapprove },
-                { label: "Local Receive", value: data.localGpayReceive },
-                { label: "Debt Receive", value: data.debtGpayReceive },
-                { label: "GST GPay", value: data.gstGpay },
                 {
-                  label: "Admin Public Receive",
-                  value: data.localGpayAdminPublicReceive,
+                  label: "Paid",
+                  value: localSalesAmount?.local_paid?.total_gpay,
+                },
+                {
+                  label: "Pending",
+                  value: localSalesAmount?.local_pending?.total_gpay,
+                },
+                {
+                  label: "Party",
+                  value: localSalesAmount?.local_party?.total_gpay,
+                },
+
+                { label: "GST", value: localSalesAmount?.gstGpay },
+              ],
+            },
+            {
+              title: "Expense Receive breakdown",
+              color: "text-green-700",
+              items: [
+                {
+                  label: "Unapproved",
+                  value: localExpenseAmount?.expense?.total_rec_gpay,
+                },
+                {
+                  label: "Approved",
+                  value: localExpenseAmount?.approved?.total_rec_gpay,
+                },
+                {
+                  label: "Production",
+                  value: localExpenseAmount?.production?.total_rec_gpay,
+                },
+                {
+                  label: "Hub",
+                  value: localSalesAmount?.hub?.total_rec_gpay,
+                },
+                {
+                  label: "Admin",
+                  value: localSalesAmount?.admin?.total_rec_gpay,
                 },
               ],
             },
+          ]}
+        />
+
+        <FinanceCard
+          title="Expense GPay"
+          titleColor="text-red-700"
+          tiles={[
+            {
+              title: "Total Expenses",
+              value: localExpenseAmount?.total?.total_exp_gpay,
+              color: "text-red-600",
+              bg: "bg-red-50",
+            },
+          ]}
+          panels={[
             {
               title: "Expense breakdown",
               color: "text-red-700",
               items: [
-                { label: "Local Expenses", value: data.localGpayExpense },
-                { label: "Debt Expenses", value: data.debtGpayExpense },
                 {
-                  label: "Admin Public Expenses",
-                  value: data.adminPublicGpayExpense,
+                  label: "Unapproved",
+                  value: localExpenseAmount?.expense?.total_exp_gpay,
+                },
+                {
+                  label: "Approved",
+                  value: localExpenseAmount?.approved?.total_exp_gpay,
+                },
+                {
+                  label: "Production",
+                  value: localExpenseAmount?.production?.total_exp_gpay,
+                },
+                {
+                  label: "Hub",
+                  value: localSalesAmount?.hub?.total_exp_gpay,
+                },
+                {
+                  label: "Admin",
+                  value: localSalesAmount?.admin?.total_exp_gpay,
                 },
               ],
             },
