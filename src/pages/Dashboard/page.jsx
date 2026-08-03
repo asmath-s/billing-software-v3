@@ -250,12 +250,11 @@ const Dashboard = () => {
       let query = [];
 
       if (fromDate && toDate) {
-        query.push(
-          `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-        );
-        query.push(
-          `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
-        );
+        const from = dayjs(fromDate).format("YYYY-MM-DD");
+        const to = dayjs(toDate).format("YYYY-MM-DD");
+
+        query.push(`fromDate=${from}`);
+        query.push(`toDate=${to}`);
       }
       const queryString = query.length ? `?${query.join("&")}` : "";
 
@@ -281,12 +280,11 @@ const Dashboard = () => {
       query.push(`filters[current_status][$eq]=admin`);
 
       if (fromDate && toDate) {
-        query.push(
-          `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-        );
-        query.push(
-          `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
-        );
+        const from = dayjs(fromDate).format("YYYY-MM-DD");
+        const to = dayjs(toDate).format("YYYY-MM-DD");
+
+        query.push(`fromDate=${from}`);
+        query.push(`toDate=${to}`);
       }
       const queryString = query.length ? `?${query.join("&")}` : "";
 
