@@ -60,7 +60,11 @@ const LocalList = () => {
   /* ================= LOAD LOCAL LIST ================= */
 
   const loadLocalEntriesData = useCallback(async () => {
+    setLoading(true);
     const query = [];
+
+    query.push("pagination[pageSize]=100000");
+    query.push("populate=*");
 
     if (searchCustomer) {
       query.push(`filters[customer][documentId][$eq]=${searchCustomer.value}`);
@@ -74,30 +78,13 @@ const LocalList = () => {
     query.push("sort[0]=date:desc");
     query.push("filters[approved][$eq]=false");
 
-    const pageSize = 100;
-    let page = 1;
-    let pageCount = 1;
-    let allData = [];
-
-    setLoading(true);
+    const queryString = query.length ? `?${query.join("&")}` : "";
 
     try {
-      do {
-        const params = [
-          `pagination[page]=${page}`,
-          `pagination[pageSize]=${pageSize}`,
-          ...query,
-        ].join("&");
+      const res = await getLocalList(queryString);
+      console.log("Local list fetched:", res);
 
-        const res = await getLocalList(params);
-
-        allData.push(...(res.data || []));
-        pageCount = res.meta.pagination.pageCount;
-
-        page++;
-      } while (page <= pageCount);
-
-      setLocalData(allData);
+      setLocalData(res.data);
     } catch (error) {
       console.error("Local list fetch failed:", error);
       setLocalData([]);

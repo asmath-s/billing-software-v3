@@ -1,7 +1,7 @@
 import axiosInstance from "./axiosInstance";
 
 export const getLocalList = async (params = "") => {
-  const response = await axiosInstance.get(`/local-lists?populate=*&${params}`);
+  const response = await axiosInstance.get(`/local-lists${params}`);
   return response.data;
 };
 
