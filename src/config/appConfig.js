@@ -56,7 +56,7 @@ export const appConfig = [
     icon: DashboardIcon,
     path: DASHBOARD,
     elementKey: "Dashboard",
-    roles: [ROLES.SuperAdmin, ROLES.Authenticated],
+    roles: [ROLES.SuperAdmin],
   },
 
   {

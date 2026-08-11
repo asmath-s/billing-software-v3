@@ -252,7 +252,7 @@ const AdminList = () => {
               balanceAmount={adminExpenseAmount.asmathTotalBalance}
               getCash={adminExpenseAmount.asmathGetInCash}
               getGpay={adminExpenseAmount.asmathGetInGapy}
-              getAccount={adminExpenseAmount.asmathGetInGst}
+              getAccount={adminExpenseAmount.asmathGetInAccount}
               giveCash={adminExpenseAmount.asmathGiveInCash}
               giveGpay={adminExpenseAmount.asmathGiveInGapy}
               giveAccount={adminExpenseAmount.asmathGiveInAccount}
@@ -265,7 +265,7 @@ const AdminList = () => {
               balanceAmount={adminExpenseAmount.ibuTotalBalance}
               getCash={adminExpenseAmount.ibuGetInCash}
               getGpay={adminExpenseAmount.ibuGetInGapy}
-              getAccount={adminExpenseAmount.ibuGetInGst}
+              getAccount={adminExpenseAmount.ibuGetInAccount}
               giveCash={adminExpenseAmount.ibuGiveInCash}
               giveGpay={adminExpenseAmount.ibuGiveInGapy}
               giveAccount={adminExpenseAmount.ibuGiveInAccount}

@@ -43,3 +43,10 @@ export const getLocalExpenseAmounts = async (params = "") => {
   const response = await axiosInstance.get(`/local-expense-amounts${params}`);
   return response.data;
 };
+
+export const getLocalAuthenticatedExpenseAmounts = async (params = "") => {
+  const response = await axiosInstance.get(
+    `/local-authenticated-expense-amounts${params}`,
+  );
+  return response.data;
+};

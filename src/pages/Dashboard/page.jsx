@@ -5,7 +5,10 @@ import { getAdminExpenseAmounts } from "../../api/adminExpense";
 import { getGstExpenseSummary } from "../../api/gstExpense";
 import { getGstSalesSummary } from "../../api/gstList";
 import { getLocalAmounts } from "../../api/localAmount";
-import { getLocalExpenseAmounts } from "../../api/localExpense";
+import {
+  getLocalAuthenticatedExpenseAmounts,
+  getLocalExpenseAmounts,
+} from "../../api/localExpense";
 import AdminCard from "../../components/AdminCard/AdminCard";
 import Datepicker from "../../components/Datepicker/Datepicker";
 import { AccountIcon, CashIcon, GpayIcon } from "../../components/icons";
@@ -175,6 +178,8 @@ const Dashboard = () => {
   const [toDate, setToDate] = useState(null);
   const [localSalesAmount, setLocalSalesAmount] = useState({});
   const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
+  const [localAuthenticatedExpenseAmount, setLocalAuthenticatedExpenseAmount] =
+    useState([]);
   const [loading, setLoading] = useState(false);
   const [adminExpenseAmount, setAdminExpenseAmount] = useState({});
   const [gstSalesSummary, setGstSalesSummary] = useState(null);
@@ -269,6 +274,33 @@ const Dashboard = () => {
     }
   }, [fromDate, toDate]);
 
+  const loadAuthenticatedLocalExpenseTotalAmount = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      let query = [];
+
+      if (fromDate && toDate) {
+        const from = dayjs(fromDate).format("YYYY-MM-DD");
+        const to = dayjs(toDate).format("YYYY-MM-DD");
+
+        query.push(`fromDate=${from}`);
+        query.push(`toDate=${to}`);
+      }
+
+      const queryString = query.length ? `?${query.join("&")}` : "";
+
+      const res = await getLocalAuthenticatedExpenseAmounts(queryString);
+
+      setLocalAuthenticatedExpenseAmount(res);
+    } catch (error) {
+      console.error("Local amounts fetch failed:", error);
+      setLocalAuthenticatedExpenseAmount([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [fromDate, toDate]);
+
   const LoadAdminAmount = useCallback(async () => {
     setLoading(true);
 
@@ -305,9 +337,15 @@ const Dashboard = () => {
     loadLocalExpenseTotalAmount();
     loadLocalTotalAmount();
     LoadAdminAmount();
-  }, [loadLocalTotalAmount, LoadAdminAmount]);
-
-  const data = localSalesAmount;
+    loadAuthenticatedLocalExpenseTotalAmount();
+  }, [
+    loadGstSalesSummary,
+    loadGstExpenseSummary,
+    loadLocalExpenseTotalAmount,
+    loadAuthenticatedLocalExpenseTotalAmount,
+    loadLocalTotalAmount,
+    LoadAdminAmount,
+  ]);
 
   return (
     <MainLayout>
@@ -330,7 +368,7 @@ const Dashboard = () => {
       {/* Local Info */}
       <SectionHeading>Local Info</SectionHeading>
       <motion.div
-        className="grid grid-cols-1 xl:grid-cols-2 gap-4"
+        className="grid grid-cols-3 gap-4"
         {...sectionMotion}
         transition={{ duration: 0.4, ease: "easeInOut" }}
       >
@@ -342,7 +380,7 @@ const Dashboard = () => {
               title: "Total Cash",
               value:
                 localSalesAmount?.local_total?.total_cash +
-                localExpenseAmount?.total?.total_rec_cash +
+                localAuthenticatedExpenseAmount?.total?.total_rec_cash +
                 gstSalesSummary?.total_cash,
               color: "text-green-600",
               bg: "bg-green-50",
@@ -379,23 +417,26 @@ const Dashboard = () => {
               items: [
                 {
                   label: "Unapproved",
-                  value: localExpenseAmount?.expense?.total_rec_cash,
+                  value:
+                    localAuthenticatedExpenseAmount?.expense?.total_rec_cash,
                 },
                 {
                   label: "Approved",
-                  value: localExpenseAmount?.approved?.total_rec_cash,
+                  value:
+                    localAuthenticatedExpenseAmount?.approved?.total_rec_cash,
                 },
                 {
                   label: "Production",
-                  value: localExpenseAmount?.production?.total_rec_cash,
+                  value:
+                    localAuthenticatedExpenseAmount?.production?.total_rec_cash,
                 },
                 {
                   label: "Hub",
-                  value: localExpenseAmount?.hub?.total_rec_cash,
+                  value: localAuthenticatedExpenseAmount?.hub?.total_rec_cash,
                 },
                 {
                   label: "Admin",
-                  value: localExpenseAmount?.admin?.total_rec_cash,
+                  value: localAuthenticatedExpenseAmount?.admin?.total_rec_cash,
                 },
               ],
             },
@@ -408,7 +449,7 @@ const Dashboard = () => {
           tiles={[
             {
               title: "Total Cash",
-              value: localExpenseAmount?.total?.total_exp_cash,
+              value: localAuthenticatedExpenseAmount?.total?.total_exp_cash,
               color: "text-red-600",
               bg: "bg-red-50",
             },
@@ -420,27 +461,48 @@ const Dashboard = () => {
               items: [
                 {
                   label: "Unapproved",
-                  value: localExpenseAmount?.expense?.total_exp_cash,
+                  value:
+                    localAuthenticatedExpenseAmount?.expense?.total_exp_cash,
                 },
                 {
                   label: "Approved",
-                  value: localExpenseAmount?.approved?.total_exp_cash,
+                  value:
+                    localAuthenticatedExpenseAmount?.approved?.total_exp_cash,
                 },
                 {
                   label: "Production",
-                  value: localExpenseAmount?.production?.total_exp_cash,
+                  value:
+                    localAuthenticatedExpenseAmount?.production?.total_exp_cash,
                 },
                 {
                   label: "Hub",
-                  value: localExpenseAmount?.hub?.total_exp_cash,
+                  value: localAuthenticatedExpenseAmount?.hub?.total_exp_cash,
                 },
                 {
                   label: "Admin",
-                  value: localExpenseAmount?.admin?.total_exp_cash,
+                  value: localAuthenticatedExpenseAmount?.admin?.total_exp_cash,
                 },
               ],
             },
           ]}
+        />
+
+        <FinanceCard
+          title="Balance Cash"
+          titleColor="text-yellow-700"
+          tiles={[
+            {
+              title: "Total Cash",
+              value:
+                localSalesAmount?.local_total?.total_cash +
+                localAuthenticatedExpenseAmount?.total?.total_rec_cash +
+                gstSalesSummary?.total_cash -
+                localAuthenticatedExpenseAmount?.total?.total_exp_cash,
+              color: "text-yellow-600",
+              bg: "bg-yellow-50",
+            },
+          ]}
+          panels={[]}
         />
 
         <FinanceCard
@@ -451,7 +513,7 @@ const Dashboard = () => {
               title: "Total Gpay",
               value:
                 localSalesAmount?.local_total?.total_gpay +
-                localExpenseAmount?.total?.total_rec_gpay +
+                localAuthenticatedExpenseAmount?.total?.total_rec_gpay +
                 gstSalesSummary?.total_gpay,
               color: "text-green-600",
               bg: "bg-green-50",
@@ -488,23 +550,26 @@ const Dashboard = () => {
               items: [
                 {
                   label: "Unapproved",
-                  value: localExpenseAmount?.expense?.total_exp_gpay,
+                  value:
+                    localAuthenticatedExpenseAmount?.expense?.total_exp_gpay,
                 },
                 {
                   label: "Approved",
-                  value: localExpenseAmount?.approved?.total_exp_gpay,
+                  value:
+                    localAuthenticatedExpenseAmount?.approved?.total_exp_gpay,
                 },
                 {
                   label: "Production",
-                  value: localExpenseAmount?.production?.total_exp_gpay,
+                  value:
+                    localAuthenticatedExpenseAmount?.production?.total_exp_gpay,
                 },
                 {
                   label: "Hub",
-                  value: localExpenseAmount?.hub?.total_exp_gpay,
+                  value: localAuthenticatedExpenseAmount?.hub?.total_exp_gpay,
                 },
                 {
                   label: "Admin",
-                  value: localExpenseAmount?.admin?.total_exp_gpay,
+                  value: localAuthenticatedExpenseAmount?.admin?.total_exp_gpay,
                 },
               ],
             },
@@ -517,7 +582,7 @@ const Dashboard = () => {
           tiles={[
             {
               title: "Total Expenses",
-              value: localExpenseAmount?.total?.total_exp_gpay,
+              value: localAuthenticatedExpenseAmount?.total?.total_exp_gpay,
               color: "text-red-600",
               bg: "bg-red-50",
             },
@@ -529,27 +594,48 @@ const Dashboard = () => {
               items: [
                 {
                   label: "Unapproved",
-                  value: localExpenseAmount?.expense?.total_exp_gpay,
+                  value:
+                    localAuthenticatedExpenseAmount?.expense?.total_exp_gpay,
                 },
                 {
                   label: "Approved",
-                  value: localExpenseAmount?.approved?.total_exp_gpay,
+                  value:
+                    localAuthenticatedExpenseAmount?.approved?.total_exp_gpay,
                 },
                 {
                   label: "Production",
-                  value: localExpenseAmount?.production?.total_exp_gpay,
+                  value:
+                    localAuthenticatedExpenseAmount?.production?.total_exp_gpay,
                 },
                 {
                   label: "Hub",
-                  value: localExpenseAmount?.hub?.total_exp_gpay,
+                  value: localAuthenticatedExpenseAmount?.hub?.total_exp_gpay,
                 },
                 {
                   label: "Admin",
-                  value: localExpenseAmount?.admin?.total_exp_gpay,
+                  value: localAuthenticatedExpenseAmount?.admin?.total_exp_gpay,
                 },
               ],
             },
           ]}
+        />
+
+        <FinanceCard
+          title="Balance Gpay"
+          titleColor="text-yellow-700"
+          tiles={[
+            {
+              title: "Total GPay",
+              value:
+                localSalesAmount?.local_total?.total_gpay +
+                localAuthenticatedExpenseAmount?.total?.total_rec_gpay +
+                gstSalesSummary?.total_gpay -
+                localAuthenticatedExpenseAmount?.total?.total_exp_gpay,
+              color: "text-yellow-600",
+              bg: "bg-yellow-50",
+            },
+          ]}
+          panels={[]}
         />
       </motion.div>
 
@@ -565,14 +651,14 @@ const Dashboard = () => {
           tiles={[
             {
               title: "GST Sales",
-              value: gstSalesSummary?.total_sales,
+              value: gstSalesSummary?.total_base,
               color: "text-green-600",
               bg: "bg-green-50",
               caption: `Tax ₹ ${formatAmount(gstSalesSummary?.total_tax)}`,
             },
             {
               title: "GST Expenses",
-              value: gstExpenseSummary?.total_expense,
+              value: gstExpenseSummary?.total_base,
               color: "text-red-600",
               bg: "bg-red-50",
               caption: `Tax ₹ ${formatAmount(gstExpenseSummary?.total_tax)}`,
@@ -589,7 +675,151 @@ const Dashboard = () => {
         />
       </motion.div>
 
-      {/* Finalize */}
+      {/* on hand */}
+      <SectionHeading>ON Hand</SectionHeading>
+      <motion.div
+        {...sectionMotion}
+        transition={{ duration: 0.4, delay: 0.1, ease: "easeInOut" }}
+      >
+        <FinanceCard
+          title="On Hand"
+          titleColor="text-amber-800"
+          tiles={[
+            {
+              title: "Total Amount",
+              value:
+                localSalesAmount?.local_total?.total_cash +
+                localExpenseAmount?.total?.total_rec_cash +
+                gstSalesSummary?.total_cash +
+                localSalesAmount?.local_total?.total_gpay +
+                localExpenseAmount?.total?.total_rec_gpay +
+                gstSalesSummary?.total_gpay +
+                gstSalesSummary?.total_account,
+              color: "text-green-600",
+              bg: "bg-green-50",
+            },
+            {
+              title: "Total Expense",
+              value:
+                localExpenseAmount?.total?.total_exp_cash +
+                localExpenseAmount?.total?.total_exp_gpay +
+                gstExpenseSummary?.total_account,
+              color: "text-red-600",
+              bg: "bg-red-50",
+            },
+            {
+              title: "Balance",
+              value:
+                localSalesAmount?.local_total?.total_cash +
+                localExpenseAmount?.total?.total_rec_cash +
+                gstSalesSummary?.total_cash +
+                localSalesAmount?.local_total?.total_gpay +
+                localExpenseAmount?.total?.total_rec_gpay +
+                gstSalesSummary?.total_gpay +
+                gstSalesSummary?.total_account -
+                (localExpenseAmount?.total?.total_exp_cash +
+                  localExpenseAmount?.total?.total_exp_gpay +
+                  gstExpenseSummary?.total_account),
+              color: balanceColor(
+                localSalesAmount?.local_total?.total_cash +
+                  localExpenseAmount?.total?.total_rec_cash +
+                  gstSalesSummary?.total_cash +
+                  localSalesAmount?.local_total?.total_gpay +
+                  localExpenseAmount?.total?.total_rec_gpay +
+                  gstSalesSummary?.total_gpay +
+                  gstSalesSummary?.total_account -
+                  (localExpenseAmount?.total?.total_exp_cash +
+                    localExpenseAmount?.total?.total_exp_gpay +
+                    gstExpenseSummary?.total_account),
+              ),
+              bg: "bg-blue-50",
+            },
+          ]}
+          panels={[
+            {
+              title: "Total Amount breakdown",
+              color: "text-green-700",
+              items: [
+                {
+                  label: "Cash",
+                  value:
+                    localSalesAmount?.local_total?.total_cash +
+                    localExpenseAmount?.total?.total_rec_cash +
+                    gstSalesSummary?.total_cash,
+
+                  channel: "cash",
+                },
+                {
+                  label: "GPay",
+                  value:
+                    localSalesAmount?.local_total?.total_gpay +
+                    localExpenseAmount?.total?.total_rec_gpay +
+                    gstSalesSummary?.total_gpay,
+                  channel: "gpay",
+                },
+                {
+                  label: "GST Bank",
+                  value: gstSalesSummary?.total_account,
+                  channel: "account",
+                },
+              ],
+            },
+            {
+              title: "Total Expense breakdown",
+              color: "text-red-700",
+              items: [
+                {
+                  label: "Cash",
+                  value: localExpenseAmount?.total?.total_exp_cash,
+                  channel: "cash",
+                },
+                {
+                  label: "GPay",
+                  value: localExpenseAmount?.total?.total_exp_gpay,
+                  channel: "gpay",
+                },
+                {
+                  label: "GST Bank",
+                  value: gstExpenseSummary?.total_account,
+                  channel: "account",
+                },
+              ],
+            },
+            {
+              title: "Total Balance breakdown",
+              color: "text-red-700",
+              items: [
+                {
+                  label: "Cash",
+                  value:
+                    localSalesAmount?.local_total?.total_cash +
+                    localExpenseAmount?.total?.total_rec_cash +
+                    gstSalesSummary?.total_cash -
+                    localExpenseAmount?.total?.total_exp_cash,
+                  channel: "cash",
+                },
+                {
+                  label: "GPay",
+                  value:
+                    localSalesAmount?.local_total?.total_gpay +
+                    localExpenseAmount?.total?.total_rec_gpay +
+                    gstSalesSummary?.total_gpay -
+                    localExpenseAmount?.total?.total_exp_gpay,
+                  channel: "gpay",
+                },
+                {
+                  label: "GST Bank",
+                  value:
+                    gstSalesSummary?.total_account -
+                    gstExpenseSummary?.total_account,
+                  channel: "account",
+                },
+              ],
+            },
+          ]}
+        />
+      </motion.div>
+
       <SectionHeading>Finalize</SectionHeading>
       <motion.div
         {...sectionMotion}
@@ -601,20 +831,59 @@ const Dashboard = () => {
           tiles={[
             {
               title: "Total Amount",
-              value: data.finalizeTotalAmount,
+              value:
+                localSalesAmount?.local_total?.total_cash +
+                localExpenseAmount?.total?.total_rec_cash +
+                gstSalesSummary?.total_cash +
+                localSalesAmount?.local_total?.total_gpay +
+                localExpenseAmount?.total?.total_rec_gpay +
+                gstSalesSummary?.total_gpay +
+                gstSalesSummary?.total_account +
+                localSalesAmount?.local_pending?.total_balance +
+                localSalesAmount?.local_party?.total_balance,
               color: "text-green-600",
               bg: "bg-green-50",
             },
             {
               title: "Total Expense",
-              value: data.finalizeTotalExpense,
+              value:
+                localExpenseAmount?.total?.total_exp_cash +
+                localExpenseAmount?.total?.total_exp_gpay +
+                gstExpenseSummary?.total_account,
               color: "text-red-600",
               bg: "bg-red-50",
             },
             {
               title: "Balance",
-              value: data.finalizeBalance,
-              color: balanceColor(data.finalizeBalance),
+              value:
+                localSalesAmount?.local_total?.total_cash +
+                localExpenseAmount?.total?.total_rec_cash +
+                gstSalesSummary?.total_cash +
+                localSalesAmount?.local_total?.total_gpay +
+                localExpenseAmount?.total?.total_rec_gpay +
+                gstSalesSummary?.total_gpay +
+                gstSalesSummary?.total_account +
+                localSalesAmount?.local_pending?.total_balance +
+                localSalesAmount?.local_party?.total_balance -
+                (localExpenseAmount?.total?.total_exp_cash +
+                  localExpenseAmount?.total?.total_exp_gpay +
+                  gstExpenseSummary?.total_account +
+                  gstExpenseSummary?.total_balance),
+              color: balanceColor(
+                localSalesAmount?.local_total?.total_cash +
+                  localExpenseAmount?.total?.total_rec_cash +
+                  gstSalesSummary?.total_cash +
+                  localSalesAmount?.local_total?.total_gpay +
+                  localExpenseAmount?.total?.total_rec_gpay +
+                  gstSalesSummary?.total_gpay +
+                  gstSalesSummary?.total_account +
+                  localSalesAmount?.local_pending?.total_balance +
+                  localSalesAmount?.local_party?.total_balance -
+                  (localExpenseAmount?.total?.total_exp_cash +
+                    localExpenseAmount?.total?.total_exp_gpay +
+                    gstExpenseSummary?.total_account +
+                    gstExpenseSummary?.total_balance),
+              ),
               bg: "bg-blue-50",
             },
           ]}
@@ -623,18 +892,40 @@ const Dashboard = () => {
               title: "Total Amount breakdown",
               color: "text-green-700",
               items: [
-                { label: "Cash", value: data.finalizeCash, channel: "cash" },
-                { label: "GPay", value: data.finalizeGpay, channel: "gpay" },
+                {
+                  label: "Cash",
+                  value:
+                    localSalesAmount?.local_total?.total_cash +
+                    localExpenseAmount?.total?.total_rec_cash +
+                    gstSalesSummary?.total_cash,
+
+                  channel: "cash",
+                },
+                {
+                  label: "GPay",
+                  value:
+                    localSalesAmount?.local_total?.total_gpay +
+                    localExpenseAmount?.total?.total_rec_gpay +
+                    gstSalesSummary?.total_gpay,
+                  channel: "gpay",
+                },
                 {
                   label: "GST Bank",
-                  value: data.finalizeGstBank,
+                  value: gstSalesSummary?.total_account,
                   channel: "account",
                 },
                 {
                   label: "Local Need to Get",
-                  value: data.finalizeLocalNeedToGet,
+                  value:
+                    localSalesAmount?.local_pending?.total_balance +
+                    localSalesAmount?.local_party?.total_balance,
+                  channel: "account",
                 },
-                { label: "GST Need to Get", value: data.finalizeGstNeedToGet },
+                {
+                  label: "GST Need to Get",
+                  value: gstSalesSummary?.total_balance,
+                  channel: "account",
+                },
               ],
             },
             {
@@ -643,244 +934,102 @@ const Dashboard = () => {
               items: [
                 {
                   label: "Cash",
-                  value: data.finalizeExpenseCash,
+                  value: localExpenseAmount?.total?.total_exp_cash,
                   channel: "cash",
                 },
                 {
                   label: "GPay",
-                  value: data.finalizeExpenseGpay,
+                  value: localExpenseAmount?.total?.total_exp_gpay,
                   channel: "gpay",
                 },
                 {
                   label: "GST Bank",
-                  value: data.finalizeExpenseGstBank,
+                  value: gstExpenseSummary?.total_account,
                   channel: "account",
                 },
-                { label: "GST Need to Pay", value: data.finalizeGstNeedToPay },
+                {
+                  label: "GST Need to Pay",
+                  value: gstExpenseSummary?.total_balance,
+                  channel: "account",
+                },
               ],
             },
           ]}
         />
       </motion.div>
 
-      {/* Local Sales & Expenses */}
-      <SectionHeading>Local Sales & Expenses</SectionHeading>
+      <SectionHeading>Summary</SectionHeading>
       <motion.div
-        className="flex flex-col gap-4"
         {...sectionMotion}
-        transition={{ duration: 0.4, delay: 0.15, ease: "easeInOut" }}
-      >
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <FinanceCard
-            title="Local Cash"
-            titleColor="text-emerald-800"
-            tiles={[
-              {
-                title: "Local Cash",
-                value: data.localCash,
-                color: "text-green-600",
-                bg: "bg-green-50",
-              },
-              {
-                title: "Cash Expenses",
-                value: data.localCashExpenseTotal,
-                color: "text-red-600",
-                bg: "bg-red-50",
-              },
-              {
-                title: "Cash Balance",
-                value: data.localCashBalance2,
-                color: balanceColor(data.localCashBalance2),
-                bg: "bg-blue-50",
-              },
-            ]}
-            panels={[
-              {
-                title: "Local Cash breakdown",
-                color: "text-green-700",
-                items: [
-                  { label: "Local Paid", value: data.localCash2Paid },
-                  {
-                    label: "Local Paid Pending",
-                    value: data.localCash2PaidPending,
-                  },
-                  { label: "Local Party", value: data.localCash2Party },
-                  { label: "Local Receive", value: data.localCash2Receive },
-                  { label: "Debt Cash", value: data.debtCash2 },
-                  { label: "GST Cash", value: data.gstCash2 },
-                  { label: "Admin Cash", value: data.adminCash },
-                ],
-              },
-              {
-                title: "Local Cash Expenses breakdown",
-                color: "text-red-700",
-                items: [
-                  {
-                    label: "Local Cash Expenses",
-                    value: data.localCash2Expense,
-                  },
-                  { label: "Debt Expenses", value: data.debtCash2Expense },
-                  {
-                    label: "Admin Cash Expenses",
-                    value: data.adminCashExpense,
-                  },
-                ],
-              },
-            ]}
-          />
-
-          <FinanceCard
-            title="Local GPay"
-            titleColor="text-emerald-800"
-            tiles={[
-              {
-                title: "Local Sales GPay",
-                value: data.localGpay,
-                color: "text-green-600",
-                bg: "bg-green-50",
-              },
-              {
-                title: "GPay Expenses",
-                value: data.localGpayExpenseTotal,
-                color: "text-red-600",
-                bg: "bg-red-50",
-              },
-              {
-                title: "Balance",
-                value: data.localGpayBalance2,
-                color: balanceColor(data.localGpayBalance2),
-                bg: "bg-blue-50",
-              },
-            ]}
-            panels={[
-              {
-                title: "Local GPay breakdown",
-                color: "text-green-700",
-                items: [
-                  { label: "Local Paid", value: data.localGpay2Paid },
-                  {
-                    label: "Local Paid Pending",
-                    value: data.localGpay2PaidPending,
-                  },
-                  { label: "Local Party", value: data.localGpay2Party },
-                  { label: "Local Receive", value: data.localGpay2Receive },
-                  { label: "Debt GPay", value: data.debtGpay2 },
-                  { label: "GST GPay", value: data.gstGpay2 },
-                  { label: "Admin GPay", value: data.adminGpay },
-                ],
-              },
-              {
-                title: "Local GPay Expenses breakdown",
-                color: "text-red-700",
-                items: [
-                  { label: "Local Expenses", value: data.localGpay2Expense },
-                  { label: "Debt Expenses", value: data.debtGpay2Expense },
-                  {
-                    label: "Admin GPay Expenses",
-                    value: data.adminGpayExpense,
-                  },
-                ],
-              },
-            ]}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <StatCard
-            title="Local Need to Get"
-            titleColor="text-sky-800"
-            value={data.localNeedToGet}
-            valueColor="text-sky-600"
-            items={[
-              { label: "Local Pending", value: data.localPending },
-              { label: "Local Party Pending", value: data.localPartyPending },
-            ]}
-          />
-          <StatCard
-            title="Local Unapproved"
-            titleColor="text-sky-800"
-            value={data.localUnapproved}
-            valueColor="text-sky-600"
-            items={[
-              {
-                label: "Unapproved Cash",
-                value: data.localUnapprovedCash,
-                channel: "cash",
-              },
-              {
-                label: "Unapproved GPay",
-                value: data.localUnapprovedGpay,
-                channel: "gpay",
-              },
-            ]}
-          />
-        </div>
-      </motion.div>
-
-      {/* Official Bank */}
-      <SectionHeading>Official Bank</SectionHeading>
-      <motion.div
-        className="flex flex-col gap-4"
-        {...sectionMotion}
-        transition={{ duration: 0.4, delay: 0.2, ease: "easeInOut" }}
+        transition={{ duration: 0.4, delay: 0.1, ease: "easeInOut" }}
       >
         <FinanceCard
-          title="Official Bank"
-          titleColor="text-indigo-800"
+          title="Summary"
+          titleColor="text-amber-800"
           tiles={[
             {
-              title: "Received Amount",
-              value: data.bankReceivedAmount,
+              title: "Total Amount",
+              value:
+                localSalesAmount?.sales_total + gstSalesSummary?.total_sales,
               color: "text-green-600",
               bg: "bg-green-50",
             },
             {
-              title: "Expense Amount",
-              value: data.bankExpenseAmount,
+              title: "Total Expense",
+              value:
+                localExpenseAmount?.local_expense_total +
+                gstExpenseSummary?.total_expense,
               color: "text-red-600",
               bg: "bg-red-50",
             },
             {
-              title: "Bank Balance",
-              value: data.bankBalance,
-              color: balanceColor(data.bankBalance),
+              title: "Balance",
+              value:
+                localSalesAmount?.sales_total +
+                gstSalesSummary?.total_sales -
+                localExpenseAmount?.local_expense_total -
+                gstExpenseSummary?.total_expense,
+              color: balanceColor(
+                localSalesAmount?.sales_total +
+                  gstSalesSummary?.total_sales -
+                  localExpenseAmount?.local_expense_total -
+                  gstExpenseSummary?.total_expense,
+              ),
+
               bg: "bg-blue-50",
             },
           ]}
           panels={[
             {
-              title: "Received breakdown",
+              title: "Total Amount breakdown",
               color: "text-green-700",
               items: [
-                { label: "GST Sales Credited", value: data.gstSalesCredited },
-                { label: "Admin GST Credited", value: data.adminGstCredited },
+                {
+                  label: "Local Sales",
+                  value: localSalesAmount?.sales_total,
+                },
+                {
+                  label: "Gst Sales",
+                  value: gstSalesSummary?.total_sales,
+                },
               ],
             },
             {
-              title: "Expense breakdown",
+              title: "Total Expense breakdown",
               color: "text-red-700",
               items: [
-                { label: "GST Sales Debited", value: data.gstSalesDebited },
-                { label: "Admin GST Debited", value: data.adminGstDebited },
+                {
+                  label: "Local Expense",
+                  value: localExpenseAmount?.local_expense_total,
+                },
+                {
+                  label: "Gst Expense",
+                  value: gstExpenseSummary?.total_expense,
+                },
               ],
             },
           ]}
         />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <StatCard
-            title="GST Need to Get"
-            titleColor="text-sky-800"
-            value={data.gstNeedToGet}
-            valueColor="text-sky-600"
-          />
-          <StatCard
-            title="GST Need to Pay"
-            titleColor="text-orange-800"
-            value={data.gstNeedToPay}
-            valueColor="text-orange-600"
-          />
-        </div>
       </motion.div>
 
       {/* Admin Users */}
@@ -893,28 +1042,28 @@ const Dashboard = () => {
         <AdminCard
           title="Asmath"
           titleColor={"text-sky-800"}
-          receivedAmount={adminExpenseAmount.asmathTotalGet}
-          expenseAmount={adminExpenseAmount.asmathTotalGive}
-          balanceAmount={adminExpenseAmount.asmathTotalBalance}
-          getCash={adminExpenseAmount.asmathGetInCash}
-          getGpay={adminExpenseAmount.asmathGetInGapy}
-          getAccount={adminExpenseAmount.asmathGetInGst}
-          giveCash={adminExpenseAmount.asmathGiveInCash}
-          giveGpay={adminExpenseAmount.asmathGiveInGapy}
-          giveAccount={adminExpenseAmount.asmathGiveInAccount}
+          receivedAmount={adminExpenseAmount?.asmathTotalGet}
+          expenseAmount={adminExpenseAmount?.asmathTotalGive}
+          balanceAmount={adminExpenseAmount?.asmathTotalBalance}
+          getCash={adminExpenseAmount?.asmathGetInCash}
+          getGpay={adminExpenseAmount?.asmathGetInGapy}
+          getAccount={adminExpenseAmount?.asmathGetInAccount}
+          giveCash={adminExpenseAmount?.asmathGiveInCash}
+          giveGpay={adminExpenseAmount?.asmathGiveInGapy}
+          giveAccount={adminExpenseAmount?.asmathGiveInAccount}
         />
         <AdminCard
           title="Ibu"
           titleColor={"text-sky-800"}
-          receivedAmount={adminExpenseAmount.ibuTotalGet}
-          expenseAmount={adminExpenseAmount.ibuTotalGive}
-          balanceAmount={adminExpenseAmount.ibuTotalBalance}
-          getCash={adminExpenseAmount.ibuGetInCash}
-          getGpay={adminExpenseAmount.ibuGetInGapy}
-          getAccount={adminExpenseAmount.ibuGetInGst}
-          giveCash={adminExpenseAmount.ibuGiveInCash}
-          giveGpay={adminExpenseAmount.ibuGiveInGapy}
-          giveAccount={adminExpenseAmount.ibuGiveInAccount}
+          receivedAmount={adminExpenseAmount?.ibuTotalGet}
+          expenseAmount={adminExpenseAmount?.ibuTotalGive}
+          balanceAmount={adminExpenseAmount?.ibuTotalBalance}
+          getCash={adminExpenseAmount?.ibuGetInCash}
+          getGpay={adminExpenseAmount?.ibuGetInGapy}
+          getAccount={adminExpenseAmount?.ibuGetInAccount}
+          giveCash={adminExpenseAmount?.ibuGiveInCash}
+          giveGpay={adminExpenseAmount?.ibuGiveInGapy}
+          giveAccount={adminExpenseAmount?.ibuGiveInAccount}
         />
       </motion.div>
     </MainLayout>
