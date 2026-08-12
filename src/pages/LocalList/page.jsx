@@ -137,8 +137,10 @@ const LocalList = () => {
   }, [loadLocalEntriesData]);
 
   useEffect(() => {
-    loadLocalTotalAmount();
-  }, [loadLocalTotalAmount]);
+    if (showOverview) {
+      loadLocalTotalAmount();
+    }
+  }, [loadLocalTotalAmount, showOverview]);
 
   /* ================= FILTER + GROUP ================= */
 
@@ -179,23 +181,42 @@ const LocalList = () => {
   /* ================= DELETE ================= */
 
   const handleDelete = async (deleteId) => {
+    // Optimistic UI
+    setLocalData((prev) => prev.filter((item) => item.documentId !== deleteId));
+
     try {
       await deleteLocalList(deleteId);
+
       toast.success("You have successfully deleted Local Sales");
-      await loadLocalEntriesData();
     } catch (error) {
       console.error("Error deleting local Sales:", error);
+
+      // Restore data from server if delete failed
+      await loadLocalEntriesData();
+
+      toast.error("Failed to delete Local Sales");
     }
   };
 
   /* ================= STATUS CHANGE ================= */
   const handleStatusChange = async (id, value) => {
-    try {
-      await updateLocalList(id, { current_status: value });
+    // Optimistic UI update
+    setLocalData((prev) =>
+      prev.map((item) =>
+        item.documentId === id ? { ...item, current_status: value } : item,
+      ),
+    );
 
-      await loadLocalEntriesData();
+    try {
+      await updateLocalList(id, {
+        current_status: value,
+      });
     } catch (error) {
       console.error("Status update failed:", error);
+
+      // Reload only if update failed
+      await loadLocalEntriesData();
+
       toast.error("Failed to update status. Please try again.");
     }
   };
@@ -221,14 +242,24 @@ const LocalList = () => {
     setLoading(true);
 
     try {
-      for (const item of groupedData[approveDate]) {
-        await updateLocalList(item.documentId, {
-          current_status: item.current_status,
-          approved: true,
-        });
-      }
+      const items = groupedData[approveDate];
 
-      await loadLocalEntriesData();
+      await Promise.all(
+        items.map((item) =>
+          updateLocalList(item.documentId, {
+            current_status: item.current_status,
+            approved: true,
+          }),
+        ),
+      );
+
+      setLocalData((prev) =>
+        prev.filter(
+          (item) =>
+            !items.some((approved) => approved.documentId === item.documentId),
+        ),
+      );
+
       toast.success("Local list approved successfully!");
       setConfirmOpen(false);
     } catch (error) {
