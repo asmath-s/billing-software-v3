@@ -12,7 +12,13 @@ const AuthProvider = ({ children }) => {
   });
 
   const [showOverview, setShowOverview] = useState(() => {
-    return localStorage.getItem("showOverview") || false;
+    const storedValue = localStorage.getItem("showOverview");
+
+    if (storedValue === null) {
+      return false;
+    }
+
+    return JSON.parse(storedValue);
   });
 
   const login = (data) => {
@@ -34,14 +40,25 @@ const AuthProvider = ({ children }) => {
   };
 
   const toggleOverview = () => {
-    const newValue = !showOverview;
-    localStorage.setItem("showOverview", newValue);
-    setShowOverview(newValue);
+    setShowOverview((prev) => {
+      const newValue = !prev;
+
+      localStorage.setItem("showOverview", JSON.stringify(newValue));
+
+      return newValue;
+    });
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, role, showOverview, login, logout, toggleOverview }}
+      value={{
+        user,
+        role,
+        showOverview,
+        login,
+        logout,
+        toggleOverview,
+      }}
     >
       {children}
     </AuthContext.Provider>
