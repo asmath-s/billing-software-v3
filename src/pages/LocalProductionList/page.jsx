@@ -13,6 +13,7 @@ import dayjs from "dayjs";
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+
 import {
   createLocalExpense,
   deleteLocalExpense,
@@ -20,6 +21,7 @@ import {
   getLocalExpenseAmounts,
   updateLocalExpense,
 } from "../../api/localExpense";
+
 import Button from "../../components/Button/Button";
 import CardUI from "../../components/CardUI/CardUI";
 import Datepicker, {
@@ -27,6 +29,7 @@ import Datepicker, {
 } from "../../components/Datepicker/Datepicker";
 import DeletePopup from "../../components/DeletePopup/DeletePopup";
 import EditButton from "../../components/EditButton/EditButton";
+
 import {
   CashIcon,
   CheckBoxIcon,
@@ -36,6 +39,7 @@ import {
   RightIcon,
   SaveIcon,
 } from "../../components/icons";
+
 import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
@@ -48,94 +52,120 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalProductionList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+
+  // Form state
   const [date, setDate] = useState(new Date());
   const [instruction, setInstruction] = useState("");
   const [customType, setCustomType] = useState("cash");
   const [method, setMethod] = useState("expense");
   const [amount, setAmount] = useState("");
+
+  // Data state
   const [expenseData, setExpenseData] = useState([]);
   const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
-  const [loading, setLoading] = useState(false);
+
+  // Edit state
   const [editId, setEditId] = useState("");
+
+  // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Date filter state
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
 
-  const buildQuery = () => {
-    const query = [];
-
-    query.push(`pagination[page]=${page + 1}`);
-    query.push(`pagination[pageSize]=${rowsPerPage}`);
-    query.push(`sort[0]=date:desc`);
-    query.push(`filters[approved][$eq]=true`);
-    query.push(`filters[current_status][$eq]=production`);
+  /**
+   * Build the API query for the production expense list.
+   *
+   * useCallback keeps the function reference stable until one
+   * of its actual dependencies changes.
+   */
+  const buildQuery = useCallback(() => {
+    const query = [
+      `pagination[page]=${page + 1}`,
+      `pagination[pageSize]=${rowsPerPage}`,
+      `sort[0]=date:desc`,
+      `filters[approved][$eq]=true`,
+      `filters[current_status][$eq]=production`,
+    ];
 
     if (fromDate && toDate) {
       query.push(
         `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-      );
-      query.push(
         `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
       );
     }
 
     return query.join("&");
-  };
+  }, [page, rowsPerPage, fromDate, toDate]);
 
+  /**
+   * Load production expense list.
+   */
   const loadExpenseData = useCallback(async () => {
-    setLoading(true);
-
     try {
       const res = await getLocalExpense(buildQuery());
 
-      setExpenseData(res?.data.data || []);
-      setTotalCount(res?.data.meta?.pagination?.total || 0);
+      const data = res?.data?.data || [];
+      const total = res?.data?.meta?.pagination?.total || 0;
+
+      setExpenseData(data);
+      setTotalCount(total);
     } catch (error) {
       console.error("Local expense fetch failed:", error);
+
       toast.error("Failed to load local expense list");
+
       setExpenseData([]);
-    } finally {
-      setLoading(false);
+      setTotalCount(0);
     }
-  }, [page, rowsPerPage, fromDate, toDate]);
+  }, [buildQuery]);
 
+  /**
+   * Load overview totals.
+   */
   const loadLocalTotalAmount = useCallback(async () => {
-    setLoading(true);
-
     try {
-      let query = [];
+      const query = [];
 
       if (fromDate && toDate) {
         query.push(
           `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-        );
-        query.push(
           `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
         );
       }
+
       const queryString = query.length ? `?${query.join("&")}` : "";
 
       const res = await getLocalExpenseAmounts(queryString);
 
-      setLocalExpenseAmount(res);
+      setLocalExpenseAmount(res || []);
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
+
       setLocalExpenseAmount([]);
-    } finally {
-      setLoading(false);
     }
   }, [fromDate, toDate]);
 
+  /**
+   * Reload list whenever pagination or date filters change.
+   */
   useEffect(() => {
     loadExpenseData();
   }, [loadExpenseData]);
 
+  /**
+   * Reload overview totals whenever date filters change.
+   */
   useEffect(() => {
     loadLocalTotalAmount();
   }, [loadLocalTotalAmount]);
 
+  /**
+   * Submit create/update form.
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -144,7 +174,7 @@ const LocalProductionList = () => {
       instruction,
       method,
       custom_type: customType,
-      amount: amount,
+      amount,
       approved: true,
       current_status: "production",
     };
@@ -152,82 +182,119 @@ const LocalProductionList = () => {
     try {
       if (editId) {
         await updateLocalExpense(editId, basePayload);
+
         toast.success("Local expense updated successfully");
       } else {
         await createLocalExpense({
           ...basePayload,
           role,
         });
+
         toast.success("Local expense created successfully");
       }
+
+      // Refresh the list after successful save/update.
+      await loadExpenseData();
+
+      // Refresh overview totals too.
+      await loadLocalTotalAmount();
+
+      // Reset form.
+      setEditId("");
+      setDate(new Date());
+      setInstruction("");
+      setMethod("expense");
+      setCustomType("cash");
+      setAmount("");
     } catch (error) {
       console.error("Save failed:", error);
+
       toast.error("Failed to save");
     }
-
-    loadExpenseData();
-
-    setEditId("");
-    setDate(new Date());
-    setInstruction("");
-    setMethod("expense");
-    setCustomType("cash");
-    setAmount(0);
   };
 
+  /**
+   * Change current page.
+   */
   const handleChangePage = (newPage) => {
     setPage(newPage);
   };
 
+  /**
+   * Change rows per page.
+   */
   const handleChangeRowsPerPage = (_, value) => {
+    if (!value) return;
+
     setRowsPerPage(value);
     setPage(0);
   };
 
+  /**
+   * Calculate last visible row.
+   */
   const getLabelDisplayedRowsTo = () => {
     return Math.min((page + 1) * rowsPerPage, totalCount);
   };
 
+  /**
+   * Delete expense.
+   */
   const handleDelete = async (id) => {
     try {
       await deleteLocalExpense(id);
+
       toast.success("Deleted successfully");
-      loadExpenseData();
+
+      // Refresh list and totals after deletion.
+      await loadExpenseData();
+      await loadLocalTotalAmount();
     } catch (error) {
       console.error("Delete failed:", error);
+
+      toast.error("Failed to delete");
     }
   };
 
+  /**
+   * Populate form for editing.
+   */
   const handleEdit = (item) => {
     setEditId(item.documentId);
     setDate(new Date(item.date));
-    setInstruction(item.instruction);
-    setMethod(item.method);
-    setCustomType(item.custom_type);
-    setAmount(item.amount);
+    setInstruction(item.instruction || "");
+    setMethod(item.method || "expense");
+    setCustomType(item.custom_type || "cash");
+    setAmount(item.amount ?? "");
   };
 
   return (
     <MainLayout>
+      {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local Production List</h1>
+
         <Checkbox
           icon={<CheckBoxIcon />}
           checkedIcon={<CheckIcon color="#fff" />}
           checked={showOverview}
           style={{ marginRight: 8 }}
-          label={"Show Overview"}
+          label="Show Overview"
           onChange={() => toggleOverview()}
         />
       </div>
 
+      {/* Overview */}
       {showOverview && (
         <motion.div
           className="flex gap-4 items-center justify-start mt-6 mb-6"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          transition={{
+            duration: 0.5,
+            ease: "easeInOut",
+          }}
         >
           <CardUI
             title="Total Expense Cash"
@@ -235,18 +302,21 @@ const LocalProductionList = () => {
             icon={<CashIcon color="#292D32" width="34" height="34" />}
             titleColor="text-red-800"
           />
+
           <CardUI
             title="Total Expense Gpay"
             amount={localExpenseAmount?.production?.total_exp_gpay}
             icon={<GpayIcon color="#292D32" width="34" height="34" />}
             titleColor="text-red-800"
           />
+
           <CardUI
             title="Total Received Cash"
             amount={localExpenseAmount?.production?.total_rec_cash}
             icon={<CashIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
           />
+
           <CardUI
             title="Total Received Gpay"
             amount={localExpenseAmount?.production?.total_rec_gpay}
@@ -255,6 +325,8 @@ const LocalProductionList = () => {
           />
         </motion.div>
       )}
+
+      {/* Date Filter */}
       <div className="flex gap-4 items-center">
         <Datepicker
           type="multipleDatePicker"
@@ -264,13 +336,15 @@ const LocalProductionList = () => {
           setToDate={setToDate}
         />
       </div>
+
+      {/* Add / Edit Form */}
       <form onSubmit={handleSubmit} className="mt-6">
-        <div className="grid grid-cols-6 gap-4 ">
+        <div className="grid grid-cols-6 gap-4">
           <DateUiPicker
             value={date}
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
-            className={"w-full"}
+            className="w-full"
             minDate={role === "superadmin" ? false : new Date()}
           />
 
@@ -278,54 +352,68 @@ const LocalProductionList = () => {
             placeholder="Instruction"
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
-            required={true}
+            required
           />
 
           <SelectField
-            label={"Method"}
-            selectName={"method"}
+            label="Method"
+            selectName="method"
             options={[
-              { value: "expense", label: "Expense" },
-              { value: "receive", label: "Receive" },
+              {
+                value: "expense",
+                label: "Expense",
+              },
+              {
+                value: "receive",
+                label: "Receive",
+              },
             ]}
             value={method}
             onChange={(e) => setMethod(e.target.value)}
-            placeholder={"Method"}
-            required={true}
+            placeholder="Method"
+            required
           />
 
           <SelectField
-            label={"Received In"}
-            selectName={"custom_type"}
+            label="Received In"
+            selectName="custom_type"
             options={[
-              { value: "cash", label: "Cash" },
-              { value: "gpay", label: "Gpay" },
+              {
+                value: "cash",
+                label: "Cash",
+              },
+              {
+                value: "gpay",
+                label: "Gpay",
+              },
             ]}
             value={customType}
             onChange={(e) => setCustomType(e.target.value)}
-            placeholder={"Received In"}
-            required={true}
+            placeholder="Received In"
+            required
           />
+
           <InputField
-            name={"received amount"}
-            placeholder={"Received Amount"}
+            name="received amount"
+            placeholder="Received Amount"
             value={amount === 0 ? "" : amount}
-            onChange={(e) => setAmount(e.target.value) || 0}
-            required={true}
+            onChange={(e) => setAmount(e.target.value)}
+            required
           />
+
           <div className="flex items-center gap-2">
             <Button
-              type={"submit"}
+              type="submit"
               label={editId ? "Update" : "Save"}
               icon1={<SaveIcon color="#fff" />}
               icon2={<SaveIcon color="#fff" />}
-              className={
-                "bg-[#4F46E5] hover:bg-[#4338CA] text-white h-max mt-2 w-full"
-              }
+              className="bg-[#4F46E5] hover:bg-[#4338CA] text-white h-max mt-2 w-full"
             />
           </div>
         </div>
       </form>
+
+      {/* Table */}
       <div className="mt-8">
         <Table borderAxis="both" hoverRow>
           <thead>
@@ -341,46 +429,63 @@ const LocalProductionList = () => {
           </thead>
 
           <tbody>
-            {expenseData.map((item) => (
-              <tr key={item.documentId}>
-                <td>{dayjs(item.date).format("DD-MM-YYYY")}</td>
-                <td className="w-[10%]">{item.role}</td>
-                <td>{item.instruction}</td>
-                <td>
-                  <span
-                    className={`p-1 rounded-md flex justify-center capitalize  ${
-                      item.method === "expense"
-                        ? "bg-rose-200 text-rose-800"
-                        : "bg-[#DAF4F0] text-[#0AB39C]"
-                    }`}
-                  >
-                    {item.method}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    className={`p-1 rounded-md flex justify-center capitalize  ${
-                      item.custom_type === "cash"
-                        ? "bg-[#E2E5ED] text-[#405189]"
-                        : "bg-stone-200 text-stone-800"
-                    }`}
-                  >
-                    {item.custom_type}
-                  </span>
-                </td>
-                <td>{item.amount}</td>
-                <td>
-                  <div className="flex gap-2">
-                    <EditButton onClick={() => handleEdit(item)} />
+            {expenseData.length > 0 ? (
+              expenseData.map((item) => (
+                <tr key={item.documentId}>
+                  <td>
+                    {item.date ? dayjs(item.date).format("DD-MM-YYYY") : "-"}
+                  </td>
 
-                    <DeletePopup
-                      handleDelete={() => handleDelete(item.documentId)}
-                    />
-                  </div>
+                  <td className="w-[10%]">{item.role || "-"}</td>
+
+                  <td>{item.instruction || "-"}</td>
+
+                  <td>
+                    <span
+                      className={`p-1 rounded-md flex justify-center capitalize ${
+                        item.method === "expense"
+                          ? "bg-rose-200 text-rose-800"
+                          : "bg-[#DAF4F0] text-[#0AB39C]"
+                      }`}
+                    >
+                      {item.method || "-"}
+                    </span>
+                  </td>
+
+                  <td>
+                    <span
+                      className={`p-1 rounded-md flex justify-center capitalize ${
+                        item.custom_type === "cash"
+                          ? "bg-[#E2E5ED] text-[#405189]"
+                          : "bg-stone-200 text-stone-800"
+                      }`}
+                    >
+                      {item.custom_type || "-"}
+                    </span>
+                  </td>
+
+                  <td>{item.amount ?? 0}</td>
+
+                  <td>
+                    <div className="flex gap-2">
+                      <EditButton onClick={() => handleEdit(item)} />
+
+                      <DeletePopup
+                        handleDelete={() => handleDelete(item.documentId)}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={7} className="text-center py-6">
+                  No production expenses found
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
+
           <tfoot>
             <tr>
               <td colSpan={8}>
@@ -392,8 +497,10 @@ const LocalProductionList = () => {
                     gap: 2,
                   }}
                 >
+                  {/* Rows per page */}
                   <FormControl orientation="horizontal" size="sm">
                     <FormLabel>Rows per page:</FormLabel>
+
                     <Select
                       value={rowsPerPage}
                       onChange={handleChangeRowsPerPage}
@@ -405,7 +512,13 @@ const LocalProductionList = () => {
                     </Select>
                   </FormControl>
 
-                  <Typography textAlign="center" sx={{ minWidth: 80 }}>
+                  {/* Pagination text */}
+                  <Typography
+                    textAlign="center"
+                    sx={{
+                      minWidth: 80,
+                    }}
+                  >
                     {labelDisplayedRows({
                       from: totalCount === 0 ? 0 : page * rowsPerPage + 1,
                       to: getLabelDisplayedRowsTo(),
@@ -413,7 +526,13 @@ const LocalProductionList = () => {
                     })}
                   </Typography>
 
-                  <Box sx={{ display: "flex", gap: 1 }}>
+                  {/* Pagination buttons */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 1,
+                    }}
+                  >
                     <IconButton
                       size="sm"
                       variant="outlined"

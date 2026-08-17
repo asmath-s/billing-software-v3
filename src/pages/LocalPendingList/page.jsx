@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+
 import { getCustomers } from "../../api/customer";
 import AutocompleteField from "../../components/AutocompleteField/AutocompleteField";
 import CardUI from "../../components/CardUI/CardUI";
@@ -26,6 +27,9 @@ import {
   GpayIcon,
   PendingIcon,
 } from "../../components/icons";
+import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
+import RightIcon from "../../components/icons/RightIcon";
+import SelectField from "../../components/SelectField/SelectField";
 import MainLayout from "../../layouts/MainLayout";
 
 import { useAuth } from "../../context/auth-context";
@@ -39,9 +43,6 @@ import {
   getLocalList,
   updateLocalList,
 } from "../../api/localList";
-import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
-import RightIcon from "../../components/icons/RightIcon";
-import SelectField from "../../components/SelectField/SelectField";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -56,22 +57,24 @@ const LocalPendingList = () => {
   const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [customers, setCustomers] = useState([]);
-  const [localData, setLocalData] = useState([]);
-  const [localAmount, setLocalAmount] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [localData, setLocalData] = useState(null);
+  const [localAmount, setLocalAmount] = useState(null);
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
 
   /* Confirmation popup state */
-
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [selectedStatus, setSelectedStatus] = useState("Pending");
+  const [selectedStatus, setSelectedStatus] = useState("pending");
 
-  /* Load customers */
-
+  /*
+   * Load customers
+   *
+   * No state is updated before the async request starts.
+   * This avoids react-hooks/set-state-in-effect.
+   */
   const loadCustomers = useCallback(async () => {
     try {
       const res = await getCustomers();
@@ -82,43 +85,57 @@ const LocalPendingList = () => {
     }
   }, []);
 
-  /* Query builder */
-
-  const buildQuery = () => {
+  /*
+   * Query builder
+   *
+   * Memoized because it is used by loadLocalPendingData.
+   */
+  const buildQuery = useCallback(() => {
     const query = [];
 
     query.push("populate=*");
     query.push(`pagination[page]=${page + 1}`);
     query.push(`pagination[pageSize]=${rowsPerPage}`);
-    query.push(`sort[0]=date:desc`);
-    query.push(`filters[current_status][$eq]=pending`);
-    query.push(`filters[approved][$eq]=true`);
+    query.push("sort[0]=date:desc");
+    query.push("filters[current_status][$eq]=pending");
+    query.push("filters[approved][$eq]=true");
 
     if (searchCustomer?.value) {
-      query.push(`filters[customer][documentId][$eq]=${searchCustomer.value}`);
+      query.push(
+        `filters[customer][documentId][$eq]=${encodeURIComponent(
+          searchCustomer.value,
+        )}`,
+      );
     }
 
     if (fromDate && toDate) {
       const startDate = dayjs(fromDate).startOf("day").toISOString();
       const endDate = dayjs(toDate).endOf("day").toISOString();
 
-      // GPay date filter
-      query.push(`filters[$or][0][gpay][date][$gte]=${startDate}`);
-      query.push(`filters[$or][0][gpay][date][$lte]=${endDate}`);
+      /* GPay date filter */
+      query.push(
+        `filters[$or][0][gpay][date][$gte]=${encodeURIComponent(startDate)}`,
+      );
+      query.push(
+        `filters[$or][0][gpay][date][$lte]=${encodeURIComponent(endDate)}`,
+      );
 
-      // Cash date filter
-      query.push(`filters[$or][1][cash][date][$gte]=${startDate}`);
-      query.push(`filters[$or][1][cash][date][$lte]=${endDate}`);
+      /* Cash date filter */
+      query.push(
+        `filters[$or][1][cash][date][$gte]=${encodeURIComponent(startDate)}`,
+      );
+      query.push(
+        `filters[$or][1][cash][date][$lte]=${encodeURIComponent(endDate)}`,
+      );
     }
 
     return `?${query.join("&")}`;
-  };
+  }, [page, rowsPerPage, searchCustomer, fromDate, toDate]);
 
-  /* Load pending data */
-
+  /*
+   * Load pending data
+   */
   const loadLocalPendingData = useCallback(async () => {
-    setLoading(true);
-
     try {
       const res = await getLocalList(buildQuery());
 
@@ -127,20 +144,24 @@ const LocalPendingList = () => {
     } catch (error) {
       console.error("Local pending fetch failed:", error);
       toast.error("Failed to load local pending list");
+
       setLocalData([]);
-    } finally {
-      setLoading(false);
+      setTotalCount(0);
     }
-  }, [page, rowsPerPage, searchCustomer, fromDate, toDate]);
+  }, [buildQuery]);
+
+  /*
+   * Load total amounts
+   */
   const loadLocalTotalAmount = useCallback(async () => {
-    setLoading(true);
-
     try {
-      let query = [];
+      const query = [];
 
-      if (searchCustomer) {
+      if (searchCustomer?.value) {
         query.push(
-          `filters[customer][documentId][$eq]=${searchCustomer.value}`,
+          `filters[customer][documentId][$eq]=${encodeURIComponent(
+            searchCustomer.value,
+          )}`,
         );
       }
 
@@ -148,53 +169,157 @@ const LocalPendingList = () => {
         const from = dayjs(fromDate).format("YYYY-MM-DD");
         const to = dayjs(toDate).format("YYYY-MM-DD");
 
-        query.push(`fromDate=${from}`);
-        query.push(`toDate=${to}`);
+        query.push(`fromDate=${encodeURIComponent(from)}`);
+        query.push(`toDate=${encodeURIComponent(to)}`);
       }
 
       const queryString = query.length ? `?${query.join("&")}` : "";
 
       const res = await getLocalAmounts(queryString);
 
-      setLocalAmount(res);
+      setLocalAmount(res || null);
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
-      setLocalAmount([]);
-    } finally {
-      setLoading(false);
+      setLocalAmount(null);
     }
   }, [searchCustomer, fromDate, toDate]);
 
+  /*
+   * Initial customer load
+   */
   useEffect(() => {
-    loadCustomers();
-  }, [loadCustomers]);
+    let cancelled = false;
 
+    const fetchCustomers = async () => {
+      try {
+        const res = await getCustomers();
+
+        if (!cancelled) {
+          setCustomers(res || []);
+        }
+      } catch (error) {
+        console.error("Customer fetch failed:", error);
+
+        if (!cancelled) {
+          setCustomers([]);
+        }
+      }
+    };
+
+    fetchCustomers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /*
+   * Load pending list whenever pagination/filter values change
+   */
   useEffect(() => {
-    loadLocalPendingData();
-  }, [loadLocalPendingData]);
+    let cancelled = false;
+
+    const fetchPendingData = async () => {
+      try {
+        const res = await getLocalList(buildQuery());
+
+        if (!cancelled) {
+          setLocalData(res?.data || []);
+          setTotalCount(res?.meta?.pagination?.total || 0);
+        }
+      } catch (error) {
+        console.error("Local pending fetch failed:", error);
+
+        if (!cancelled) {
+          toast.error("Failed to load local pending list");
+          setLocalData([]);
+          setTotalCount(0);
+        }
+      }
+    };
+
+    fetchPendingData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [buildQuery]);
+
+  /*
+   * Load totals whenever customer/date filters change
+   */
   useEffect(() => {
-    loadLocalTotalAmount();
-  }, [loadLocalTotalAmount]);
+    let cancelled = false;
 
-  /* Delete */
+    const fetchLocalTotalAmount = async () => {
+      try {
+        const query = [];
 
+        if (searchCustomer?.value) {
+          query.push(
+            `filters[customer][documentId][$eq]=${encodeURIComponent(
+              searchCustomer.value,
+            )}`,
+          );
+        }
+
+        if (fromDate && toDate) {
+          const from = dayjs(fromDate).format("YYYY-MM-DD");
+          const to = dayjs(toDate).format("YYYY-MM-DD");
+
+          query.push(`fromDate=${encodeURIComponent(from)}`);
+          query.push(`toDate=${encodeURIComponent(to)}`);
+        }
+
+        const queryString = query.length ? `?${query.join("&")}` : "";
+
+        const res = await getLocalAmounts(queryString);
+
+        if (!cancelled) {
+          setLocalAmount(res || null);
+        }
+      } catch (error) {
+        console.error("Local amounts fetch failed:", error);
+
+        if (!cancelled) {
+          setLocalAmount(null);
+        }
+      }
+    };
+
+    fetchLocalTotalAmount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchCustomer, fromDate, toDate]);
+
+  /*
+   * Delete
+   */
   const handleDelete = async (id) => {
     try {
       await deleteLocalList(id);
+
       toast.success("Deleted successfully");
-      loadLocalPendingData();
+
+      await loadLocalPendingData();
     } catch (error) {
       console.error("Delete failed:", error);
+      toast.error("Failed to delete local entry");
     }
   };
 
-  /* Pagination */
-
+  /*
+   * Pagination
+   */
   const handleChangePage = (newPage) => {
     setPage(newPage);
   };
 
   const handleChangeRowsPerPage = (_, value) => {
+    if (!value) return;
+
     setRowsPerPage(value);
     setPage(0);
   };
@@ -203,8 +328,9 @@ const LocalPendingList = () => {
     return Math.min((page + 1) * rowsPerPage, totalCount);
   };
 
-  /* Status change confirm */
-
+  /*
+   * Status change confirm
+   */
   const handleStatusChange = async () => {
     if (!selectedItem || !selectedStatus) return;
 
@@ -217,7 +343,7 @@ const LocalPendingList = () => {
 
       setConfirmOpen(false);
       setSelectedItem(null);
-      setSelectedStatus("Pending");
+      setSelectedStatus("pending");
 
       await loadLocalPendingData();
     } catch (error) {
@@ -226,22 +352,36 @@ const LocalPendingList = () => {
     }
   };
 
-  const BalanceAmount = (item) => {
-    const totalCash = item.cash?.reduce((sum, c) => sum + c.amount, 0) || 0;
-    const totalGpay = item.gpay?.reduce((sum, g) => sum + g.amount, 0) || 0;
-    return item.total_amount - (totalCash + totalGpay);
+  /*
+   * Calculate balance
+   */
+  const getBalanceAmount = (item) => {
+    const totalCash =
+      item.cash?.reduce((sum, cashItem) => {
+        return sum + Number(cashItem.amount || 0);
+      }, 0) || 0;
+
+    const totalGpay =
+      item.gpay?.reduce((sum, gpayItem) => {
+        return sum + Number(gpayItem.amount || 0);
+      }, 0) || 0;
+
+    return Number(item.total_amount || 0) - (totalCash + totalGpay);
   };
+
+  const isLoading = localData === null;
 
   return (
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local pending List</h1>
+
         <Checkbox
           icon={<CheckBoxIcon />}
           checkedIcon={<CheckIcon color="#fff" />}
           checked={showOverview}
           style={{ marginRight: 8 }}
-          label={"Show Overview"}
+          label="Show Overview"
           onChange={() => toggleOverview()}
         />
       </div>
@@ -260,12 +400,14 @@ const LocalPendingList = () => {
             icon={<CashIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
           />
+
           <CardUI
             title="Total Gpay"
             amount={localAmount?.local_pending?.total_gpay}
             icon={<GpayIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
           />
+
           <CardUI
             title="Total Balance"
             amount={localAmount?.local_pending?.total_balance}
@@ -290,12 +432,12 @@ const LocalPendingList = () => {
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((c) => ({
-              label: c.name,
-              value: c.documentId,
+            options={customers.map((customer) => ({
+              label: customer.name,
+              value: customer.documentId,
             }))}
-            onChange={(e, val) => {
-              setSearchCustomer(val);
+            onChange={(_, value) => {
+              setSearchCustomer(value);
               setPage(0);
             }}
           />
@@ -315,92 +457,129 @@ const LocalPendingList = () => {
               <th>Cash</th>
               <th>GPay</th>
               <th>Action</th>
+
               {role === "superadmin" && <th>Status</th>}
             </tr>
           </thead>
 
           <tbody>
-            {loading ? (
-              <tr colSpan={9}>
-                <td>Loading</td>
+            {isLoading ? (
+              <tr>
+                <td
+                  colSpan={role === "superadmin" ? 10 : 9}
+                  className="text-center py-6"
+                >
+                  Loading...
+                </td>
+              </tr>
+            ) : localData.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={role === "superadmin" ? 10 : 9}
+                  className="text-center py-6"
+                >
+                  No pending records found
+                </td>
               </tr>
             ) : (
-              localData.map((item) => (
-                <tr key={item.documentId}>
-                  <td>{dayjs(item.date).format("DD/MM/YYYY")}</td>
+              localData.map((item) => {
+                const balance = getBalanceAmount(item);
 
-                  <td>{item.customer?.name || "-"}</td>
+                return (
+                  <tr key={item.documentId}>
+                    <td>{dayjs(item.date).format("DD/MM/YYYY")}</td>
 
-                  <td>{item.customer?.phonenumber || "-"}</td>
+                    <td>{item.customer?.name || "-"}</td>
 
-                  <td>
-                    {item.particulars?.map((p) => (
-                      <div key={p.id}>{p.text}</div>
-                    ))}
-                  </td>
+                    <td>{item.customer?.phonenumber || "-"}</td>
 
-                  <td>{formattedAmount(item.total_amount)}</td>
-                  <td className={BalanceAmount(item) > 0 ? "text-red-500" : ""}>
-                    {formattedAmount(BalanceAmount(item))}
-                  </td>
-                  <td>
-                    {item.cash?.length === 0
-                      ? "-"
-                      : item.cash.map((c) => (
-                          <div key={c.id}>
-                            {dayjs(c.date).format("DD/MM/YY")} -{" "}
-                            {formattedAmount(c.amount)}
-                          </div>
-                        ))}
-                  </td>
-
-                  <td>
-                    {item.gpay?.length === 0
-                      ? "-"
-                      : item.gpay.map((g) => (
-                          <div key={g.id}>
-                            {dayjs(g.date).format("DD/MM/YY")} -{" "}
-                            {formattedAmount(g.amount)}
-                          </div>
-                        ))}
-                  </td>
-
-                  <td>
-                    <div className="flex gap-2">
-                      <EditButton
-                        onClick={() =>
-                          navigate(
-                            `${LOCALENTRY}?editId=${item.documentId}&screenFrom=pending`,
-                          )
-                        }
-                      />
-
-                      <DeletePopup
-                        handleDelete={() => handleDelete(item.documentId)}
-                      />
-                    </div>
-                  </td>
-
-                  {role === "superadmin" && (
                     <td>
-                      <SelectField
-                        value={item.current_status || "Pending"}
-                        options={[
-                          { value: "pending", label: "Pending" },
-                          { value: "paid", label: "Paid" },
-                          { value: "party", label: "Party" },
-                        ]}
-                        onChange={(e) => {
-                          if (e.target.value === "Pending") return;
-                          setSelectedItem(item);
-                          setSelectedStatus(e.target.value);
-                          setConfirmOpen(true);
-                        }}
-                      />
+                      {item.particulars?.length
+                        ? item.particulars.map((particular) => (
+                            <div key={particular.id}>{particular.text}</div>
+                          ))
+                        : "-"}
                     </td>
-                  )}
-                </tr>
-              ))
+
+                    <td>{formattedAmount(item.total_amount)}</td>
+
+                    <td className={balance > 0 ? "text-red-500" : ""}>
+                      {formattedAmount(balance)}
+                    </td>
+
+                    <td>
+                      {!item.cash?.length
+                        ? "-"
+                        : item.cash.map((cashItem) => (
+                            <div key={cashItem.id}>
+                              {dayjs(cashItem.date).format("DD/MM/YY")} -{" "}
+                              {formattedAmount(cashItem.amount)}
+                            </div>
+                          ))}
+                    </td>
+
+                    <td>
+                      {!item.gpay?.length
+                        ? "-"
+                        : item.gpay.map((gpayItem) => (
+                            <div key={gpayItem.id}>
+                              {dayjs(gpayItem.date).format("DD/MM/YY")} -{" "}
+                              {formattedAmount(gpayItem.amount)}
+                            </div>
+                          ))}
+                    </td>
+
+                    <td>
+                      <div className="flex gap-2">
+                        <EditButton
+                          onClick={() =>
+                            navigate(
+                              `${LOCALENTRY}?editId=${item.documentId}&screenFrom=pending`,
+                            )
+                          }
+                        />
+
+                        <DeletePopup
+                          handleDelete={() => handleDelete(item.documentId)}
+                        />
+                      </div>
+                    </td>
+
+                    {role === "superadmin" && (
+                      <td>
+                        <SelectField
+                          value={item.current_status || "pending"}
+                          options={[
+                            {
+                              value: "pending",
+                              label: "Pending",
+                            },
+                            {
+                              value: "paid",
+                              label: "Paid",
+                            },
+                            {
+                              value: "party",
+                              label: "Party",
+                            },
+                          ]}
+                          onChange={(event) => {
+                            const value = event.target.value;
+
+                            if (!value || value === "pending") {
+                              return;
+                            }
+
+                            setSelectedItem(item);
+                            setSelectedStatus(value);
+                            setConfirmOpen(true);
+                          }}
+                        />
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
             )}
           </tbody>
 
@@ -417,6 +596,7 @@ const LocalPendingList = () => {
                 >
                   <FormControl orientation="horizontal" size="sm">
                     <FormLabel>Rows per page:</FormLabel>
+
                     <Select
                       value={rowsPerPage}
                       onChange={handleChangeRowsPerPage}
@@ -484,7 +664,11 @@ const LocalPendingList = () => {
               </button>
 
               <button
-                onClick={() => setConfirmOpen(false)}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setSelectedItem(null);
+                  setSelectedStatus("pending");
+                }}
                 className="w-full border py-2 rounded"
               >
                 Cancel
