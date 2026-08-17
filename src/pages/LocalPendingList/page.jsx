@@ -87,6 +87,7 @@ const LocalPendingList = () => {
   const buildQuery = () => {
     const query = [];
 
+    query.push("populate=*");
     query.push(`pagination[page]=${page + 1}`);
     query.push(`pagination[pageSize]=${rowsPerPage}`);
     query.push(`sort[0]=date:desc`);
@@ -110,7 +111,7 @@ const LocalPendingList = () => {
       query.push(`filters[$or][1][cash][date][$lte]=${endDate}`);
     }
 
-    return query.join("&");
+    return `?${query.join("&")}`;
   };
 
   /* Load pending data */

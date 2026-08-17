@@ -220,14 +220,48 @@ const LocalExpenseEntry = () => {
 
   /* ================= STATUS ================= */
 
-  const handleStatusChange = async (id, value) => {
+  const handleStatusChange = useCallback(async (id, value) => {
+    let previousStatus;
+
+    // ⚡ Instant UI update
+    setExpenseData((prev) =>
+      prev.map((item) => {
+        if (item.documentId === id) {
+          previousStatus = item.current_status;
+
+          return {
+            ...item,
+            current_status: value,
+          };
+        }
+
+        return item;
+      }),
+    );
+
     try {
-      await updateLocalExpense(id, { current_status: value });
-      await loadExpenseData();
+      // Background API update
+      await updateLocalExpense(id, {
+        current_status: value,
+      });
     } catch (error) {
+      console.error("Status update failed:", error);
+
+      // Rollback UI if API fails
+      setExpenseData((prev) =>
+        prev.map((item) =>
+          item.documentId === id
+            ? {
+                ...item,
+                current_status: previousStatus,
+              }
+            : item,
+        ),
+      );
+
       toast.error("Failed to update status");
     }
-  };
+  }, []);
 
   /* ================= APPROVE ================= */
 
