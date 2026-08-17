@@ -836,7 +836,8 @@ const Dashboard = () => {
                 value:
                   localExpenseAmount?.total?.total_exp_cash +
                   localExpenseAmount?.total?.total_exp_gpay +
-                  gstExpenseSummary?.total_account,
+                  gstExpenseSummary?.total_account +
+                  gstExpenseSummary?.total_balance,
                 color: "text-red-600",
                 bg: "bg-red-50",
               },
