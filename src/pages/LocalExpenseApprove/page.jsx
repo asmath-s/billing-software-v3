@@ -122,6 +122,14 @@ const LocalExpenseApprove = () => {
         query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
       }
 
+      if (searchInstruction.trim()) {
+        query.push(
+          `filters[instruction][$containsi]=${encodeURIComponent(
+            searchInstruction.trim(),
+          )}`,
+        );
+      }
+
       const queryString = query.length ? `?${query.join("&")}` : "";
 
       const res = await getLocalExpenseAmounts(queryString);
@@ -133,7 +141,7 @@ const LocalExpenseApprove = () => {
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, searchInstruction]);
 
   useEffect(() => {
     loadExpenseData();

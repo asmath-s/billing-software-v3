@@ -146,6 +146,14 @@ const LocalProductionList = () => {
         query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
       }
 
+      if (searchInstruction.trim()) {
+        query.push(
+          `filters[instruction][$containsi]=${encodeURIComponent(
+            searchInstruction.trim(),
+          )}`,
+        );
+      }
+
       const queryString = query.length ? `?${query.join("&")}` : "";
 
       const res = await getLocalExpenseAmounts(queryString);
@@ -156,7 +164,7 @@ const LocalProductionList = () => {
 
       setLocalExpenseAmount([]);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, searchInstruction]);
 
   /**
    * Reload list whenever pagination or date filters change.
