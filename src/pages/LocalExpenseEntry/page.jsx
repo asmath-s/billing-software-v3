@@ -111,13 +111,8 @@ const LocalExpenseEntry = () => {
       const query = [];
 
       if (fromDate && toDate) {
-        query.push(
-          `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-        );
-
-        query.push(
-          `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
-        );
+        query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
+        query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
       }
 
       const queryString = query.length ? `?${query.join("&")}` : "";

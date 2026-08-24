@@ -31,6 +31,7 @@ import DeletePopup from "../../components/DeletePopup/DeletePopup";
 import EditButton from "../../components/EditButton/EditButton";
 
 import {
+  AccountIcon,
   CashIcon,
   CheckBoxIcon,
   CheckIcon,
@@ -56,6 +57,7 @@ const LocalProductionList = () => {
   // Form state
   const [date, setDate] = useState(new Date());
   const [instruction, setInstruction] = useState("");
+  const [searchInstruction, setSearchInstruction] = useState("");
   const [customType, setCustomType] = useState("cash");
   const [method, setMethod] = useState("expense");
   const [amount, setAmount] = useState("");
@@ -91,6 +93,15 @@ const LocalProductionList = () => {
       `filters[current_status][$eq]=production`,
     ];
 
+    // Search by instruction
+    if (searchInstruction.trim()) {
+      query.push(
+        `filters[instruction][$containsi]=${encodeURIComponent(
+          searchInstruction.trim(),
+        )}`,
+      );
+    }
+
     if (fromDate && toDate) {
       query.push(
         `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
@@ -99,7 +110,7 @@ const LocalProductionList = () => {
     }
 
     return query.join("&");
-  }, [page, rowsPerPage, fromDate, toDate]);
+  }, [page, rowsPerPage, fromDate, toDate, searchInstruction]);
 
   /**
    * Load production expense list.
@@ -131,10 +142,8 @@ const LocalProductionList = () => {
       const query = [];
 
       if (fromDate && toDate) {
-        query.push(
-          `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-          `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
-        );
+        query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
+        query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
       }
 
       const queryString = query.length ? `?${query.join("&")}` : "";
@@ -287,7 +296,7 @@ const LocalProductionList = () => {
       {/* Overview */}
       {showOverview && (
         <motion.div
-          className="flex gap-4 items-center justify-start mt-6 mb-6"
+          className="grid grid-cols-3 gap-4 mt-6 mb-6"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
@@ -301,6 +310,7 @@ const LocalProductionList = () => {
             amount={localExpenseAmount?.production?.total_exp_cash}
             icon={<CashIcon color="#292D32" width="34" height="34" />}
             titleColor="text-red-800"
+            className="w-full"
           />
 
           <CardUI
@@ -308,6 +318,15 @@ const LocalProductionList = () => {
             amount={localExpenseAmount?.production?.total_exp_gpay}
             icon={<GpayIcon color="#292D32" width="34" height="34" />}
             titleColor="text-red-800"
+            className="w-full"
+          />
+
+          <CardUI
+            title="Total Expense Account"
+            amount={localExpenseAmount?.production?.total_exp_account}
+            icon={<AccountIcon color="#292D32" width="34" height="34" />}
+            titleColor="text-red-800"
+            className="w-full"
           />
 
           <CardUI
@@ -315,6 +334,7 @@ const LocalProductionList = () => {
             amount={localExpenseAmount?.production?.total_rec_cash}
             icon={<CashIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
+            className="w-full"
           />
 
           <CardUI
@@ -322,6 +342,15 @@ const LocalProductionList = () => {
             amount={localExpenseAmount?.production?.total_rec_gpay}
             icon={<GpayIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
+            className="w-full"
+          />
+
+          <CardUI
+            title="Total Received Account"
+            amount={localExpenseAmount?.production?.total_rec_account}
+            icon={<AccountIcon color="#292D32" width="34" height="34" />}
+            titleColor="text-green-800"
+            className="w-full"
           />
         </motion.div>
       )}
@@ -335,6 +364,20 @@ const LocalProductionList = () => {
           setFromDate={setFromDate}
           setToDate={setToDate}
         />
+      </div>
+      <div className="flex justify-end mt-6">
+        <div className="w-80">
+          <input
+            type="text"
+            placeholder="Search by instruction"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none "
+            value={searchInstruction}
+            onChange={(e) => {
+              setSearchInstruction(e.target.value);
+              setPage(0);
+            }}
+          />
+        </div>
       </div>
 
       {/* Add / Edit Form */}
@@ -385,6 +428,10 @@ const LocalProductionList = () => {
               {
                 value: "gpay",
                 label: "Gpay",
+              },
+              {
+                value: "account",
+                label: "Account",
               },
             ]}
             value={customType}

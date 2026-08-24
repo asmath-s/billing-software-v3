@@ -680,6 +680,7 @@ const Dashboard = () => {
                   gstSalesSummary?.total_cash +
                   localSalesAmount?.local_total?.total_gpay +
                   localExpenseAmount?.total?.total_rec_gpay +
+                  localExpenseAmount?.total?.total_rec_account +
                   gstSalesSummary?.total_gpay +
                   gstSalesSummary?.total_account,
                 color: "text-green-600",
@@ -690,6 +691,7 @@ const Dashboard = () => {
                 value:
                   localExpenseAmount?.total?.total_exp_cash +
                   localExpenseAmount?.total?.total_exp_gpay +
+                  localExpenseAmount?.total?.total_exp_account +
                   gstExpenseSummary?.total_account,
                 color: "text-red-600",
                 bg: "bg-red-50",
@@ -702,10 +704,12 @@ const Dashboard = () => {
                   gstSalesSummary?.total_cash +
                   localSalesAmount?.local_total?.total_gpay +
                   localExpenseAmount?.total?.total_rec_gpay +
+                  localExpenseAmount?.total?.total_rec_account +
                   gstSalesSummary?.total_gpay +
                   gstSalesSummary?.total_account -
                   (localExpenseAmount?.total?.total_exp_cash +
                     localExpenseAmount?.total?.total_exp_gpay +
+                    localExpenseAmount?.total?.total_exp_account +
                     gstExpenseSummary?.total_account),
                 color: balanceColor(
                   localSalesAmount?.local_total?.total_cash +
@@ -745,8 +749,10 @@ const Dashboard = () => {
                     channel: "gpay",
                   },
                   {
-                    label: "GST Bank",
-                    value: gstSalesSummary?.total_account,
+                    label: "Account",
+                    value:
+                      gstSalesSummary?.total_account +
+                      localExpenseAmount?.total?.total_rec_account,
                     channel: "account",
                   },
                 ],
@@ -766,8 +772,10 @@ const Dashboard = () => {
                     channel: "gpay",
                   },
                   {
-                    label: "GST Bank",
-                    value: gstExpenseSummary?.total_account,
+                    label: "Account",
+                    value:
+                      gstExpenseSummary?.total_account +
+                      localExpenseAmount?.total?.total_exp_account,
                     channel: "account",
                   },
                 ],
@@ -795,10 +803,12 @@ const Dashboard = () => {
                     channel: "gpay",
                   },
                   {
-                    label: "GST Bank",
+                    label: "Account",
                     value:
-                      gstSalesSummary?.total_account -
-                      gstExpenseSummary?.total_account,
+                      gstSalesSummary?.total_account +
+                      localExpenseAmount?.total?.total_rec_account -
+                      (gstExpenseSummary?.total_account +
+                        localExpenseAmount?.total?.total_exp_account),
                     channel: "account",
                   },
                 ],
@@ -827,7 +837,8 @@ const Dashboard = () => {
                   gstSalesSummary?.total_gpay +
                   gstSalesSummary?.total_account +
                   localSalesAmount?.local_pending?.total_balance +
-                  localSalesAmount?.local_party?.total_balance,
+                  localSalesAmount?.local_party?.total_balance +
+                  localExpenseAmount?.total?.total_rec_account,
                 color: "text-green-600",
                 bg: "bg-green-50",
               },
@@ -837,7 +848,8 @@ const Dashboard = () => {
                   localExpenseAmount?.total?.total_exp_cash +
                   localExpenseAmount?.total?.total_exp_gpay +
                   gstExpenseSummary?.total_account +
-                  gstExpenseSummary?.total_balance,
+                  gstExpenseSummary?.total_balance +
+                  localExpenseAmount?.total?.total_exp_account,
                 color: "text-red-600",
                 bg: "bg-red-50",
               },
@@ -852,11 +864,13 @@ const Dashboard = () => {
                   gstSalesSummary?.total_gpay +
                   gstSalesSummary?.total_account +
                   localSalesAmount?.local_pending?.total_balance +
-                  localSalesAmount?.local_party?.total_balance -
+                  localSalesAmount?.local_party?.total_balance +
+                  localExpenseAmount?.total?.total_rec_account -
                   (localExpenseAmount?.total?.total_exp_cash +
                     localExpenseAmount?.total?.total_exp_gpay +
                     gstExpenseSummary?.total_account +
-                    gstExpenseSummary?.total_balance),
+                    gstExpenseSummary?.total_balance +
+                    localExpenseAmount?.total?.total_exp_account),
                 color: balanceColor(
                   localSalesAmount?.local_total?.total_cash +
                     localExpenseAmount?.total?.total_rec_cash +
@@ -866,11 +880,13 @@ const Dashboard = () => {
                     gstSalesSummary?.total_gpay +
                     gstSalesSummary?.total_account +
                     localSalesAmount?.local_pending?.total_balance +
-                    localSalesAmount?.local_party?.total_balance -
+                    localSalesAmount?.local_party?.total_balance +
+                    localExpenseAmount?.total?.total_rec_account -
                     (localExpenseAmount?.total?.total_exp_cash +
                       localExpenseAmount?.total?.total_exp_gpay +
                       gstExpenseSummary?.total_account +
-                      gstExpenseSummary?.total_balance),
+                      gstExpenseSummary?.total_balance +
+                      localExpenseAmount?.total?.total_exp_account),
                 ),
                 bg: "bg-blue-50",
               },
@@ -898,8 +914,10 @@ const Dashboard = () => {
                     channel: "gpay",
                   },
                   {
-                    label: "GST Bank",
-                    value: gstSalesSummary?.total_account,
+                    label: "Account",
+                    value:
+                      gstSalesSummary?.total_account +
+                      localExpenseAmount?.total?.total_rec_account,
                     channel: "account",
                   },
                   {
@@ -931,8 +949,10 @@ const Dashboard = () => {
                     channel: "gpay",
                   },
                   {
-                    label: "GST Bank",
-                    value: gstExpenseSummary?.total_account,
+                    label: "Account",
+                    value:
+                      gstExpenseSummary?.total_account +
+                      localExpenseAmount?.total?.total_exp_account,
                     channel: "account",
                   },
                   {
@@ -958,7 +978,12 @@ const Dashboard = () => {
               {
                 title: "Total Amount",
                 value:
-                  localSalesAmount?.sales_total + gstSalesSummary?.total_sales,
+                  localSalesAmount?.sales_total +
+                  gstSalesSummary?.total_sales +
+                  localExpenseAmount?.admin?.total_rec_cash +
+                  localExpenseAmount?.admin?.total_rec_gpay +
+                  localExpenseAmount?.admin?.total_rec_account +
+                  localExpenseAmount?.local_receive_total,
                 color: "text-green-600",
                 bg: "bg-green-50",
               },
@@ -966,7 +991,10 @@ const Dashboard = () => {
                 title: "Total Expense",
                 value:
                   localExpenseAmount?.local_expense_total +
-                  gstExpenseSummary?.total_expense,
+                  gstExpenseSummary?.total_expense +
+                  localExpenseAmount?.admin?.total_exp_cash +
+                  localExpenseAmount?.admin?.total_exp_gpay +
+                  localExpenseAmount?.admin?.total_exp_account,
                 color: "text-red-600",
                 bg: "bg-red-50",
               },
@@ -974,14 +1002,28 @@ const Dashboard = () => {
                 title: "Balance",
                 value:
                   localSalesAmount?.sales_total +
-                  gstSalesSummary?.total_sales -
-                  localExpenseAmount?.local_expense_total -
-                  gstExpenseSummary?.total_expense,
+                  gstSalesSummary?.total_sales +
+                  localExpenseAmount?.admin?.total_rec_cash +
+                  localExpenseAmount?.admin?.total_rec_gpay +
+                  localExpenseAmount?.admin?.total_rec_account +
+                  localExpenseAmount?.local_receive_total -
+                  (localExpenseAmount?.local_expense_total +
+                    gstExpenseSummary?.total_expense +
+                    localExpenseAmount?.admin?.total_exp_cash +
+                    localExpenseAmount?.admin?.total_exp_gpay +
+                    localExpenseAmount?.admin?.total_exp_account),
                 color: balanceColor(
                   localSalesAmount?.sales_total +
-                    gstSalesSummary?.total_sales -
-                    localExpenseAmount?.local_expense_total -
-                    gstExpenseSummary?.total_expense,
+                    gstSalesSummary?.total_sales +
+                    localExpenseAmount?.admin?.total_rec_cash +
+                    localExpenseAmount?.admin?.total_rec_gpay +
+                    localExpenseAmount?.admin?.total_rec_account +
+                    localExpenseAmount?.local_receive_total -
+                    (localExpenseAmount?.local_expense_total +
+                      gstExpenseSummary?.total_expense +
+                      localExpenseAmount?.admin?.total_exp_cash +
+                      localExpenseAmount?.admin?.total_exp_gpay +
+                      localExpenseAmount?.admin?.total_exp_account),
                 ),
 
                 bg: "bg-blue-50",
@@ -1000,6 +1042,17 @@ const Dashboard = () => {
                     label: "Gst Sales",
                     value: gstSalesSummary?.total_sales,
                   },
+                  {
+                    label: "Admin Receive",
+                    value:
+                      localExpenseAmount?.admin?.total_rec_cash +
+                      localExpenseAmount?.admin?.total_rec_gpay +
+                      localExpenseAmount?.admin?.total_rec_account,
+                  },
+                  {
+                    label: "Expense Receive",
+                    value: localExpenseAmount?.local_receive_total,
+                  },
                 ],
               },
               {
@@ -1013,6 +1066,13 @@ const Dashboard = () => {
                   {
                     label: "Gst Expense",
                     value: gstExpenseSummary?.total_expense,
+                  },
+                  {
+                    label: "Admin Expense",
+                    value:
+                      localExpenseAmount?.admin?.total_exp_cash +
+                      localExpenseAmount?.admin?.total_exp_gpay +
+                      localExpenseAmount?.admin?.total_exp_account,
                   },
                 ],
               },
