@@ -85,6 +85,7 @@ export const DateUiPicker = ({
   className = "",
   disableFuture = false,
   disablePast = false,
+  popperPlacement = "auto",
 }) => {
   const today = new Date();
   const resolvedMinDate = disablePast
@@ -107,7 +108,11 @@ export const DateUiPicker = ({
           dropdownMode="select"
           dateFormat="dd-MM-yyyy"
           placeholderText={label}
-          popperPlacement="auto"
+          popperPlacement={popperPlacement}
+          popperClassName="!z-[99999]"
+          popperProps={{
+            strategy: "fixed",
+          }}
           disabled={disabled}
           minDate={resolvedMinDate}
           maxDate={disableFuture ? today : undefined}

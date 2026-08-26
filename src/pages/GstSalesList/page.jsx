@@ -50,7 +50,9 @@ import {
   MoneyReceiveIcon,
   PendingIcon,
   SaveIcon,
+  SavePdfIcon,
 } from "../../components/icons";
+import GstSalesExportModal from "../../components/GstSalesExportModal/GstSalesExportModal";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RefreshIcon from "../../components/icons/RefreshIcon";
 import RightIcon from "../../components/icons/RightIcon";
@@ -120,6 +122,7 @@ const GstSalesList = () => {
 
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const [form, setForm] = useState({
     ...INITIAL_FORM_STATE,
@@ -450,15 +453,26 @@ const GstSalesList = () => {
           </button>
         </div>
 
-        {role !== "authenticated" && (
-          <Checkbox
-            icon={<CheckBoxIcon />}
-            checkedIcon={<CheckIcon color="#fff" />}
-            checked={showOverview}
-            label="Show Overview"
-            onChange={toggleOverview}
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
           />
-        )}
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              label="Show Overview"
+              onChange={toggleOverview}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -834,6 +848,13 @@ const GstSalesList = () => {
           </tfoot>
         </Table>
       </div>
+
+      <GstSalesExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        customerOptions={customerOptions}
+        role={role}
+      />
     </MainLayout>
   );
 };

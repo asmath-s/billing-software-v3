@@ -2,24 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "react-toastify";
 import dayjs from "../../utils/dayjs";
-import { fetchAllLocalExpensesForExport } from "../../api/localExpense";
+import { fetchAllGstExpensesForExport } from "../../api/gstExpense";
+import AutocompleteField from "../AutocompleteField/AutocompleteField";
 import Button from "../Button/Button";
-import InputField from "../InputField/InputField";
 import { DateUiPicker } from "../Datepicker/Datepicker";
 import { PrinterIcon, SavePdfIcon } from "../icons";
-import LocalExpensePrintDoc from "./LocalExpensePrintDoc";
+import GstExpensePrintDoc from "./GstExpensePrintDoc";
 
-const LocalExpenseExportModal = ({
+const GstExpenseExportModal = ({
   open,
   onClose,
-  sectionTitle = "Local Expense – Approved",
-  status = "approved",
+  vendorOptions = [],
+  role = "",
 }) => {
   const printRef = useRef(null);
 
+  const [selectedVendor, setSelectedVendor] = useState(null);
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
-  const [instruction, setInstruction] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("");
 
@@ -29,13 +29,13 @@ const LocalExpenseExportModal = ({
   // Print hook
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `${sectionTitle.replace(/[^\w\d-_]/g, "_")}_${dayjs().format("YYYYMMDD_HHmm")}`,
+    documentTitle: `GST_Expense_Report_${selectedVendor?.label ? selectedVendor.label.replace(/[^\w\d-_]/g, "_") + "_" : ""}${dayjs().format("YYYYMMDD_HHmm")}`,
     onAfterPrint: () => {
       setTriggerPrintNow(false);
     },
   });
 
-  // Watch for printData update to trigger print
+  // Trigger print after state update
   useEffect(() => {
     if (triggerPrintNow && printData && printRef.current) {
       handlePrint();
@@ -49,9 +49,9 @@ const LocalExpenseExportModal = ({
 
   const handleResetAndClose = () => {
     if (loading) return;
+    setSelectedVendor(null);
     setFromDate(null);
     setToDate(null);
-    setInstruction("");
     setLoading(false);
     setLoadingMsg("");
     onClose();
@@ -60,7 +60,7 @@ const LocalExpenseExportModal = ({
   const handleExport = async (e) => {
     if (e) e.preventDefault();
 
-    // ── Date Validation: Must select both or none ──
+    // ── Date Validation: Must provide both or none ──
     if ((fromDate && !toDate) || (!fromDate && toDate)) {
       toast.error("Please select both From Date and To Date.");
       return;
@@ -72,30 +72,28 @@ const LocalExpenseExportModal = ({
     }
 
     setLoading(true);
-    setLoadingMsg("Fetching expense data and generating PDF...");
+    setLoadingMsg("Fetching GST expense records and generating PDF...");
 
     try {
-      const records = await fetchAllLocalExpensesForExport({
-        status,
+      const records = await fetchAllGstExpensesForExport({
+        vendorDocumentId: selectedVendor?.value,
         fromDate,
         toDate,
-        instruction,
+        role,
       });
 
       if (!records || records.length === 0) {
-        toast.error("No expense records found for the selected filters.");
+        toast.error("No GST Expense records found for the selected filters.");
         setLoading(false);
         setLoadingMsg("");
         return;
       }
 
-      // Populate print data
       setPrintData({
-        title: sectionTitle,
-        status,
+        title: "GST Expense Report",
+        selectedVendor,
         fromDate,
         toDate,
-        instruction,
         records,
         generatedAt: new Date(),
       });
@@ -103,8 +101,8 @@ const LocalExpenseExportModal = ({
       toast.success(`Found ${records.length} records. Preparing PDF print...`);
       setTriggerPrintNow(true);
     } catch (error) {
-      console.error("Export Local Expense failed:", error);
-      toast.error("Failed to fetch expense records. Please try again.");
+      console.error("Export GST Expense failed:", error);
+      toast.error("Failed to fetch GST expense records. Please try again.");
       setLoading(false);
       setLoadingMsg("");
     }
@@ -117,8 +115,8 @@ const LocalExpenseExportModal = ({
           {/* ── Modal Header ── */}
           <div className="px-6 py-4 bg-gradient-to-r from-gray-900 to-gray-800 text-white flex justify-between items-center rounded-t-2xl">
             <div>
-              <h3 className="text-base font-bold tracking-tight">Export PDF Report</h3>
-              <p className="text-xs text-gray-300 mt-0.5">{sectionTitle}</p>
+              <h3 className="text-base font-bold tracking-tight">Export GST Expense PDF</h3>
+              <p className="text-xs text-gray-300 mt-0.5">Generate Debit/Credit Statement</p>
             </div>
 
             <button
@@ -135,11 +133,23 @@ const LocalExpenseExportModal = ({
           {/* ── Modal Form ── */}
           <form onSubmit={handleExport} className="p-6 space-y-4">
             <div className="bg-blue-50/70 border border-blue-100 rounded-lg p-3 text-xs text-blue-800">
-              <span className="font-semibold block mb-0.5">ℹ️ Filter Instructions:</span>
-              Leave all fields empty to export <strong>all records</strong>, or specify a date range and instruction keyword.
+              <span className="font-semibold block mb-0.5">ℹ️ Filter Options:</span>
+              Both Vendor and Date Range are optional. Leave empty to export <strong>all GST Expense records</strong>.
             </div>
 
-            {/* Date Range Fields */}
+            {/* Vendor Autocomplete Field */}
+            <div>
+              <AutocompleteField
+                label="Vendor Name (Optional)"
+                value={selectedVendor || ""}
+                options={vendorOptions}
+                onChange={(_, val) => setSelectedVendor(val)}
+                placeholder="Select or search vendor"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Date Range Pickers */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <DateUiPicker
@@ -164,18 +174,7 @@ const LocalExpenseExportModal = ({
               </div>
             </div>
 
-            {/* Instruction Filter Field */}
-            <div>
-              <InputField
-                label="Instruction Filter (Optional)"
-                placeholder="Search specific instruction / note..."
-                value={instruction}
-                onChange={(e) => setInstruction(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            {/* Loading Indicator Message */}
+            {/* Loading Feedback Indicator */}
             {loading && (
               <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 text-amber-900 p-3 rounded-lg text-xs animate-pulse">
                 <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
@@ -208,10 +207,10 @@ const LocalExpenseExportModal = ({
 
       {/* ── Hidden Print Document Container ── */}
       <div style={{ display: "none" }}>
-        {printData && <LocalExpensePrintDoc ref={printRef} {...printData} />}
+        {printData && <GstExpensePrintDoc ref={printRef} {...printData} />}
       </div>
     </>
   );
 };
 
-export default LocalExpenseExportModal;
+export default GstExpenseExportModal;

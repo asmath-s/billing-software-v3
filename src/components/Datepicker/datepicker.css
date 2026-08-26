@@ -3,6 +3,7 @@
 }
 .react-datepicker-popper {
   margin-top: 42px;
+  z-index: 99999 !important;
 }
 .react-datepicker__triangle {
   display: none;

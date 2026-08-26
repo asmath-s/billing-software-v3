@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import dayjs from "../utils/dayjs";
 
 export const getGstList = async (params = "") => {
   const response = await axiosInstance.get(`/gst-lists?populate=*&${params}`);
@@ -42,4 +43,71 @@ export const deleteGstList = async (documentId) => {
 export const getGstSalesSummary = async (params = "") => {
   const response = await axiosInstance.get(`/gst-sales-amounts${params}`);
   return response.data;
+};
+
+/**
+ * Fetch all matching GST Sales records across multiple pages from Strapi.
+ * Dynamically handles pagination without using hardcoded large page sizes.
+ *
+ * Filters supported:
+ * - customerDocumentId: Strapi documentId for customer
+ * - fromDate & toDate: Date range
+ * - role: Authenticated user bill_no filtering
+ */
+export const fetchAllGstSalesForExport = async ({
+  customerDocumentId,
+  fromDate,
+  toDate,
+  role,
+}) => {
+  let allRecords = [];
+  let currentPage = 1;
+  let pageCount = 1;
+  const pageSize = 25;
+
+  const baseParams = ["sort[0]=date:desc"];
+
+  if (role === "authenticated") {
+    baseParams.push("filters[bill_no][$notNull]=true");
+    baseParams.push("filters[bill_no][$ne]=");
+  }
+
+  if (customerDocumentId) {
+    baseParams.push(
+      `filters[gst_customer][documentId][$eq]=${encodeURIComponent(customerDocumentId)}`,
+    );
+  }
+
+  if (fromDate && toDate) {
+    baseParams.push(
+      `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
+    );
+    baseParams.push(
+      `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+    );
+  }
+
+  do {
+    const pageParams = [
+      ...baseParams,
+      `pagination[page]=${currentPage}`,
+      `pagination[pageSize]=${pageSize}`,
+    ].join("&");
+
+    const res = await getGstList(pageParams);
+    const records = res?.data || [];
+    const meta = res?.meta?.pagination;
+
+    allRecords = allRecords.concat(records);
+
+    if (meta && typeof meta.pageCount === "number") {
+      pageCount = meta.pageCount;
+    } else {
+      break;
+    }
+
+    currentPage += 1;
+  } while (currentPage <= pageCount);
+
+  return allRecords;
 };
