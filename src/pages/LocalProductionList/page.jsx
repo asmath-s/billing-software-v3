@@ -177,8 +177,10 @@ const LocalProductionList = () => {
    * Reload overview totals whenever date filters change.
    */
   useEffect(() => {
-    loadLocalTotalAmount();
-  }, [loadLocalTotalAmount]);
+    if (showOverview) {
+      loadLocalTotalAmount();
+    }
+  }, [loadLocalTotalAmount, showOverview]);
 
   /**
    * Submit create/update form.

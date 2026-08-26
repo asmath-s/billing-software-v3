@@ -186,9 +186,10 @@ const LocalPartyList = () => {
   }, [loadLocalPartyData]);
 
   useEffect(() => {
-    loadLocalTotalAmount();
-  }, [loadLocalTotalAmount]);
-
+    if (showOverview) {
+      loadLocalTotalAmount();
+    }
+  }, [loadLocalTotalAmount, showOverview]);
   /* ================= DELETE ================= */
 
   const handleDelete = async (id) => {
@@ -246,7 +247,7 @@ const LocalPartyList = () => {
 
       received_amount: Number(receivedAmount),
       balance_amount: 0,
-      total_amount: Number(receivedAmount),
+      total_amount: 0,
 
       current_status: "party",
       approved: true,
@@ -496,7 +497,12 @@ const LocalPartyList = () => {
                     <div className="flex gap-2">
                       <EditButton
                         onClick={() => {
-                          if (item.custom_type) {
+                          console.log("item.total_amount", item.total_amount);
+                          if (
+                            item.total_amount === 0 ||
+                            item.total_amount === null
+                          ) {
+                            console.log("getting inside", item.total_amount);
                             handleEdit(item);
                           } else {
                             navigate(

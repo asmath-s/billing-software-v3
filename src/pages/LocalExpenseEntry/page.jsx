@@ -133,8 +133,10 @@ const LocalExpenseEntry = () => {
   }, [loadExpenseData]);
 
   useEffect(() => {
-    loadLocalTotalAmount();
-  }, [loadLocalTotalAmount]);
+    if (showOverview) {
+      loadLocalTotalAmount();
+    }
+  }, [loadLocalTotalAmount, showOverview]);
 
   /* ================= GROUP BY DATE ================= */
 

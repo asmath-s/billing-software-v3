@@ -146,7 +146,9 @@ const AdminList = () => {
   }, [loadExpenseData]);
 
   useEffect(() => {
-    LoadAdminAmount();
+    if (showOverview) {
+      LoadAdminAmount();
+    }
   }, [LoadAdminAmount]);
 
   const handleSubmit = async (e) => {

@@ -151,40 +151,6 @@ const LocalPendingList = () => {
   }, [buildQuery]);
 
   /*
-   * Load total amounts
-   */
-  const loadLocalTotalAmount = useCallback(async () => {
-    try {
-      const query = [];
-
-      if (searchCustomer?.value) {
-        query.push(
-          `filters[customer][documentId][$eq]=${encodeURIComponent(
-            searchCustomer.value,
-          )}`,
-        );
-      }
-
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
-        query.push(`fromDate=${encodeURIComponent(from)}`);
-        query.push(`toDate=${encodeURIComponent(to)}`);
-      }
-
-      const queryString = query.length ? `?${query.join("&")}` : "";
-
-      const res = await getLocalAmounts(queryString);
-
-      setLocalAmount(res || null);
-    } catch (error) {
-      console.error("Local amounts fetch failed:", error);
-      setLocalAmount(null);
-    }
-  }, [searchCustomer, fromDate, toDate]);
-
-  /*
    * Initial customer load
    */
   useEffect(() => {
@@ -249,50 +215,51 @@ const LocalPendingList = () => {
    * Load totals whenever customer/date filters change
    */
   useEffect(() => {
-    let cancelled = false;
+    if (showOverview) {
+      let cancelled = false;
+      const fetchLocalTotalAmount = async () => {
+        try {
+          const query = [];
 
-    const fetchLocalTotalAmount = async () => {
-      try {
-        const query = [];
+          if (searchCustomer?.value) {
+            query.push(
+              `filters[customer][documentId][$eq]=${encodeURIComponent(
+                searchCustomer.value,
+              )}`,
+            );
+          }
 
-        if (searchCustomer?.value) {
-          query.push(
-            `filters[customer][documentId][$eq]=${encodeURIComponent(
-              searchCustomer.value,
-            )}`,
-          );
+          if (fromDate && toDate) {
+            const from = dayjs(fromDate).format("YYYY-MM-DD");
+            const to = dayjs(toDate).format("YYYY-MM-DD");
+
+            query.push(`fromDate=${encodeURIComponent(from)}`);
+            query.push(`toDate=${encodeURIComponent(to)}`);
+          }
+
+          const queryString = query.length ? `?${query.join("&")}` : "";
+
+          const res = await getLocalAmounts(queryString);
+
+          if (!cancelled) {
+            setLocalAmount(res || null);
+          }
+        } catch (error) {
+          console.error("Local amounts fetch failed:", error);
+
+          if (!cancelled) {
+            setLocalAmount(null);
+          }
         }
+      };
 
-        if (fromDate && toDate) {
-          const from = dayjs(fromDate).format("YYYY-MM-DD");
-          const to = dayjs(toDate).format("YYYY-MM-DD");
+      fetchLocalTotalAmount();
 
-          query.push(`fromDate=${encodeURIComponent(from)}`);
-          query.push(`toDate=${encodeURIComponent(to)}`);
-        }
-
-        const queryString = query.length ? `?${query.join("&")}` : "";
-
-        const res = await getLocalAmounts(queryString);
-
-        if (!cancelled) {
-          setLocalAmount(res || null);
-        }
-      } catch (error) {
-        console.error("Local amounts fetch failed:", error);
-
-        if (!cancelled) {
-          setLocalAmount(null);
-        }
-      }
-    };
-
-    fetchLocalTotalAmount();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [searchCustomer, fromDate, toDate]);
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [searchCustomer, fromDate, toDate, showOverview]);
 
   /*
    * Delete

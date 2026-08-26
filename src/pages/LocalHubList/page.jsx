@@ -149,8 +149,10 @@ const LocalHubList = () => {
   }, [loadExpenseData]);
 
   useEffect(() => {
-    loadLocalTotalAmount();
-  }, [loadLocalTotalAmount]);
+    if (showOverview) {
+      loadLocalTotalAmount();
+    }
+  }, [loadLocalTotalAmount, showOverview]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

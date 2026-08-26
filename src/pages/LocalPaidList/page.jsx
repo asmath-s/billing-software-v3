@@ -167,8 +167,10 @@ const LocalPaidList = () => {
   }, [loadLocalPaidData]);
 
   useEffect(() => {
-    loadLocalTotalAmount();
-  }, [loadLocalTotalAmount]);
+    if (showOverview) {
+      loadLocalTotalAmount();
+    }
+  }, [loadLocalTotalAmount, showOverview]);
 
   /* ================= DELETE ================= */
 

@@ -243,8 +243,10 @@ const GstSalesList = () => {
     loadGstSalesData();
   }, [loadGstSalesData]);
   useEffect(() => {
-    loadGstSalesSummary();
-  }, [loadGstSalesSummary]);
+    if (showOverview) {
+      loadGstSalesSummary();
+    }
+  }, [loadGstSalesSummary, showOverview]);
 
   /* ─────────────────────────────────────────────
      Form helpers
