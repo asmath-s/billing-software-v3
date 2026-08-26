@@ -43,7 +43,9 @@ import {
   GpayIcon,
   PendingIcon,
   SaveIcon,
+  SavePdfIcon,
 } from "../../components/icons";
+import LocalSalesExportModal from "../../components/LocalSalesExportModal/LocalSalesExportModal";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RightIcon from "../../components/icons/RightIcon";
 import InputField from "../../components/InputField/InputField";
@@ -67,6 +69,7 @@ const LocalPartyList = () => {
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
   const [searchCustomer, setSearchCustomer] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const [customers, setCustomers] = useState([]);
   const [localData, setLocalData] = useState([]);
@@ -327,16 +330,28 @@ const LocalPartyList = () => {
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local Party List</h1>
-        {role !== "authenticated" && (
-          <Checkbox
-            icon={<CheckBoxIcon />}
-            checkedIcon={<CheckIcon color="#fff" />}
-            checked={showOverview}
-            style={{ marginRight: 8 }}
-            label={"Show Overview"}
-            onChange={() => toggleOverview()}
+
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
           />
-        )}
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              style={{ marginRight: 8 }}
+              label={"Show Overview"}
+              onChange={() => toggleOverview()}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -619,6 +634,14 @@ const LocalPartyList = () => {
           </tfoot>
         </Table>
       </div>
+
+      <LocalSalesExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        sectionTitle="Local Sales – Party List"
+        status="party"
+        customerOptions={customerOptions}
+      />
     </MainLayout>
   );
 };

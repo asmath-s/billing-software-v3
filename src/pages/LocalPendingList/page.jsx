@@ -26,7 +26,10 @@ import {
   CheckIcon,
   GpayIcon,
   PendingIcon,
+  SavePdfIcon,
 } from "../../components/icons";
+import Button from "../../components/Button/Button";
+import LocalSalesExportModal from "../../components/LocalSalesExportModal/LocalSalesExportModal";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RightIcon from "../../components/icons/RightIcon";
 import SelectField from "../../components/SelectField/SelectField";
@@ -58,6 +61,7 @@ const LocalPendingList = () => {
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
   const [searchCustomer, setSearchCustomer] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const [customers, setCustomers] = useState([]);
   const [localData, setLocalData] = useState(null);
@@ -347,16 +351,27 @@ const LocalPendingList = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local pending List</h1>
 
-        {role !== "authenticated" && (
-          <Checkbox
-            icon={<CheckBoxIcon />}
-            checkedIcon={<CheckIcon color="#fff" />}
-            checked={showOverview}
-            style={{ marginRight: 8 }}
-            label="Show Overview"
-            onChange={() => toggleOverview()}
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
           />
-        )}
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              style={{ marginRight: 8 }}
+              label="Show Overview"
+              onChange={() => toggleOverview()}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -647,6 +662,14 @@ const LocalPendingList = () => {
           </div>
         </div>
       )}
+
+      <LocalSalesExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        sectionTitle="Local Sales – Pending List"
+        status="pending"
+        customerOptions={customerOptions}
+      />
     </MainLayout>
   );
 };

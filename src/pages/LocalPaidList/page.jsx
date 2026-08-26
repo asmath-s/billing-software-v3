@@ -24,8 +24,11 @@ import {
   CheckBoxIcon,
   CheckIcon,
   GpayIcon,
+  SavePdfIcon,
 } from "../../components/icons";
 
+import Button from "../../components/Button/Button";
+import LocalSalesExportModal from "../../components/LocalSalesExportModal/LocalSalesExportModal";
 import MainLayout from "../../layouts/MainLayout";
 
 import { LOCALENTRY } from "../../router/paths";
@@ -54,6 +57,7 @@ const LocalPaidList = () => {
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
   const [searchCustomer, setSearchCustomer] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const [customers, setCustomers] = useState([]);
   const [localData, setLocalData] = useState([]);
@@ -238,16 +242,27 @@ const LocalPaidList = () => {
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local Paid List</h1>
-        {role !== "authenticated" && (
-          <Checkbox
-            icon={<CheckBoxIcon />}
-            checkedIcon={<CheckIcon color="#fff" />}
-            checked={showOverview}
-            style={{ marginRight: 8 }}
-            label={"Show Overview"}
-            onChange={() => toggleOverview()}
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
           />
-        )}
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              style={{ marginRight: 8 }}
+              label={"Show Overview"}
+              onChange={() => toggleOverview()}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -446,6 +461,14 @@ const LocalPaidList = () => {
           </tfoot>
         </Table>
       </div>
+
+      <LocalSalesExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        sectionTitle="Local Sales – Approved List"
+        status="paid"
+        customerOptions={customerOptions}
+      />
     </MainLayout>
   );
 };

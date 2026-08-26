@@ -152,7 +152,7 @@ const Sidebar = () => {
                     className="w-full bg-transparent text-xs font-bold text-white outline-none cursor-pointer appearance-none"
                   >
                     {availableYears.map((fy) => {
-                      const fyLabel = `${fy}–${String(fy + 1).slice(-2)}`;
+                      const fyLabel = `${fy} - ${fy + 1}`;
                       return (
                         <option
                           key={fy}

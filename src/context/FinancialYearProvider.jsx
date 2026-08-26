@@ -33,7 +33,7 @@ const FinancialYearProvider = ({ children }) => {
   }, [financialYear]);
 
   const availableYears = useMemo(() => {
-    return getDynamicFinancialYears(5, 1);
+    return getDynamicFinancialYears(5);
   }, []);
 
   const value = useMemo(
