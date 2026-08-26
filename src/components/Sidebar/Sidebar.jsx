@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Logo from "../../assets/rayyanflexlogo.png";
-import { appConfig } from "../../config/appConfig";
+import { appConfig, ROLES } from "../../config/appConfig";
 import { useAuth } from "../../context/auth-context";
 import { useFinancialYear } from "../../context/financial-year-context";
 import {
@@ -112,6 +112,9 @@ const Sidebar = () => {
     navigate("/");
   };
 
+  const showFinancialYear =
+    role !== ROLES.Authenticated && role !== "authenticated";
+
   return (
     <div
       className={`h-[98vh] p-5 bg-[#24252B] m-2 rounded-xl transition-all duration-300 flex flex-col justify-between ${
@@ -131,21 +134,56 @@ const Sidebar = () => {
         </div>
 
         {/* ================= COMPACT FINANCIAL YEAR DROPDOWN PICKER AT TOP OF SIDEBAR ================= */}
-        {!collapsed ? (
-          <div className="mt-4 mb-2">
-            <div className="relative flex items-center bg-[#1D1E23] border border-slate-700/80 rounded-xl px-3 py-1.5 shadow-inner transition hover:border-[#9E77D2] focus-within:border-[#9E77D2] focus-within:ring-1 focus-within:ring-[#9E77D2]">
-              <div className="flex items-center gap-1.5 text-[#9E77D2] mr-2 shrink-0">
-                <CalendarIcon width="15" height="15" color="#9E77D2" />
+        {showFinancialYear &&
+          (!collapsed ? (
+            <div className="mt-4 mb-2">
+              <div className="relative flex items-center bg-[#1D1E23] border border-slate-700/80 rounded-xl px-3 py-1.5 shadow-inner transition hover:border-[#9E77D2] focus-within:border-[#9E77D2] focus-within:ring-1 focus-within:ring-[#9E77D2]">
+                <div className="flex items-center gap-1.5 text-[#9E77D2] mr-2 shrink-0">
+                  <CalendarIcon width="15" height="15" color="#9E77D2" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[9px] uppercase font-bold tracking-wider text-slate-400 leading-tight">
+                    Financial Year
+                  </div>
+                  <select
+                    value={financialYear}
+                    onChange={(e) => setFinancialYear(Number(e.target.value))}
+                    title={`Date Range: ${displayRange}`}
+                    className="w-full bg-transparent text-xs font-bold text-white outline-none cursor-pointer appearance-none"
+                  >
+                    {availableYears.map((fy) => {
+                      const fyLabel = `${fy}–${String(fy + 1).slice(-2)}`;
+                      return (
+                        <option
+                          key={fy}
+                          value={fy}
+                          className="bg-[#24252B] text-white py-1"
+                        >
+                          FY {fyLabel}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div className="pointer-events-none text-slate-400 ml-1">
+                  <ArrowDownIcon className="w-3 h-3 text-slate-400" />
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[9px] uppercase font-bold tracking-wider text-slate-400 leading-tight">
-                  Financial Year
+            </div>
+          ) : (
+            <div className="mt-4 mb-2 flex justify-center">
+              <div className="relative group">
+                <div
+                  title={`Financial Year: ${shortLabel} (${displayRange})`}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1D1E23] border border-slate-700/80 text-[#9E77D2] cursor-pointer hover:border-[#9E77D2] transition"
+                >
+                  <CalendarIcon width="16" height="16" color="#9E77D2" />
                 </div>
                 <select
                   value={financialYear}
                   onChange={(e) => setFinancialYear(Number(e.target.value))}
-                  title={`Date Range: ${displayRange}`}
-                  className="w-full bg-transparent text-xs font-bold text-white outline-none cursor-pointer appearance-none"
+                  title={`Financial Year: ${shortLabel}`}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 >
                   {availableYears.map((fy) => {
                     const fyLabel = `${fy}–${String(fy + 1).slice(-2)}`;
@@ -153,7 +191,7 @@ const Sidebar = () => {
                       <option
                         key={fy}
                         value={fy}
-                        className="bg-[#24252B] text-white py-1"
+                        className="bg-[#24252B] text-white"
                       >
                         FY {fyLabel}
                       </option>
@@ -161,38 +199,8 @@ const Sidebar = () => {
                   })}
                 </select>
               </div>
-              <div className="pointer-events-none text-slate-400 ml-1">
-                <ArrowDownIcon className="w-3 h-3 text-slate-400" />
-              </div>
             </div>
-          </div>
-        ) : (
-          <div className="mt-4 mb-2 flex justify-center">
-            <div className="relative group">
-              <div
-                title={`Financial Year: ${shortLabel} (${displayRange})`}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1D1E23] border border-slate-700/80 text-[#9E77D2] cursor-pointer hover:border-[#9E77D2] transition"
-              >
-                <CalendarIcon width="16" height="16" color="#9E77D2" />
-              </div>
-              <select
-                value={financialYear}
-                onChange={(e) => setFinancialYear(Number(e.target.value))}
-                title={`Financial Year: ${shortLabel}`}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              >
-                {availableYears.map((fy) => {
-                  const fyLabel = `${fy}–${String(fy + 1).slice(-2)}`;
-                  return (
-                    <option key={fy} value={fy} className="bg-[#24252B] text-white">
-                      FY {fyLabel}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          </div>
-        )}
+          ))}
 
         {/* Scrollable Navigation Menu */}
         <div className="mt-3 flex flex-col gap-1 overflow-y-auto pr-1">

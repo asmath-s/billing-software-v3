@@ -451,13 +451,15 @@ const GstExpenseList = () => {
           </button>
         </div>
 
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          label="Show Overview"
-          onChange={toggleOverview}
-        />
+        {role !== "authenticated" && (
+          <Checkbox
+            icon={<CheckBoxIcon />}
+            checkedIcon={<CheckIcon color="#fff" />}
+            checked={showOverview}
+            label="Show Overview"
+            onChange={toggleOverview}
+          />
+        )}
       </div>
 
       {showOverview && (

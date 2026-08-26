@@ -327,14 +327,16 @@ const LocalPartyList = () => {
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local Party List</h1>
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          style={{ marginRight: 8 }}
-          label={"Show Overview"}
-          onChange={() => toggleOverview()}
-        />
+        {role !== "authenticated" && (
+          <Checkbox
+            icon={<CheckBoxIcon />}
+            checkedIcon={<CheckIcon color="#fff" />}
+            checked={showOverview}
+            style={{ marginRight: 8 }}
+            label={"Show Overview"}
+            onChange={() => toggleOverview()}
+          />
+        )}
       </div>
 
       {showOverview && (
