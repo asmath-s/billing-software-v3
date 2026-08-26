@@ -1,5 +1,6 @@
 import {
   ADMINLIST,
+  ANALYTICS,
   DASHBOARD,
   GSTDELIVERYSLIP,
   GSTEXPENSEENTRY,
@@ -23,6 +24,7 @@ import {
 import {
   AdminIcon,
   ApproveListIcon,
+  ChartIcon,
   DashboardIcon,
   DeliveryIcon,
   EntryIcon,
@@ -50,6 +52,14 @@ export const appConfig = [
     path: DASHBOARD,
     elementKey: "Dashboard",
     roles: [ROLES.SuperAdmin],
+  },
+  {
+    type: "link",
+    label: "Analytics",
+    icon: ChartIcon,
+    path: ANALYTICS,
+    elementKey: "Analytics",
+    roles: [ROLES.admin],
   },
 
   {

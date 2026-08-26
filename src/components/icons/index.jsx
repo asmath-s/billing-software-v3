@@ -6,6 +6,7 @@ export { default as ApproveListIcon } from "./ApproveListIcon";
 export { default as ArrowDownIcon } from "./ArrowDownIcon";
 export { default as CalendarIcon } from "./CalendarIcon";
 export { default as CashIcon } from "./CashIcon";
+export { default as ChartIcon } from "./ChartIcon";
 export { default as CheckBoxIcon } from "./CheckBoxIcon";
 export { default as CheckIcon } from "./CheckIcon";
 export { default as ClearIcon } from "./ClearIcon";

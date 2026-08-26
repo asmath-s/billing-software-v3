@@ -1,5 +1,6 @@
 const LOGIN = "/";
 const DASHBOARD = "/dashboard";
+const ANALYTICS = "/analytics";
 const LOCALENTRY = "/localentry";
 const LOCALLIST = "/locallist";
 const LOCALPAIDLIST = "/localpaidlist";
@@ -21,6 +22,7 @@ const PRICELIST = "/pricelist";
 
 export {
   ADMINLIST,
+  ANALYTICS,
   DASHBOARD,
   GSTDELIVERYSLIP,
   GSTEXPENSEENTRY,

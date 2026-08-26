@@ -1,4 +1,5 @@
 import AdminList from "../pages/AdminList";
+import Analytics from "../pages/Analytics";
 import Dashboard from "../pages/Dashboard";
 import GstDeliverySlip from "../pages/GstDeliverySlip";
 import GstEntry from "../pages/GstEntry";
@@ -20,6 +21,7 @@ import QuotationEntry from "../pages/QuotationEntry";
 import QuotationList from "../pages/QuotationList";
 
 export const elementMap = {
+  Analytics,
   Dashboard,
   LocalEntry,
   LocalList,
