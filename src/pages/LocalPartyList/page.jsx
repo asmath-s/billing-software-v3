@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/joy";
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { getCustomers } from "../../api/customer";
@@ -95,7 +95,7 @@ const LocalPartyList = () => {
 
   /* ================= API QUERY BUILDER ================= */
 
-  const buildQuery = () => {
+  const buildQuery = useCallback(() => {
     const query = [];
     query.push("populate=*");
     query.push(`pagination[page]=${page + 1}`);
@@ -121,7 +121,7 @@ const LocalPartyList = () => {
     }
 
     return `?${query.join("&")}`;
-  };
+  }, [page, rowsPerPage, searchCustomer, fromDate, toDate]);
 
   /* ================= LOAD DATA ================= */
 
@@ -140,7 +140,7 @@ const LocalPartyList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, searchCustomer, fromDate, toDate]);
+  }, [buildQuery]);
 
   const loadLocalTotalAmount = useCallback(async () => {
     setLoading(true);
@@ -166,14 +166,23 @@ const LocalPartyList = () => {
 
       const res = await getLocalAmounts(queryString);
 
-      setLocalAmount(res);
+      setLocalAmount(res || {});
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
-      setLocalAmount([]);
+      setLocalAmount({});
     } finally {
       setLoading(false);
     }
   }, [searchCustomer, fromDate, toDate]);
+
+  const customerOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        label: c.name,
+        value: c.documentId,
+      })),
+    [customers],
+  );
 
   /* ================= INITIAL LOAD ================= */
 
@@ -347,10 +356,7 @@ const LocalPartyList = () => {
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((c) => ({
-              label: c.name,
-              value: c.documentId,
-            }))}
+            options={customerOptions}
             onChange={(e, val) => {
               setSearchCustomer(val);
               setPage(0);
@@ -366,15 +372,12 @@ const LocalPartyList = () => {
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
             className={"w-full"}
-            minDate={role === "superadmin" ? false : new Date()}
+            minDate={role === "superadmin" ? undefined : new Date()}
           />
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((c) => ({
-              label: c.name,
-              value: c.documentId,
-            }))}
+            options={customerOptions}
             onChange={(e, val) => {
               setSearchCustomer(val);
               setPage(0);
@@ -438,8 +441,16 @@ const LocalPartyList = () => {
 
           <tbody>
             {loading ? (
-              <tr colSpan={8}>
-                <td>Loading</td>
+              <tr>
+                <td colSpan={9} className="text-center py-4">
+                  Loading...
+                </td>
+              </tr>
+            ) : localData.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="text-center py-4 text-gray-500">
+                  No records found
+                </td>
               </tr>
             ) : (
               localData.map((item) => (
@@ -497,12 +508,10 @@ const LocalPartyList = () => {
                     <div className="flex gap-2">
                       <EditButton
                         onClick={() => {
-                          console.log("item.total_amount", item.total_amount);
                           if (
                             item.total_amount === 0 ||
                             item.total_amount === null
                           ) {
-                            console.log("getting inside", item.total_amount);
                             handleEdit(item);
                           } else {
                             navigate(

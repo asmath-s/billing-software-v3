@@ -7,8 +7,8 @@ import MainLayout from "../../layouts/MainLayout";
 
 import { createVendor, getVendors } from "../../api/vendor";
 
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import AutocompleteField from "../../components/AutocompleteField/AutocompleteField";
@@ -20,7 +20,6 @@ import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
 
 const GstExpenseEntry = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const editId = searchParams.get("editId");
@@ -37,27 +36,18 @@ const GstExpenseEntry = () => {
   const [vendorList, setVendorList] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadVendors();
-
-    if (editId) {
-      loadEditData(editId);
-    }
-  }, [editId]);
-
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const res = await getVendors();
       setVendorList(res || []);
     } catch {
       setVendorList([]);
     }
-  };
+  }, []);
 
-  const loadEditData = async (id) => {
+  const loadEditData = useCallback(async (id) => {
     try {
       const data = await getGstExpenseListById(id);
-      console.log(data);
 
       if (!data) return;
 
@@ -71,7 +61,15 @@ const GstExpenseEntry = () => {
     } catch {
       toast.error("Failed to load expense");
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadVendors();
+
+    if (editId) {
+      loadEditData(editId);
+    }
+  }, [editId, loadVendors, loadEditData]);
 
   const gstSummary = useMemo(() => {
     const amt = Number(amount) || 0;
@@ -226,6 +224,7 @@ const GstExpenseEntry = () => {
             <Button
               type={"submit"}
               label={editId ? "Update" : "Save"}
+              disabled={loading}
               icon1={<SaveIcon color="#fff" />}
               icon2={<SaveIcon color="#fff" />}
               className={

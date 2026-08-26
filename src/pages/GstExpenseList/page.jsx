@@ -159,7 +159,7 @@ const GstExpenseList = () => {
         params.set("filters[date][$gte]", startDate);
         params.set("filters[date][$lte]", endDate);
       }
-      console.log("Status filter:", statusFilter);
+
       if (statusFilter.type === "status") {
         params.set("filters[current_status][$in]", statusFilter.value);
       }
@@ -655,7 +655,7 @@ const GstExpenseList = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={role === "superadmin" ? 10 : 9}>
+                <td colSpan={role === "superadmin" ? 11 : 10}>
                   <div className="flex justify-center py-6 text-gray-400 text-sm">
                     Loading…
                   </div>
@@ -663,7 +663,7 @@ const GstExpenseList = () => {
               </tr>
             ) : gstSalesData.length === 0 ? (
               <tr>
-                <td colSpan={role === "superadmin" ? 10 : 9}>
+                <td colSpan={role === "superadmin" ? 11 : 10}>
                   <div className="flex justify-center py-6 text-gray-400 text-sm">
                     No records found.
                   </div>

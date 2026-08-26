@@ -32,9 +32,13 @@ const CustomerField = ({
   const resetFields = useCallback(() => {
     setCustomerName("");
     setSelectedCustomerID("");
-    isGstCustomer
-      ? (setAddress(""), setDeliveryAddress(""), setGstNo(""))
-      : setPhoneno("");
+    if (isGstCustomer) {
+      setAddress("");
+      setDeliveryAddress("");
+      setGstNo("");
+    } else {
+      setPhoneno("");
+    }
   }, [
     isGstCustomer,
     setCustomerName,
@@ -76,7 +80,8 @@ const CustomerField = ({
     (value, field) => {
       if (!value) return resetFields();
 
-      const selected = customerData.find((customer) => {
+      const selected = (customerData || []).find((customer) => {
+        if (!customer) return false;
         if (field === "name")
           return normalize(customer.name) === normalize(value);
 
@@ -124,7 +129,7 @@ const CustomerField = ({
       toast.success("Customer updated successfully");
       fetchCustomers(); // refresh list
     } catch (error) {
-      console.error(error);
+      console.error("Failed to update customer:", error);
       toast.error("Failed to update customer");
     }
   };

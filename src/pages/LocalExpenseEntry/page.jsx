@@ -86,10 +86,9 @@ const LocalExpenseEntry = () => {
         ].join("&");
 
         const res = await getLocalExpense(params);
-        console.log(res.data);
 
         allData.push(...(res.data.data || []));
-        pageCount = res.data.meta.pagination.pageCount;
+        pageCount = res.data.meta?.pagination?.pageCount || 1;
 
         page++;
       } while (page <= pageCount);
@@ -119,10 +118,10 @@ const LocalExpenseEntry = () => {
 
       const res = await getLocalExpenseAmounts(queryString);
 
-      setLocalExpenseAmount(res);
+      setLocalExpenseAmount(res || {});
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
-      setLocalExpenseAmount([]);
+      setLocalExpenseAmount({});
     } finally {
       setLoading(false);
     }
@@ -282,27 +281,34 @@ const LocalExpenseEntry = () => {
     setLoading(true);
 
     try {
-      for (const item of groupedData[approveDate]) {
-        if (item.current_status === "admin") {
-          // eslint-disable-next-line no-unused-vars
-          const { id, documentId, publishedAt, updatedAt, createdAt, ...rest } =
-            item;
-          rest.approved = true;
-          await createAdminExpense(rest);
-          await deleteLocalExpense(item.documentId);
-        } else {
-          await updateLocalExpense(item.documentId, {
-            current_status: item.current_status,
-            approved: true,
-          });
-        }
-      }
+      await Promise.all(
+        (groupedData[approveDate] || []).map(async (item) => {
+          if (item.current_status === "admin") {
+            const {
+              id: _id,
+              documentId: _docId,
+              publishedAt: _pub,
+              updatedAt: _upd,
+              createdAt: _cre,
+              ...rest
+            } = item;
+            rest.approved = true;
+            await createAdminExpense(rest);
+            await deleteLocalExpense(item.documentId);
+          } else {
+            await updateLocalExpense(item.documentId, {
+              current_status: item.current_status,
+              approved: true,
+            });
+          }
+        }),
+      );
 
       await loadExpenseData();
       toast.success("Approved successfully!");
       setConfirmOpen(false);
     } catch (error) {
-      console.error(error);
+      console.error("Approval failed:", error);
       toast.error("Approval failed");
     } finally {
       setLoading(false);
@@ -381,7 +387,7 @@ const LocalExpenseEntry = () => {
               label="Date"
               onChange={(d) => setDate(setCurrentTime(d))}
               className={"w-full"}
-              minDate={role === "superadmin" ? false : new Date()}
+              minDate={role === "superadmin" ? undefined : new Date()}
             />
           )}
           <InputField

@@ -82,9 +82,7 @@ const LocalList = () => {
 
     try {
       const res = await getLocalList(queryString);
-      console.log("Local list fetched:", res);
-
-      setLocalData(res.data);
+      setLocalData(res.data || []);
     } catch (error) {
       console.error("Local list fetch failed:", error);
       setLocalData([]);
@@ -118,10 +116,10 @@ const LocalList = () => {
 
       const res = await getLocalAmounts(queryString);
 
-      setLocalAmount(res);
+      setLocalAmount(res || {});
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
-      setLocalAmount([]);
+      setLocalAmount({});
     } finally {
       setLoading(false);
     }
@@ -144,6 +142,15 @@ const LocalList = () => {
 
   /* ================= FILTER + GROUP ================= */
 
+  const customerOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        label: c.name,
+        value: c.documentId,
+      })),
+    [customers],
+  );
+
   const groupedData = useMemo(() => {
     if (!localData?.length) return {};
 
@@ -155,7 +162,7 @@ const LocalList = () => {
 
     const filtered = localData.filter((item) => {
       const customerMatch =
-        !searchCustomer || item.customer.documentId === searchCustomer.value;
+        !searchCustomer || item?.customer?.documentId === searchCustomer.value;
 
       const dateMatch =
         isWithinDateRange(item.date) ||
@@ -334,10 +341,7 @@ const LocalList = () => {
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((c) => ({
-              label: c.name,
-              value: c.documentId,
-            }))}
+            options={customerOptions}
             onChange={(e, val) => setSearchCustomer(val)}
           />
         </div>

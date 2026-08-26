@@ -41,6 +41,7 @@ import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
 import MainLayout from "../../layouts/MainLayout";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
 
 function labelDisplayedRows({ from, to, count }) {
@@ -94,6 +95,7 @@ const LocalHubList = () => {
   }, [page, rowsPerPage, fromDate, toDate, searchInstruction]);
 
   const loadExpenseData = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await getLocalExpense(buildQuery());
 
@@ -109,6 +111,8 @@ const LocalHubList = () => {
 
       setExpenseData([]);
       setTotalCount(0);
+    } finally {
+      setLoading(false);
     }
   }, [buildQuery]);
 
@@ -321,13 +325,13 @@ const LocalHubList = () => {
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
             className={"w-full"}
-            minDate={role === "superadmin" ? false : new Date()}
+            minDate={role === "superadmin" ? undefined : new Date()}
           />
 
           <InputField
             placeholder="Instruction"
             value={instruction}
-            onChange={(e) => setInstruction(e.target.value)}
+            onChange={(e) => setInstruction(capitalizeFirstLetter(e.target.value))}
             required={true}
           />
 
@@ -392,49 +396,63 @@ const LocalHubList = () => {
           </thead>
 
           <tbody>
-            {expenseData.map((item) => (
-              <tr key={item.documentId}>
-                <td>{dayjs(item.date).format("DD-MM-YYYY")}</td>
-                <td className="w-[10%]">{item.role}</td>
-                <td>{item.instruction}</td>
-                <td>
-                  <span
-                    className={`p-1 rounded-md flex justify-center capitalize  ${
-                      item.method === "expense"
-                        ? "bg-rose-200 text-rose-800"
-                        : "bg-[#DAF4F0] text-[#0AB39C]"
-                    }`}
-                  >
-                    {item.method}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    className={`p-1 rounded-md flex justify-center capitalize  ${
-                      item.custom_type === "cash"
-                        ? "bg-[#E2E5ED] text-[#405189]"
-                        : "bg-stone-200 text-stone-800"
-                    }`}
-                  >
-                    {item.custom_type}
-                  </span>
-                </td>
-                <td>{item.amount}</td>
-                <td>
-                  <div className="flex gap-2">
-                    <EditButton onClick={() => handleEdit(item)} />
-
-                    <DeletePopup
-                      handleDelete={() => handleDelete(item.documentId)}
-                    />
-                  </div>
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="text-center py-4">
+                  Loading...
                 </td>
               </tr>
-            ))}
+            ) : expenseData.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-4 text-gray-500">
+                  No records found
+                </td>
+              </tr>
+            ) : (
+              expenseData.map((item) => (
+                <tr key={item.documentId}>
+                  <td>{dayjs(item.date).format("DD-MM-YYYY")}</td>
+                  <td className="w-[10%]">{item.role}</td>
+                  <td>{item.instruction}</td>
+                  <td>
+                    <span
+                      className={`p-1 rounded-md flex justify-center capitalize  ${
+                        item.method === "expense"
+                          ? "bg-rose-200 text-rose-800"
+                          : "bg-[#DAF4F0] text-[#0AB39C]"
+                      }`}
+                    >
+                      {item.method}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={`p-1 rounded-md flex justify-center capitalize  ${
+                        item.custom_type === "cash"
+                          ? "bg-[#E2E5ED] text-[#405189]"
+                          : "bg-stone-200 text-stone-800"
+                      }`}
+                    >
+                      {item.custom_type}
+                    </span>
+                  </td>
+                  <td>{item.amount}</td>
+                  <td>
+                    <div className="flex gap-2">
+                      <EditButton onClick={() => handleEdit(item)} />
+
+                      <DeletePopup
+                        handleDelete={() => handleDelete(item.documentId)}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={8}>
+              <td colSpan={7}>
                 <Box
                   sx={{
                     display: "flex",

@@ -136,8 +136,6 @@ const GstEntry = () => {
 
       if (!data) return;
 
-      console.log("Edit Data:", data);
-
       const transformed = transformBillingData(data);
 
       setDocumentId(data.documentId);
@@ -167,7 +165,7 @@ const GstEntry = () => {
     } else {
       loadLastBillNo();
     }
-  }, [editId]);
+  }, [editId, loadCustomers, loadEditData, loadLastBillNo]);
 
   const handlePrintClick = () => {
     setActionType("print");
@@ -360,7 +358,7 @@ const GstEntry = () => {
             value={date}
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
-            minDate={role === "superadmin" ? false : new Date()}
+            minDate={role === "superadmin" ? undefined : new Date()}
           />
 
           <InputField

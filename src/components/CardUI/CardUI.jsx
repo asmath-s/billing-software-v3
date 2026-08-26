@@ -1,12 +1,12 @@
-"use client";
+import { formattedAmount } from "../../utils/FormatAmount";
 
 const CardUI = ({
   title,
   amount,
   icon,
-  titleColor,
-  className,
-  amountColor,
+  titleColor = "",
+  className = "",
+  amountColor = "",
 }) => {
   return (
     <div
@@ -14,8 +14,8 @@ const CardUI = ({
     >
       <div>
         <p className={`text-lg font-normal mb-2 ${titleColor}`}>{title}</p>
-        <h2 className={`text-[26px] font-normal" ${amountColor}`}>
-          ₹ {amount}
+        <h2 className={`text-[26px] font-normal ${amountColor}`}>
+          ₹ {formattedAmount(amount)}
         </h2>
       </div>
       {icon}
@@ -24,3 +24,4 @@ const CardUI = ({
 };
 
 export default CardUI;
+

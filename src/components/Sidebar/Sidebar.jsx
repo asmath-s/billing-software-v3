@@ -5,11 +5,58 @@ import { appConfig } from "../../config/appConfig";
 import { useAuth } from "../../context/auth-context";
 import { ArrowDownIcon, HamburgerIcon, LogoutIcon } from "../icons";
 
+const MenuItem = ({ icon: Icon, label, path, collapsed, isActive }) => {
+  return (
+    <Link
+      to={path}
+      className={`flex items-center gap-4 px-3 py-2 rounded-full text-white text-lg font-medium transition-all duration-200
+      ${collapsed ? "justify-center" : ""}
+      ${isActive ? "bg-[#9E77D2]" : "hover:bg-[#9E77D2]"}`}
+    >
+      {Icon && <Icon />}
+      {!collapsed && <span>{label}</span>}
+    </Link>
+  );
+};
+
+const SubMenu = ({ menu, collapsed, isOpen, onToggle, isPathActive }) => {
+  const Icon = menu.icon;
+
+  return (
+    <>
+      <div
+        className="flex items-center justify-between px-3 py-2 cursor-pointer"
+        onClick={() => onToggle(menu.key)}
+      >
+        <div className="flex items-center gap-4 text-white text-lg font-medium">
+          {Icon && <Icon />}
+          {!collapsed && <span>{menu.label}</span>}
+        </div>
+        {!collapsed && (
+          <ArrowDownIcon className={isOpen ? "rotate-180" : ""} />
+        )}
+      </div>
+
+      {isOpen && (
+        <div className={`flex flex-col gap-1 ${collapsed ? "" : "ml-6"}`}>
+          {menu.children.map((child) => (
+            <MenuItem
+              key={child.path}
+              {...child}
+              collapsed={collapsed}
+              isActive={isPathActive(child.path)}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
 const Sidebar = () => {
   const { pathname } = useLocation();
   const { role, logout } = useAuth();
-
-  const Navigate = useNavigate();
+  const navigate = useNavigate();
 
   const [collapsed, setCollapsed] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
@@ -49,53 +96,7 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     logout();
-    Navigate("/");
-  };
-
-  const MenuItem = ({ icon, label, path }) => {
-    const Icon = icon;
-
-    return (
-      <Link
-        to={path}
-        className={`flex items-center gap-4 px-3 py-2 rounded-full text-white text-lg font-medium transition-all duration-200
-        ${collapsed ? "justify-center" : ""}
-        ${isActive(path) ? "bg-[#9E77D2]" : "hover:bg-[#9E77D2]"}`}
-      >
-        <Icon />
-        {!collapsed && <span>{label}</span>}
-      </Link>
-    );
-  };
-
-  const SubMenu = ({ menu }) => {
-    const Icon = menu.icon;
-    const isOpen = openMenu === menu.key;
-
-    return (
-      <>
-        <div
-          className="flex items-center justify-between px-3 py-2 cursor-pointer"
-          onClick={() => toggleMenu(menu.key)}
-        >
-          <div className="flex items-center gap-4 text-white text-lg font-medium">
-            <Icon />
-            {!collapsed && <span>{menu.label}</span>}
-          </div>
-          {!collapsed && (
-            <ArrowDownIcon className={isOpen ? "rotate-180" : ""} />
-          )}
-        </div>
-
-        {isOpen && (
-          <div className={`flex flex-col gap-1 ${collapsed ? "" : "ml-6"}`}>
-            {menu.children.map((child) => (
-              <MenuItem key={child.path} {...child} />
-            ))}
-          </div>
-        )}
-      </>
-    );
+    navigate("/");
   };
 
   return (
@@ -116,9 +117,21 @@ const Sidebar = () => {
       <div className="mt-6 flex flex-col gap-1">
         {filteredMenu.map((menu) =>
           menu.type === "link" ? (
-            <MenuItem key={menu.path} {...menu} />
+            <MenuItem
+              key={menu.path}
+              {...menu}
+              collapsed={collapsed}
+              isActive={isActive(menu.path)}
+            />
           ) : (
-            <SubMenu key={menu.key} menu={menu} />
+            <SubMenu
+              key={menu.key}
+              menu={menu}
+              collapsed={collapsed}
+              isOpen={openMenu === menu.key}
+              onToggle={toggleMenu}
+              isPathActive={isActive}
+            />
           ),
         )}
       </div>
@@ -126,7 +139,7 @@ const Sidebar = () => {
         <button
           className={`${
             collapsed ? "w-[50px] justify-center" : "w-[210px]"
-          } bg-[#2D2D35] text-white text-lg  py-3 px-4 rounded-full flex items-center gap-2 hover:bg-[#9E77D2] focus:bg-[#9E77D2]`}
+          } bg-[#2D2D35] text-white text-lg py-3 px-4 rounded-full flex items-center gap-2 hover:bg-[#9E77D2] focus:bg-[#9E77D2]`}
           onClick={handleLogout}
         >
           <LogoutIcon /> {!collapsed && "Logout"}
@@ -137,3 +150,4 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+

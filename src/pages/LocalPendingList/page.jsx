@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/joy";
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -71,9 +71,6 @@ const LocalPendingList = () => {
 
   /*
    * Load customers
-   *
-   * No state is updated before the async request starts.
-   * This avoids react-hooks/set-state-in-effect.
    */
   const loadCustomers = useCallback(async () => {
     try {
@@ -85,10 +82,12 @@ const LocalPendingList = () => {
     }
   }, []);
 
+  useEffect(() => {
+    loadCustomers();
+  }, [loadCustomers]);
+
   /*
    * Query builder
-   *
-   * Memoized because it is used by loadLocalPendingData.
    */
   const buildQuery = useCallback(() => {
     const query = [];
@@ -150,34 +149,14 @@ const LocalPendingList = () => {
     }
   }, [buildQuery]);
 
-  /*
-   * Initial customer load
-   */
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchCustomers = async () => {
-      try {
-        const res = await getCustomers();
-
-        if (!cancelled) {
-          setCustomers(res || []);
-        }
-      } catch (error) {
-        console.error("Customer fetch failed:", error);
-
-        if (!cancelled) {
-          setCustomers([]);
-        }
-      }
-    };
-
-    fetchCustomers();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const customerOptions = useMemo(
+    () =>
+      customers.map((customer) => ({
+        label: customer.name,
+        value: customer.documentId,
+      })),
+    [customers],
+  );
 
   /*
    * Load pending list whenever pagination/filter values change
@@ -399,10 +378,7 @@ const LocalPendingList = () => {
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((customer) => ({
-              label: customer.name,
-              value: customer.documentId,
-            }))}
+            options={customerOptions}
             onChange={(_, value) => {
               setSearchCustomer(value);
               setPage(0);

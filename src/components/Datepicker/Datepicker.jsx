@@ -1,4 +1,3 @@
-"use client";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import DatePicker from "react-datepicker";
@@ -15,7 +14,7 @@ const Datepicker = ({
   ToDate,
   setFromDate,
   setToDate,
-  className,
+  className = "",
   disableFuture = false,
   disablePast = false,
 }) => {
@@ -32,7 +31,9 @@ const Datepicker = ({
             <div className="relative w-full">
               <DateUiPicker
                 onChange={(newValue) =>
-                  setFromDate(dayjs(new Date(newValue)).format("YYYY-MM-DD"))
+                  setFromDate(
+                    newValue ? dayjs(new Date(newValue)).format("YYYY-MM-DD") : null,
+                  )
                 }
                 label="From Date"
                 value={FromDate}
@@ -44,10 +45,12 @@ const Datepicker = ({
               <DateUiPicker
                 onChange={(newValue) =>
                   setToDate(
-                    dayjs(new Date(newValue))
-                      .endOf("day")
-                      .utc()
-                      .format("YYYY-MM-DDTHH:mm:ss[Z]"),
+                    newValue
+                      ? dayjs(new Date(newValue))
+                          .endOf("day")
+                          .utc()
+                          .format("YYYY-MM-DDTHH:mm:ss[Z]")
+                      : null,
                   )
                 }
                 label="To Date"
@@ -76,14 +79,19 @@ export const DateUiPicker = ({
   onChange,
   label,
   value,
-  minDate = false,
+  minDate = undefined,
   disabled = false,
   isClearable = false,
-  className,
+  className = "",
   disableFuture = false,
   disablePast = false,
 }) => {
   const today = new Date();
+  const resolvedMinDate = disablePast
+    ? today
+    : minDate && minDate !== false
+      ? new Date(minDate)
+      : undefined;
 
   return (
     <div className="flex flex-col" style={{ lineHeight: "10px" }}>
@@ -101,7 +109,7 @@ export const DateUiPicker = ({
           placeholderText={label}
           popperPlacement="auto"
           disabled={disabled}
-          minDate={disablePast ? today : minDate || undefined}
+          minDate={resolvedMinDate}
           maxDate={disableFuture ? today : undefined}
           icon={
             <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 text-black cursor-pointer !p-0 !w-5 !h-5" />
@@ -112,3 +120,4 @@ export const DateUiPicker = ({
     </div>
   );
 };
+

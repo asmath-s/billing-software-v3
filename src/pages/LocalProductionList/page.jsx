@@ -398,7 +398,7 @@ const LocalProductionList = () => {
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
             className="w-full"
-            minDate={role === "superadmin" ? false : new Date()}
+            minDate={role === "superadmin" ? undefined : new Date()}
           />
 
           <InputField
@@ -545,7 +545,7 @@ const LocalProductionList = () => {
 
           <tfoot>
             <tr>
-              <td colSpan={8}>
+              <td colSpan={7}>
                 <Box
                   sx={{
                     display: "flex",
