@@ -372,13 +372,50 @@ const LocalList = () => {
       </div>
 
       {/* Tables */}
-      {Object.keys(groupedData).map((date) => (
-        <div key={date} className="mt-8">
-          <h2 className="text-lg font-semibold mb-2">
-            Date: {dayjs(date).format("DD/MM/YYYY")}
-          </h2>
+      {Object.keys(groupedData).map((date) => {
+        const groupItems = groupedData[date] || [];
+        const groupTotalCash = groupItems.reduce(
+          (sum, item) =>
+            sum +
+            (item.cash || []).reduce(
+              (cSum, c) => cSum + (Number(c.amount) || 0),
+              0,
+            ),
+          0,
+        );
+        const groupTotalGpay = groupItems.reduce(
+          (sum, item) =>
+            sum +
+            (item.gpay || []).reduce(
+              (gSum, g) => gSum + (Number(g.amount) || 0),
+              0,
+            ),
+          0,
+        );
 
-          <Table borderAxis="both" hoverRow>
+        return (
+          <div key={date} className="mt-8">
+            <div className="flex flex-wrap justify-between items-center mb-2 gap-3">
+              <h2 className="text-lg font-semibold text-gray-800">
+                Date: {dayjs(date).format("DD/MM/YYYY")}
+              </h2>
+
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 bg-green-50 text-green-800 border border-green-200 px-3 py-1 rounded-lg text-sm shadow-xs">
+                  <CashIcon width="18" height="18" color="#166534" />
+                  <span className="font-medium text-xs text-green-700">Total Cash:</span>
+                  <span className="font-bold">₹ {formattedAmount(groupTotalCash)}</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-lg text-sm shadow-xs">
+                  <GpayIcon width="18" height="18" color="#1e40af" />
+                  <span className="font-medium text-xs text-blue-700">Total GPay:</span>
+                  <span className="font-bold">₹ {formattedAmount(groupTotalGpay)}</span>
+                </div>
+              </div>
+            </div>
+
+            <Table borderAxis="both" hoverRow>
             <thead>
               <tr>
                 <th className="w-[10%]">Customer</th>
@@ -474,7 +511,8 @@ const LocalList = () => {
             </div>
           )}
         </div>
-      ))}
+      );
+    })}
 
       {/* Confirm Popup */}
       {confirmOpen && (
