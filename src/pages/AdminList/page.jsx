@@ -37,6 +37,7 @@ import {
 import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
@@ -47,6 +48,7 @@ function labelDisplayedRows({ from, to, count }) {
 
 const AdminList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDateObj, toDateObj } = useFinancialYear();
   const [date, setDate] = useState(new Date());
   const [instruction, setInstruction] = useState("");
   const [customType, setCustomType] = useState("cash");
@@ -59,8 +61,13 @@ const AdminList = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
-  const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate] = useState(null);
+  const [fromDate, setFromDate] = useState(fromDateObj);
+  const [toDate, setToDate] = useState(toDateObj);
+
+  useEffect(() => {
+    setFromDate(fromDateObj);
+    setToDate(toDateObj);
+  }, [fromDateObj, toDateObj]);
   const [searchText, setSearchText] = useState("");
 
   const buildQuery = useCallback(() => {

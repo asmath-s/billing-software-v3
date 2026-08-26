@@ -28,6 +28,7 @@ import {
   GpayIcon,
   RefreshIcon,
 } from "../../components/icons";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 
 /* -----------------------------------------------------------------
@@ -136,17 +137,21 @@ const PaymentTooltip = ({ active, payload }) => {
    Analytics Page Component
 ------------------------------------------------------------------*/
 const Analytics = () => {
-  const currentYear = new Date().getFullYear();
+  const { financialYear, fromDateObj, toDateObj } = useFinancialYear();
 
   // Filters State
   const [viewMode, setViewMode] = useState("all"); // 'all' | 'month' | 'year' | 'custom'
-  const [selectedYear, setSelectedYear] = useState(
-    AVAILABLE_YEARS.includes(currentYear) ? currentYear : 2026,
-  );
+  const [selectedYear, setSelectedYear] = useState(financialYear);
   const [selectedMonth, setSelectedMonth] = useState("all"); // 'all' or 0..11
-  const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate] = useState(null);
+  const [fromDate, setFromDate] = useState(fromDateObj);
+  const [toDate, setToDate] = useState(toDateObj);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setSelectedYear(financialYear);
+    setFromDate(fromDateObj);
+    setToDate(toDateObj);
+  }, [financialYear, fromDateObj, toDateObj]);
 
   // Aggregated Data
   const [chartData, setChartData] = useState([]);

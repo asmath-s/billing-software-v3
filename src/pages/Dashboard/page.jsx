@@ -12,6 +12,7 @@ import {
 import AdminCard from "../../components/AdminCard/AdminCard";
 import Datepicker from "../../components/Datepicker/Datepicker";
 import { AccountIcon, CashIcon, GpayIcon } from "../../components/icons";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 
 /* -----------------------------------------------------------------
@@ -129,8 +130,15 @@ const sectionMotion = {
 ------------------------------------------------------------------*/
 
 const Dashboard = () => {
-  const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate] = useState(null);
+  const { fromDateObj, toDateObj } = useFinancialYear();
+  const [fromDate, setFromDate] = useState(fromDateObj);
+  const [toDate, setToDate] = useState(toDateObj);
+
+  useEffect(() => {
+    setFromDate(fromDateObj);
+    setToDate(toDateObj);
+  }, [fromDateObj, toDateObj]);
+
   const [localSalesAmount, setLocalSalesAmount] = useState({});
   const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
   const [localAuthenticatedExpenseAmount, setLocalAuthenticatedExpenseAmount] =

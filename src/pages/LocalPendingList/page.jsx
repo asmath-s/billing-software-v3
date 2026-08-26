@@ -33,6 +33,7 @@ import SelectField from "../../components/SelectField/SelectField";
 import MainLayout from "../../layouts/MainLayout";
 
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
 import { formattedAmount } from "../../utils/FormatAmount";
@@ -50,10 +51,17 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalPendingList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDateObj, toDateObj } = useFinancialYear();
   const navigate = useNavigate();
 
-  const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate] = useState(null);
+  const [fromDate, setFromDate] = useState(fromDateObj);
+  const [toDate, setToDate] = useState(toDateObj);
+
+  useEffect(() => {
+    setFromDate(fromDateObj);
+    setToDate(toDateObj);
+  }, [fromDateObj, toDateObj]);
+
   const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [customers, setCustomers] = useState([]);

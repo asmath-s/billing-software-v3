@@ -44,6 +44,7 @@ import {
 import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { setCurrentTime } from "../../utils/DatewithTime";
 
@@ -53,6 +54,7 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalProductionList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDateObj, toDateObj } = useFinancialYear();
 
   // Form state
   const [date, setDate] = useState(new Date());
@@ -75,8 +77,13 @@ const LocalProductionList = () => {
   const [totalCount, setTotalCount] = useState(0);
 
   // Date filter state
-  const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate] = useState(null);
+  const [fromDate, setFromDate] = useState(fromDateObj);
+  const [toDate, setToDate] = useState(toDateObj);
+
+  useEffect(() => {
+    setFromDate(fromDateObj);
+    setToDate(toDateObj);
+  }, [fromDateObj, toDateObj]);
 
   /**
    * Build the API query for the production expense list.

@@ -37,6 +37,7 @@ import { deleteLocalList, getLocalList } from "../../api/localList";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RightIcon from "../../components/icons/RightIcon";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -44,12 +45,19 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalPaidList = () => {
   const { showOverview, toggleOverview } = useAuth();
+  const { fromDateObj, toDateObj } = useFinancialYear();
   const navigate = useNavigate();
 
   /* ================= STATE ================= */
 
-  const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate] = useState(null);
+  const [fromDate, setFromDate] = useState(fromDateObj);
+  const [toDate, setToDate] = useState(toDateObj);
+
+  useEffect(() => {
+    setFromDate(fromDateObj);
+    setToDate(toDateObj);
+  }, [fromDateObj, toDateObj]);
+
   const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [customers, setCustomers] = useState([]);

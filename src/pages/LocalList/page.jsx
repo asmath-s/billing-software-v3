@@ -25,17 +25,25 @@ import {
 } from "../../components/icons";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
 import { formattedAmount } from "../../utils/FormatAmount";
 const LocalList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDateObj, toDateObj } = useFinancialYear();
   const navigate = useNavigate();
 
   /* ================= STATE ================= */
-  const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate] = useState(null);
+  const [fromDate, setFromDate] = useState(fromDateObj);
+  const [toDate, setToDate] = useState(toDateObj);
+
+  useEffect(() => {
+    setFromDate(fromDateObj);
+    setToDate(toDateObj);
+  }, [fromDateObj, toDateObj]);
+
   const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [customers, setCustomers] = useState([]);

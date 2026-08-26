@@ -23,6 +23,7 @@ import Datepicker, {
 } from "../../components/Datepicker/Datepicker";
 import DeletePopup from "../../components/DeletePopup/DeletePopup";
 import EditButton from "../../components/EditButton/EditButton";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { GSTSALESENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
@@ -100,10 +101,17 @@ const INITIAL_FORM_STATE = {
 
 const GstSalesList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDateObj, toDateObj } = useFinancialYear();
   const navigate = useNavigate();
 
-  const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate] = useState(null);
+  const [fromDate, setFromDate] = useState(fromDateObj);
+  const [toDate, setToDate] = useState(toDateObj);
+
+  useEffect(() => {
+    setFromDate(fromDateObj);
+    setToDate(toDateObj);
+  }, [fromDateObj, toDateObj]);
+
   const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [gstCustomers, setGstCustomers] = useState([]);
