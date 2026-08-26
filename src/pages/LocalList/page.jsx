@@ -29,21 +29,16 @@ import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
+import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
 const LocalList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
-  const { fromDateObj, toDateObj } = useFinancialYear();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const navigate = useNavigate();
 
   /* ================= STATE ================= */
-  const [fromDate, setFromDate] = useState(fromDateObj);
-  const [toDate, setToDate] = useState(toDateObj);
-
-  useEffect(() => {
-    setFromDate(fromDateObj);
-    setToDate(toDateObj);
-  }, [fromDateObj, toDateObj]);
-
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
   const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [customers, setCustomers] = useState([]);
@@ -68,6 +63,17 @@ const LocalList = () => {
   /* ================= LOAD LOCAL LIST ================= */
 
   const loadLocalEntriesData = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
     const query = [];
 
@@ -78,9 +84,9 @@ const LocalList = () => {
       query.push(`filters[customer][documentId][$eq]=${searchCustomer.value}`);
     }
 
-    if (fromDate && toDate) {
-      query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
-      query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
+    if (from && to) {
+      query.push(`fromDate=${from}`);
+      query.push(`toDate=${to}`);
     }
 
     query.push("sort[0]=date:desc");
@@ -97,14 +103,25 @@ const LocalList = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchCustomer, fromDate, toDate]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
-  /* ================= LOAD LOCAL Amounts ================= */
+  /* ================= LOAD LOCAL AMOUNTS ================= */
+
   const loadLocalTotalAmount = useCallback(async () => {
-    setLoading(true);
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
 
+    if (!shouldFetch) {
+      return;
+    }
+
+    setLoading(true);
     try {
-      let query = [];
+      const query = [];
 
       if (searchCustomer) {
         query.push(
@@ -112,10 +129,7 @@ const LocalList = () => {
         );
       }
 
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
+      if (from && to) {
         query.push(`fromDate=${from}`);
         query.push(`toDate=${to}`);
       }
@@ -131,7 +145,7 @@ const LocalList = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchCustomer, fromDate, toDate]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /* ================= INITIAL LOAD ================= */
   useEffect(() => {

@@ -47,6 +47,7 @@ import { useAuth } from "../../context/auth-context";
 import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { resolveApiDateRange } from "../../utils/financialYear";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -54,7 +55,7 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalProductionList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
-  const { fromDateObj, toDateObj } = useFinancialYear();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
 
   // Form state
   const [date, setDate] = useState(new Date());
@@ -77,21 +78,24 @@ const LocalProductionList = () => {
   const [totalCount, setTotalCount] = useState(0);
 
   // Date filter state
-  const [fromDate, setFromDate] = useState(fromDateObj);
-  const [toDate, setToDate] = useState(toDateObj);
-
-  useEffect(() => {
-    setFromDate(fromDateObj);
-    setToDate(toDateObj);
-  }, [fromDateObj, toDateObj]);
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
 
   /**
    * Build the API query for the production expense list.
-   *
-   * useCallback keeps the function reference stable until one
-   * of its actual dependencies changes.
    */
   const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [
       `pagination[page]=${page + 1}`,
       `pagination[pageSize]=${rowsPerPage}`,
@@ -109,22 +113,27 @@ const LocalProductionList = () => {
       );
     }
 
-    if (fromDate && toDate) {
+    if (from && to) {
       query.push(
-        `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-        `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+        `filters[date][$gte]=${dayjs(from).startOf("day").toISOString()}`,
+        `filters[date][$lte]=${dayjs(to).endOf("day").toISOString()}`,
       );
     }
 
     return query.join("&");
-  }, [page, rowsPerPage, fromDate, toDate, searchInstruction]);
+  }, [page, rowsPerPage, fromDate, toDate, fyFromDate, fyToDate, searchInstruction]);
 
   /**
    * Load production expense list.
    */
   const loadExpenseData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      return;
+    }
+
     try {
-      const res = await getLocalExpense(buildQuery());
+      const res = await getLocalExpense(queryString);
 
       const data = res?.data?.data || [];
       const total = res?.data?.meta?.pagination?.total || 0;
@@ -145,12 +154,23 @@ const LocalProductionList = () => {
    * Load overview totals.
    */
   const loadLocalTotalAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     try {
       const query = [];
 
-      if (fromDate && toDate) {
-        query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
-        query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
+      if (from && to) {
+        query.push(`fromDate=${from}`);
+        query.push(`toDate=${to}`);
       }
 
       if (searchInstruction.trim()) {
@@ -171,7 +191,7 @@ const LocalProductionList = () => {
 
       setLocalExpenseAmount([]);
     }
-  }, [fromDate, toDate, searchInstruction]);
+  }, [fromDate, toDate, fyFromDate, fyToDate, searchInstruction]);
 
   /**
    * Reload list whenever pagination or date filters change.

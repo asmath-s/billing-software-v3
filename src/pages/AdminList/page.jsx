@@ -41,6 +41,7 @@ import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { resolveApiDateRange } from "../../utils/financialYear";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -48,7 +49,7 @@ function labelDisplayedRows({ from, to, count }) {
 
 const AdminList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
-  const { fromDateObj, toDateObj } = useFinancialYear();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const [date, setDate] = useState(new Date());
   const [instruction, setInstruction] = useState("");
   const [customType, setCustomType] = useState("cash");
@@ -61,16 +62,22 @@ const AdminList = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [totalCount, setTotalCount] = useState(0);
-  const [fromDate, setFromDate] = useState(fromDateObj);
-  const [toDate, setToDate] = useState(toDateObj);
-
-  useEffect(() => {
-    setFromDate(fromDateObj);
-    setToDate(toDateObj);
-  }, [fromDateObj, toDateObj]);
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
   const [searchText, setSearchText] = useState("");
 
   const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [];
 
     query.push(`pagination[page]=${page + 1}`);
@@ -83,23 +90,26 @@ const AdminList = () => {
       query.push(`filters[instruction][$containsi]=${searchText}`);
     }
 
-    if (fromDate && toDate) {
+    if (from && to) {
       query.push(
-        `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-      );
-      query.push(
-        `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+        `filters[date][$gte]=${dayjs(from).startOf("day").toISOString()}`,
+        `filters[date][$lte]=${dayjs(to).endOf("day").toISOString()}`,
       );
     }
 
     return query.join("&");
-  }, [page, rowsPerPage, searchText, fromDate, toDate]);
+  }, [page, rowsPerPage, searchText, fromDate, toDate, fyFromDate, fyToDate]);
 
   const loadExpenseData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await getAdminExpense(buildQuery());
+      const res = await getAdminExpense(queryString);
 
       setExpenseData(res?.data || []);
       setTotalCount(res?.meta?.pagination?.total || 0);
@@ -113,6 +123,17 @@ const AdminList = () => {
   }, [buildQuery]);
 
   const LoadAdminAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -126,12 +147,10 @@ const AdminList = () => {
         query.push(`filters[instruction][$containsi]=${searchText}`);
       }
 
-      if (fromDate && toDate) {
+      if (from && to) {
         query.push(
-          `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-        );
-        query.push(
-          `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+          `filters[date][$gte]=${dayjs(from).startOf("day").toISOString()}`,
+          `filters[date][$lte]=${dayjs(to).endOf("day").toISOString()}`,
         );
       }
       const queryString = query.length ? `?${query.join("&")}` : "";
@@ -145,7 +164,7 @@ const AdminList = () => {
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate, searchText]);
+  }, [searchText, fromDate, toDate, fyFromDate, fyToDate]);
 
   useEffect(() => {
     loadExpenseData();

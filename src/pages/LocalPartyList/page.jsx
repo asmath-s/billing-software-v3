@@ -51,6 +51,7 @@ import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
 import { useFinancialYear } from "../../context/financial-year-context";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { resolveApiDateRange } from "../../utils/financialYear";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -58,18 +59,13 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalPartyList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
-  const { fromDateObj, toDateObj } = useFinancialYear();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const navigate = useNavigate();
 
   /* ================= STATE ================= */
 
-  const [fromDate, setFromDate] = useState(fromDateObj);
-  const [toDate, setToDate] = useState(toDateObj);
-
-  useEffect(() => {
-    setFromDate(fromDateObj);
-    setToDate(toDateObj);
-  }, [fromDateObj, toDateObj]);
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
   const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [customers, setCustomers] = useState([]);
@@ -103,6 +99,17 @@ const LocalPartyList = () => {
   /* ================= API QUERY BUILDER ================= */
 
   const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [];
     query.push("populate=*");
     query.push(`pagination[page]=${page + 1}`);
@@ -115,9 +122,9 @@ const LocalPartyList = () => {
       query.push(`filters[customer][documentId][$eq]=${searchCustomer.value}`);
     }
 
-    if (fromDate && toDate) {
-      const startDate = dayjs(fromDate).startOf("day").toISOString();
-      const endDate = dayjs(toDate).endOf("day").toISOString();
+    if (from && to) {
+      const startDate = dayjs(from).startOf("day").toISOString();
+      const endDate = dayjs(to).endOf("day").toISOString();
 
       // GPay OR Cash payment date filter
       query.push(`filters[$or][0][gpay][date][$gte]=${startDate}`);
@@ -128,15 +135,20 @@ const LocalPartyList = () => {
     }
 
     return `?${query.join("&")}`;
-  }, [page, rowsPerPage, searchCustomer, fromDate, toDate]);
+  }, [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /* ================= LOAD DATA ================= */
 
   const loadLocalPartyData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await getLocalList(buildQuery());
+      const res = await getLocalList(queryString);
 
       setLocalData(res?.data || []);
       setTotalCount(res?.meta?.pagination?.total || 0);
@@ -150,10 +162,21 @@ const LocalPartyList = () => {
   }, [buildQuery]);
 
   const loadLocalTotalAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let query = [];
+      const query = [];
 
       if (searchCustomer) {
         query.push(
@@ -161,10 +184,7 @@ const LocalPartyList = () => {
         );
       }
 
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
+      if (from && to) {
         query.push(`fromDate=${from}`);
         query.push(`toDate=${to}`);
       }
@@ -180,7 +200,7 @@ const LocalPartyList = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchCustomer, fromDate, toDate]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   const customerOptions = useMemo(
     () =>

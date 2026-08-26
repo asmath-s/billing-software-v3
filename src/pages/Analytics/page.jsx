@@ -30,6 +30,7 @@ import {
 } from "../../components/icons";
 import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
+import { resolveApiDateRange } from "../../utils/financialYear";
 
 /* -----------------------------------------------------------------
    Number and Currency Formatter (Indian Currency Format)
@@ -137,21 +138,23 @@ const PaymentTooltip = ({ active, payload }) => {
    Analytics Page Component
 ------------------------------------------------------------------*/
 const Analytics = () => {
-  const { financialYear, fromDateObj, toDateObj } = useFinancialYear();
+  const {
+    financialYear,
+    fromDate: fyFromDate,
+    toDate: fyToDate,
+  } = useFinancialYear();
 
   // Filters State
   const [viewMode, setViewMode] = useState("all"); // 'all' | 'month' | 'year' | 'custom'
   const [selectedYear, setSelectedYear] = useState(financialYear);
   const [selectedMonth, setSelectedMonth] = useState("all"); // 'all' or 0..11
-  const [fromDate, setFromDate] = useState(fromDateObj);
-  const [toDate, setToDate] = useState(toDateObj);
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setSelectedYear(financialYear);
-    setFromDate(fromDateObj);
-    setToDate(toDateObj);
-  }, [financialYear, fromDateObj, toDateObj]);
+  }, [financialYear]);
 
   // Aggregated Data
   const [chartData, setChartData] = useState([]);
@@ -429,13 +432,21 @@ const Analytics = () => {
         setSummaryTotals(totals);
       } else if (viewMode === "custom") {
         // Custom Date Range aggregation
-        const start = fromDate ? dayjs(fromDate).format("YYYY-MM-DD") : null;
-        const end = toDate ? dayjs(toDate).format("YYYY-MM-DD") : null;
+        const { shouldFetch, from, to } = resolveApiDateRange(
+          fromDate,
+          toDate,
+          fyFromDate,
+          fyToDate,
+        );
 
-        const summary = await fetchIntervalSummary(start, end);
+        if (!shouldFetch) {
+          return;
+        }
+
+        const summary = await fetchIntervalSummary(from, to);
         const label =
-          start && end
-            ? `${dayjs(start).format("DD/MM/YY")} – ${dayjs(end).format("DD/MM/YY")}`
+          from && to
+            ? `${dayjs(from).format("DD/MM/YY")} – ${dayjs(to).format("DD/MM/YY")}`
             : "Selected Period";
 
         setChartData([{ period: label, ...summary }]);
@@ -446,7 +457,7 @@ const Analytics = () => {
     } finally {
       setLoading(false);
     }
-  }, [viewMode, selectedYear, selectedMonth, fromDate, toDate]);
+  }, [viewMode, selectedYear, selectedMonth, fromDate, toDate, fyFromDate, fyToDate]);
 
   useEffect(() => {
     loadAnalyticsData();

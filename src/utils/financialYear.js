@@ -68,3 +68,46 @@ export const getDynamicFinancialYears = (pastCount = 5, futureCount = 1) => {
   }
   return years;
 };
+
+/**
+ * Resolves the active API date parameters based on user-selected custom page filters
+ * and global financial year fallback.
+ *
+ * Rules:
+ * 1. fromDate filled + toDate empty -> shouldFetch: false (DO NOT CALL API)
+ * 2. fromDate empty + toDate filled -> shouldFetch: false (DO NOT CALL API)
+ * 3. fromDate filled + toDate filled -> shouldFetch: true, uses custom dates
+ * 4. fromDate empty + toDate empty -> shouldFetch: true, uses global FY dates
+ *
+ * @param {Date|string|null} fromDate - Custom page From Date filter
+ * @param {Date|string|null} toDate - Custom page To Date filter
+ * @param {string} fyFromDate - Global FY default fromDate (YYYY-MM-DD)
+ * @param {string} fyToDate - Global FY default toDate (YYYY-MM-DD)
+ * @returns {{ shouldFetch: boolean, from: string|null, to: string|null, isCustom: boolean }}
+ */
+export const resolveApiDateRange = (fromDate, toDate, fyFromDate, fyToDate) => {
+  // Partial custom date selection: Do NOT call API
+  if ((fromDate && !toDate) || (!fromDate && toDate)) {
+    return { shouldFetch: false, from: null, to: null, isCustom: false };
+  }
+
+  // Both custom dates present: use custom dates
+  if (fromDate && toDate) {
+    const fromStr = dayjs(fromDate).format("YYYY-MM-DD");
+    const toStr = dayjs(toDate).format("YYYY-MM-DD");
+    return {
+      shouldFetch: true,
+      from: fromStr,
+      to: toStr,
+      isCustom: true,
+    };
+  }
+
+  // Both custom dates empty: use dynamic selected financial year dates
+  return {
+    shouldFetch: true,
+    from: fyFromDate || null,
+    to: fyToDate || null,
+    isCustom: false,
+  };
+};

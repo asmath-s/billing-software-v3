@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { getAdminExpenseAmounts } from "../../api/adminExpense";
@@ -14,6 +13,7 @@ import Datepicker from "../../components/Datepicker/Datepicker";
 import { AccountIcon, CashIcon, GpayIcon } from "../../components/icons";
 import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
+import { resolveApiDateRange } from "../../utils/financialYear";
 
 /* -----------------------------------------------------------------
    Shared formatting / helpers
@@ -130,14 +130,9 @@ const sectionMotion = {
 ------------------------------------------------------------------*/
 
 const Dashboard = () => {
-  const { fromDateObj, toDateObj } = useFinancialYear();
-  const [fromDate, setFromDate] = useState(fromDateObj);
-  const [toDate, setToDate] = useState(toDateObj);
-
-  useEffect(() => {
-    setFromDate(fromDateObj);
-    setToDate(toDateObj);
-  }, [fromDateObj, toDateObj]);
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
 
   const [localSalesAmount, setLocalSalesAmount] = useState({});
   const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
@@ -149,11 +144,20 @@ const Dashboard = () => {
   const [gstExpenseSummary, setGstExpenseSummary] = useState(null);
 
   const loadDashboardData = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const from = fromDate ? dayjs(fromDate).format("YYYY-MM-DD") : null;
-      const to = toDate ? dayjs(toDate).format("YYYY-MM-DD") : null;
       const dateQuery = from && to ? `?fromDate=${from}&toDate=${to}` : "";
 
       const adminParams = [
@@ -207,7 +211,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, fyFromDate, fyToDate]);
 
   useEffect(() => {
     loadDashboardData();

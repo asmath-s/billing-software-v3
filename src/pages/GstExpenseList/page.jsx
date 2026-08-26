@@ -27,6 +27,7 @@ import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { GSTEXPENSEENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
+import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
 
 import {
@@ -101,16 +102,11 @@ const INITIAL_FORM_STATE = {
 
 const GstExpenseList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
-  const { fromDateObj, toDateObj } = useFinancialYear();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const navigate = useNavigate();
 
-  const [fromDate, setFromDate] = useState(fromDateObj);
-  const [toDate, setToDate] = useState(toDateObj);
-
-  useEffect(() => {
-    setFromDate(fromDateObj);
-    setToDate(toDateObj);
-  }, [fromDateObj, toDateObj]);
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
 
   const [searchCustomer, setSearchCustomer] = useState(null);
 
@@ -150,6 +146,17 @@ const GstExpenseList = () => {
 
   const buildQuery = useCallback(
     (extraParams = {}) => {
+      const { shouldFetch, from, to } = resolveApiDateRange(
+        fromDate,
+        toDate,
+        fyFromDate,
+        fyToDate,
+      );
+
+      if (!shouldFetch) {
+        return null;
+      }
+
       const params = new URLSearchParams();
 
       params.set("pagination[page]", String(page + 1));
@@ -160,9 +167,9 @@ const GstExpenseList = () => {
         params.set("filters[vendor][documentId][$eq]", searchCustomer.value);
       }
 
-      if (fromDate && toDate) {
-        const startDate = dayjs(fromDate).startOf("day").toISOString();
-        const endDate = dayjs(toDate).endOf("day").toISOString();
+      if (from && to) {
+        const startDate = dayjs(from).startOf("day").toISOString();
+        const endDate = dayjs(to).endOf("day").toISOString();
 
         params.set("filters[date][$gte]", startDate);
         params.set("filters[date][$lte]", endDate);
@@ -180,7 +187,7 @@ const GstExpenseList = () => {
 
       return params.toString();
     },
-    [page, rowsPerPage, searchCustomer, fromDate, toDate, statusFilter],
+    [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate, statusFilter],
   );
 
   /* ─────────────────────────────────────────────
@@ -198,9 +205,15 @@ const GstExpenseList = () => {
   }, []);
 
   const loadGstSalesData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      setGstSalesData([]);
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await getGstExpenseList(buildQuery());
+      const res = await getGstExpenseList(queryString);
       setGstSalesData(res?.data || []);
       setTotalCount(res?.meta?.pagination?.total || 0);
     } catch (err) {
@@ -213,6 +226,18 @@ const GstExpenseList = () => {
   }, [buildQuery]);
 
   const loadGstSalesSummary = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      setGstSalesSummary(null);
+      return;
+    }
+
     try {
       const params = new URLSearchParams();
 
@@ -220,9 +245,9 @@ const GstExpenseList = () => {
         params.set("filters[vendor][documentId][$eq]", searchCustomer.value);
       }
 
-      if (fromDate && toDate) {
-        params.set("fromDate", dayjs(fromDate).format("YYYY-MM-DD"));
-        params.set("toDate", dayjs(toDate).format("YYYY-MM-DD"));
+      if (from && to) {
+        params.set("fromDate", dayjs(from).format("YYYY-MM-DD"));
+        params.set("toDate", dayjs(to).format("YYYY-MM-DD"));
       }
 
       const queryString = params.toString() ? `?${params.toString()}` : "";
@@ -232,7 +257,7 @@ const GstExpenseList = () => {
       console.error("GST sales summary fetch failed:", err);
       setGstSalesSummary(null);
     }
-  }, [searchCustomer, fromDate, toDate]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /* ─────────────────────────────────────────────
      Effects

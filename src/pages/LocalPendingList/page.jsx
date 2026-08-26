@@ -36,6 +36,7 @@ import { useAuth } from "../../context/auth-context";
 import { useFinancialYear } from "../../context/financial-year-context";
 import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
+import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
 
 import { getLocalAmounts } from "../../api/localAmount";
@@ -51,17 +52,11 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalPendingList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
-  const { fromDateObj, toDateObj } = useFinancialYear();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const navigate = useNavigate();
 
-  const [fromDate, setFromDate] = useState(fromDateObj);
-  const [toDate, setToDate] = useState(toDateObj);
-
-  useEffect(() => {
-    setFromDate(fromDateObj);
-    setToDate(toDateObj);
-  }, [fromDateObj, toDateObj]);
-
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
   const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [customers, setCustomers] = useState([]);
@@ -98,6 +93,17 @@ const LocalPendingList = () => {
    * Query builder
    */
   const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [];
 
     query.push("populate=*");
@@ -115,9 +121,9 @@ const LocalPendingList = () => {
       );
     }
 
-    if (fromDate && toDate) {
-      const startDate = dayjs(fromDate).startOf("day").toISOString();
-      const endDate = dayjs(toDate).endOf("day").toISOString();
+    if (from && to) {
+      const startDate = dayjs(from).startOf("day").toISOString();
+      const endDate = dayjs(to).endOf("day").toISOString();
 
       /* GPay date filter */
       query.push(
@@ -137,7 +143,7 @@ const LocalPendingList = () => {
     }
 
     return `?${query.join("&")}`;
-  }, [page, rowsPerPage, searchCustomer, fromDate, toDate]);
+  }, [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /*
    * Load pending data
@@ -173,8 +179,11 @@ const LocalPendingList = () => {
     let cancelled = false;
 
     const fetchPendingData = async () => {
+      const queryString = buildQuery();
+      if (queryString === null) return;
+
       try {
-        const res = await getLocalList(buildQuery());
+        const res = await getLocalList(queryString);
 
         if (!cancelled) {
           setLocalData(res?.data || []);
@@ -205,6 +214,17 @@ const LocalPendingList = () => {
     if (showOverview) {
       let cancelled = false;
       const fetchLocalTotalAmount = async () => {
+        const { shouldFetch, from, to } = resolveApiDateRange(
+          fromDate,
+          toDate,
+          fyFromDate,
+          fyToDate,
+        );
+
+        if (!shouldFetch) {
+          return;
+        }
+
         try {
           const query = [];
 
@@ -216,10 +236,7 @@ const LocalPendingList = () => {
             );
           }
 
-          if (fromDate && toDate) {
-            const from = dayjs(fromDate).format("YYYY-MM-DD");
-            const to = dayjs(toDate).format("YYYY-MM-DD");
-
+          if (from && to) {
             query.push(`fromDate=${encodeURIComponent(from)}`);
             query.push(`toDate=${encodeURIComponent(to)}`);
           }
@@ -246,7 +263,7 @@ const LocalPendingList = () => {
         cancelled = true;
       };
     }
-  }, [searchCustomer, fromDate, toDate, showOverview]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate, showOverview]);
 
   /*
    * Delete

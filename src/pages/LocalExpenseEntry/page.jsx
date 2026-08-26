@@ -34,10 +34,11 @@ import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { resolveApiDateRange } from "../../utils/financialYear";
 
 const LocalExpenseEntry = () => {
   const { role, showOverview, toggleOverview } = useAuth();
-  const { fromDateObj, toDateObj } = useFinancialYear();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
 
   const [date, setDate] = useState(new Date());
   const [instruction, setInstruction] = useState("");
@@ -45,13 +46,8 @@ const LocalExpenseEntry = () => {
   const [method, setMethod] = useState("expense");
   const [amount, setAmount] = useState("");
 
-  const [fromDate, setFromDate] = useState(fromDateObj);
-  const [toDate, setToDate] = useState(toDateObj);
-
-  useEffect(() => {
-    setFromDate(fromDateObj);
-    setToDate(toDateObj);
-  }, [fromDateObj, toDateObj]);
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
 
   const [expenseData, setExpenseData] = useState([]);
   const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
@@ -66,16 +62,27 @@ const LocalExpenseEntry = () => {
   /* ================= LOAD DATA ================= */
 
   const loadExpenseData = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     const query = [];
     query.push(`sort[0]=date:desc`);
     query.push(`filters[approved][$eq]=false`);
 
-    if (fromDate && toDate) {
+    if (from && to) {
       query.push(
-        `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
+        `filters[date][$gte]=${dayjs(from).startOf("day").toISOString()}`,
       );
       query.push(
-        `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+        `filters[date][$lte]=${dayjs(to).endOf("day").toISOString()}`,
       );
     }
     const pageSize = 100;
@@ -108,17 +115,28 @@ const LocalExpenseEntry = () => {
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, fyFromDate, fyToDate]);
 
   const loadLocalTotalAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
 
     try {
       const query = [];
 
-      if (fromDate && toDate) {
-        query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
-        query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
+      if (from && to) {
+        query.push(`fromDate=${from}`);
+        query.push(`toDate=${to}`);
       }
 
       const queryString = query.length ? `?${query.join("&")}` : "";
@@ -132,7 +150,7 @@ const LocalExpenseEntry = () => {
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, fyFromDate, fyToDate]);
 
   useEffect(() => {
     loadExpenseData();
