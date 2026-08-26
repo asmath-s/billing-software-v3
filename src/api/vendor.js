@@ -1,22 +1,12 @@
 import axiosInstance from "./axiosInstance";
 
 export const getVendors = async () => {
-  let allCustomers = [];
-  let page = 1;
-  let pageSize = 100;
+  const response = await axiosInstance.get(
+    `/vendors?pagination[pageSize]=100000&sort[0]=createdAt:desc`,
+  );
+  const data = response.data.data;
 
-  while (true) {
-    const response = await axiosInstance.get(
-      `/vendors?pagination[page]=${page}&pagination[pageSize]=${pageSize}&sort[0]=createdAt:desc`,
-    );
-    const data = response.data.data;
-    allCustomers = allCustomers.concat(data);
-
-    if (data.length < pageSize) break;
-    page++;
-  }
-
-  return allCustomers;
+  return data;
 };
 
 export const getVendorById = async (id) => {

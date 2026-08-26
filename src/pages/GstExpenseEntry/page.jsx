@@ -125,23 +125,58 @@ const GstExpenseEntry = () => {
     setDate(setCurrentTime(new Date()));
     setBillNo("");
     setVendorName("");
+    setVendorId("");
     setAmount("");
     setGstPercentage(18);
   };
 
   const ensureVendor = async () => {
-    if (vendorId) return vendorId;
-
-    if (!vendorName.trim()) {
+    const trimmedName = vendorName.trim();
+    if (!trimmedName) {
       throw new Error("Vendor name is required");
     }
 
+    // 1. If vendorId is set and matches current name, use it
+    if (vendorId) {
+      const currentMatch = vendorList.find((v) => v.documentId === vendorId);
+      if (
+        currentMatch &&
+        currentMatch.name?.trim().toLowerCase() === trimmedName.toLowerCase()
+      ) {
+        return vendorId;
+      }
+    }
+
+    // 2. Check in current local vendorList (case-insensitive)
+    const existing = vendorList.find(
+      (v) => v.name?.trim().toLowerCase() === trimmedName.toLowerCase(),
+    );
+    if (existing) {
+      setVendorId(existing.documentId);
+      return existing.documentId;
+    }
+
+    // 3. Query/Refresh database list before creating to ensure no race or missed items
+    try {
+      const latestVendors = await getVendors();
+      setVendorList(latestVendors || []);
+      const foundInLatest = (latestVendors || []).find(
+        (v) => v.name?.trim().toLowerCase() === trimmedName.toLowerCase(),
+      );
+      if (foundInLatest) {
+        setVendorId(foundInLatest.documentId);
+        return foundInLatest.documentId;
+      }
+    } catch (fetchErr) {
+      console.warn("Could not refresh vendor list before creation:", fetchErr);
+    }
+
+    // 4. Only if not found anywhere, create a new vendor
     const res = await createVendor({
-      name: vendorName,
+      name: trimmedName,
     });
 
     setVendorId(res.documentId);
-
     await loadVendors();
 
     return res.documentId;
@@ -184,15 +219,32 @@ const GstExpenseEntry = () => {
             options={vendorList}
             required
             onInputChange={(e, value) => {
-              setVendorName(capitalizeFirstLetter(value));
+              const formatted = capitalizeFirstLetter(value || "");
+              setVendorName(formatted);
+              const matched = vendorList.find(
+                (v) =>
+                  v.name?.trim().toLowerCase() ===
+                  (value || "").trim().toLowerCase(),
+              );
+              if (matched) {
+                setVendorId(matched.documentId);
+              } else {
+                setVendorId("");
+              }
             }}
             onChange={(e, value) => {
               if (typeof value === "object" && value) {
                 setVendorId(value.documentId);
                 setVendorName(value.name);
               } else {
-                setVendorId("");
-                setVendorName(capitalizeFirstLetter(value || ""));
+                const typedName = capitalizeFirstLetter(value || "");
+                setVendorName(typedName);
+                const matched = vendorList.find(
+                  (v) =>
+                    v.name?.trim().toLowerCase() ===
+                    typedName.trim().toLowerCase(),
+                );
+                setVendorId(matched ? matched.documentId : "");
               }
             }}
             getOptionLabel={(option) =>
