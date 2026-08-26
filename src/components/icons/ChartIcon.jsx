@@ -1,5 +1,5 @@
 const ChartIcon = ({
-  color = "#292D32",
+  color = "#FFF",
   width = "20",
   height = "20",
   className = "",
