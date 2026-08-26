@@ -36,7 +36,9 @@ import {
   LeftArrowIcon,
   RightIcon,
   SaveIcon,
+  SavePdfIcon,
 } from "../../components/icons";
+import LocalExpenseExportModal from "../../components/LocalExpenseExportModal/LocalExpenseExportModal";
 import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
@@ -68,6 +70,7 @@ const LocalHubList = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const buildQuery = useCallback(() => {
     const { shouldFetch, from, to } = resolveApiDateRange(
@@ -263,16 +266,27 @@ const LocalHubList = () => {
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local Hub List</h1>
-        {role !== "authenticated" && (
-          <Checkbox
-            icon={<CheckBoxIcon />}
-            checkedIcon={<CheckIcon color="#fff" />}
-            checked={showOverview}
-            style={{ marginRight: 8 }}
-            label={"Show Overview"}
-            onChange={() => toggleOverview()}
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
           />
-        )}
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              style={{ marginRight: 8 }}
+              label={"Show Overview"}
+              onChange={() => toggleOverview()}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -539,6 +553,13 @@ const LocalHubList = () => {
           </tfoot>
         </Table>
       </div>
+
+      <LocalExpenseExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        sectionTitle="Local Expense – Hub"
+        status="hub"
+      />
     </MainLayout>
   );
 };
