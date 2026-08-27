@@ -29,9 +29,9 @@ import {
 import { QUOTATIONENTRY } from "../../router/paths";
 import { setCurrentTime } from "../../utils/DatewithTime";
 
-const DEFAULT_TOP_TEXT = `<p><strong>Dear Valued Customer,</strong></p><p>Thank you for your enquiry. We are pleased to submit our best quotation for your requirement as detailed below:</p>`;
+const DEFAULT_TOP_TEXT = `<p><strong>Subject &nbsp;: &nbsp;Flex Printing</strong></p><p><br></p><p>Thank you for your valuable enquiry. we have pleasure in submitting the following quotation for your consideration. Promising a reliable and flexible work for making this Announcement Board incredibly versatile and remarkable. Getting a future endeavor to breath free, we ensure to give a absolute peace of mind.</p>`;
 
-const DEFAULT_BOTTOM_TEXT = `<p><strong>Terms &amp; Conditions:</strong></p><ol><li><strong>Payment:</strong> 50% advance along with confirmed work order, balance before delivery.</li><li><strong>Delivery:</strong> Within 3 to 5 business days after artwork confirmation.</li><li><strong>Artwork &amp; Design:</strong> Client approved proof will be considered final for production.</li><li><strong>Validity:</strong> This quotation is valid for 15 days from the date of issue.</li><li><strong>Taxes:</strong> GST extra as applicable.</li></ol>`;
+const DEFAULT_BOTTOM_TEXT = `<p>For GST Bill : 18% extra</p>`;
 
 const DEFAULT_COLUMNS = [
   {
