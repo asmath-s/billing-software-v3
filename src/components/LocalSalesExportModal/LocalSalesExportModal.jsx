@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "react-toastify";
 import dayjs from "../../utils/dayjs";
 import { fetchAllLocalSalesForExport } from "../../api/localList";
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 import AutocompleteField from "../AutocompleteField/AutocompleteField";
 import Button from "../Button/Button";
 import { DateUiPicker } from "../Datepicker/Datepicker";
@@ -27,6 +28,16 @@ const LocalSalesExportModal = ({
   const [printData, setPrintData] = useState(null);
   const [triggerPrintNow, setTriggerPrintNow] = useState(false);
 
+  const handleResetAndClose = useCallback(() => {
+    if (loading) return;
+    setSelectedCustomer(null);
+    setFromDate(null);
+    setToDate(null);
+    setLoading(false);
+    setLoadingMsg("");
+    onClose();
+  }, [loading, onClose]);
+
   // Print hook
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -44,19 +55,7 @@ const LocalSalesExportModal = ({
       setLoading(false);
       handleResetAndClose();
     }
-  }, [triggerPrintNow, printData, handlePrint]);
-
-  if (!open) return null;
-
-  const handleResetAndClose = () => {
-    if (loading) return;
-    setSelectedCustomer(null);
-    setFromDate(null);
-    setToDate(null);
-    setLoading(false);
-    setLoadingMsg("");
-    onClose();
-  };
+  }, [triggerPrintNow, printData, handlePrint, handleResetAndClose]);
 
   const handleExport = async (e) => {
     if (e) e.preventDefault();
@@ -110,6 +109,8 @@ const LocalSalesExportModal = ({
     }
   };
 
+  if (!open) return null;
+
   return (
     <>
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
@@ -145,7 +146,13 @@ const LocalSalesExportModal = ({
                 label="Customer Name (Optional)"
                 value={selectedCustomer || ""}
                 options={customerOptions}
-                onChange={(_, val) => setSelectedCustomer(val)}
+                onChange={(_, val) => {
+                  const resolved =
+                    typeof val === "string"
+                      ? findMatchingEntity(val, customerOptions, "label") || val
+                      : val;
+                  setSelectedCustomer(resolved);
+                }}
                 placeholder="Select or search customer"
                 disabled={loading}
               />

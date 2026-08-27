@@ -18,6 +18,10 @@ import { AddIcon, SaveIcon } from "../../components/icons";
 import InputField from "../../components/InputField/InputField";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import {
+  findMatchingEntity,
+  isNameMatch,
+} from "../../utils/nameNormalizer";
 
 const GstExpenseEntry = () => {
   const [searchParams] = useSearchParams();
@@ -139,18 +143,13 @@ const GstExpenseEntry = () => {
     // 1. If vendorId is set and matches current name, use it
     if (vendorId) {
       const currentMatch = vendorList.find((v) => v.documentId === vendorId);
-      if (
-        currentMatch &&
-        currentMatch.name?.trim().toLowerCase() === trimmedName.toLowerCase()
-      ) {
+      if (currentMatch && isNameMatch(currentMatch.name, trimmedName)) {
         return vendorId;
       }
     }
 
-    // 2. Check in current local vendorList (case-insensitive)
-    const existing = vendorList.find(
-      (v) => v.name?.trim().toLowerCase() === trimmedName.toLowerCase(),
-    );
+    // 2. Check in current local vendorList (space-insensitive and case-insensitive)
+    const existing = findMatchingEntity(trimmedName, vendorList, "name");
     if (existing) {
       setVendorId(existing.documentId);
       return existing.documentId;
@@ -160,9 +159,7 @@ const GstExpenseEntry = () => {
     try {
       const latestVendors = await getVendors();
       setVendorList(latestVendors || []);
-      const foundInLatest = (latestVendors || []).find(
-        (v) => v.name?.trim().toLowerCase() === trimmedName.toLowerCase(),
-      );
+      const foundInLatest = findMatchingEntity(trimmedName, latestVendors, "name");
       if (foundInLatest) {
         setVendorId(foundInLatest.documentId);
         return foundInLatest.documentId;
@@ -221,11 +218,7 @@ const GstExpenseEntry = () => {
             onInputChange={(e, value) => {
               const formatted = capitalizeFirstLetter(value || "");
               setVendorName(formatted);
-              const matched = vendorList.find(
-                (v) =>
-                  v.name?.trim().toLowerCase() ===
-                  (value || "").trim().toLowerCase(),
-              );
+              const matched = findMatchingEntity(value, vendorList, "name");
               if (matched) {
                 setVendorId(matched.documentId);
               } else {
@@ -239,12 +232,13 @@ const GstExpenseEntry = () => {
               } else {
                 const typedName = capitalizeFirstLetter(value || "");
                 setVendorName(typedName);
-                const matched = vendorList.find(
-                  (v) =>
-                    v.name?.trim().toLowerCase() ===
-                    typedName.trim().toLowerCase(),
-                );
-                setVendorId(matched ? matched.documentId : "");
+                const matched = findMatchingEntity(typedName, vendorList, "name");
+                if (matched) {
+                  setVendorId(matched.documentId);
+                  setVendorName(matched.name);
+                } else {
+                  setVendorId("");
+                }
               }
             }}
             getOptionLabel={(option) =>

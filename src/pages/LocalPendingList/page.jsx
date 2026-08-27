@@ -41,6 +41,7 @@ import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
 import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 
 import { getLocalAmounts } from "../../api/localAmount";
 import {
@@ -415,7 +416,11 @@ const LocalPendingList = () => {
             value={searchCustomer}
             options={customerOptions}
             onChange={(_, value) => {
-              setSearchCustomer(value);
+              const resolved =
+                typeof value === "string"
+                  ? findMatchingEntity(value, customerOptions, "label") || value
+                  : value;
+              setSearchCustomer(resolved);
               setPage(0);
             }}
           />

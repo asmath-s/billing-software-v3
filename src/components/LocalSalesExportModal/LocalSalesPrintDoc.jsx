@@ -6,7 +6,7 @@ import Logo from "../../assets/rayyanflexlogo.png";
 const LocalSalesPrintDoc = forwardRef((props, ref) => {
   const {
     title = "Local Sales Report",
-    status = "paid",
+    status: _status = "paid",
     selectedCustomer = null,
     fromDate = null,
     toDate = null,

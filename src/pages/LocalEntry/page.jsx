@@ -38,6 +38,10 @@ import { useAuth } from "../../context/auth-context";
 import { LOCALENTRY } from "../../router/paths";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { formattedAmount } from "../../utils/FormatAmount";
+import {
+  findMatchingEntity,
+  isNameMatch,
+} from "../../utils/nameNormalizer";
 import { transformBillingData } from "../../utils/transformBillingData";
 
 const num = (v) => Number(v) || 0;
@@ -226,22 +230,58 @@ const LocalEntry = () => {
     try {
       setLoading(true);
 
+      const trimmedName = (customerName || "").trim();
+      if (!trimmedName) {
+        toast.error("Customer name is required");
+        setLoading(false);
+        return;
+      }
+
       let finalCustomerId = customerId;
 
-      if (!customerId) {
-        if (!customerName.trim()) {
-          toast.error("Customer name is required");
-          return;
+      // 1. Verify if active customerId matches current name
+      if (finalCustomerId) {
+        const currentMatch = (customerList || []).find(
+          (c) => c.documentId === finalCustomerId,
+        );
+        if (!currentMatch || !isNameMatch(currentMatch.name, trimmedName)) {
+          finalCustomerId = null;
         }
+      }
 
+      // 2. Search local customerList
+      if (!finalCustomerId) {
+        const localMatch = findMatchingEntity(trimmedName, customerList, "name");
+        if (localMatch) {
+          finalCustomerId = localMatch.documentId;
+          setCustomerId(finalCustomerId);
+        }
+      }
+
+      // 3. Search freshly fetched database list
+      if (!finalCustomerId) {
+        try {
+          const latestCustomers = await getCustomers();
+          setCustomerList(latestCustomers || []);
+          const dbMatch = findMatchingEntity(trimmedName, latestCustomers, "name");
+          if (dbMatch) {
+            finalCustomerId = dbMatch.documentId;
+            setCustomerId(finalCustomerId);
+          }
+        } catch (fetchErr) {
+          console.warn("Could not refresh customer list:", fetchErr);
+        }
+      }
+
+      // 4. Create new customer only if no match exists anywhere
+      if (!finalCustomerId) {
         const createdCustomer = await createCustomer({
-          name: customerName,
+          name: trimmedName,
           phonenumber: phone,
         });
 
         finalCustomerId = createdCustomer?.documentId;
         setCustomerId(finalCustomerId);
-
         await loadCustomers();
       }
 

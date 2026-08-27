@@ -1,3 +1,4 @@
+import { findMatchingEntity } from "../utils/nameNormalizer";
 import axiosInstance from "./axiosInstance";
 
 export const getCustomers = async () => {
@@ -15,6 +16,18 @@ export const getCustomerById = async (id) => {
 };
 
 export const createCustomer = async (customerData) => {
+  if (customerData?.name) {
+    try {
+      const existingList = await getCustomers();
+      const match = findMatchingEntity(customerData.name, existingList, "name");
+      if (match) {
+        return match;
+      }
+    } catch (err) {
+      console.warn("Deduplication check failed:", err);
+    }
+  }
+
   const response = await axiosInstance.post("/customers", {
     data: customerData,
   });

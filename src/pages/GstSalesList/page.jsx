@@ -29,6 +29,7 @@ import { GSTSALESENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
 import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 
 import { getGstCustomers } from "../../api/gstCustomer";
 import {
@@ -569,7 +570,11 @@ const GstSalesList = () => {
             value={searchCustomer || ""}
             options={customerOptions}
             onChange={(_, val) => {
-              setSearchCustomer(val);
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
               setPage(0);
             }}
           />
@@ -602,7 +607,11 @@ const GstSalesList = () => {
             value={searchCustomer || ""}
             options={customerOptions}
             onChange={(_, val) => {
-              setSearchCustomer(val);
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
               setPage(0);
               setFormField("recvBillNo", []);
             }}

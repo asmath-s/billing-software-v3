@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "react-toastify";
 import dayjs from "../../utils/dayjs";
@@ -26,6 +26,16 @@ const LocalExpenseExportModal = ({
   const [printData, setPrintData] = useState(null);
   const [triggerPrintNow, setTriggerPrintNow] = useState(false);
 
+  const handleResetAndClose = useCallback(() => {
+    if (loading) return;
+    setFromDate(null);
+    setToDate(null);
+    setInstruction("");
+    setLoading(false);
+    setLoadingMsg("");
+    onClose();
+  }, [loading, onClose]);
+
   // Print hook
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -43,19 +53,7 @@ const LocalExpenseExportModal = ({
       setLoading(false);
       handleResetAndClose();
     }
-  }, [triggerPrintNow, printData, handlePrint]);
-
-  if (!open) return null;
-
-  const handleResetAndClose = () => {
-    if (loading) return;
-    setFromDate(null);
-    setToDate(null);
-    setInstruction("");
-    setLoading(false);
-    setLoadingMsg("");
-    onClose();
-  };
+  }, [triggerPrintNow, printData, handlePrint, handleResetAndClose]);
 
   const handleExport = async (e) => {
     if (e) e.preventDefault();
@@ -109,6 +107,8 @@ const LocalExpenseExportModal = ({
       setLoadingMsg("");
     }
   };
+
+  if (!open) return null;
 
   return (
     <>

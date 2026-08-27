@@ -120,6 +120,12 @@ const QuotationPrint = forwardRef((props, ref) => {
 
         {/* Quotation Info */}
         <div className="space-y-1.5 text-right flex flex-col justify-start">
+          {quotationNo && (
+            <div className="flex justify-end gap-2">
+              <span className="font-semibold text-gray-600">Quote No:</span>
+              <span className="font-bold text-gray-900">{quotationNo}</span>
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <span className="font-semibold text-gray-600">Date:</span>
             <span>{dayjs(date).format("DD-MM-YYYY")}</span>

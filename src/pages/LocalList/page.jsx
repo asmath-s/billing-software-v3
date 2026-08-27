@@ -31,6 +31,7 @@ import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
 import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 const LocalList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
   const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
@@ -366,7 +367,13 @@ const LocalList = () => {
             label="Customer Name"
             value={searchCustomer}
             options={customerOptions}
-            onChange={(e, val) => setSearchCustomer(val)}
+            onChange={(e, val) => {
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
+            }}
           />
         </div>
       </div>

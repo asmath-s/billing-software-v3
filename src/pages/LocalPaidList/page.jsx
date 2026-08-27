@@ -33,15 +33,15 @@ import MainLayout from "../../layouts/MainLayout";
 
 import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
+import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
-
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 import { getLocalAmounts } from "../../api/localAmount";
 import { deleteLocalList, getLocalList } from "../../api/localList";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RightIcon from "../../components/icons/RightIcon";
 import { useAuth } from "../../context/auth-context";
 import { useFinancialYear } from "../../context/financial-year-context";
-import { resolveApiDateRange } from "../../utils/financialYear";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -305,7 +305,11 @@ const LocalPaidList = () => {
             value={searchCustomer}
             options={customerOptions}
             onChange={(e, val) => {
-              setSearchCustomer(val);
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
               setPage(0);
             }}
           />

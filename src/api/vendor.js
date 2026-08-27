@@ -1,3 +1,4 @@
+import { findMatchingEntity } from "../utils/nameNormalizer";
 import axiosInstance from "./axiosInstance";
 
 export const getVendors = async () => {
@@ -15,6 +16,18 @@ export const getVendorById = async (id) => {
 };
 
 export const createVendor = async (vendorData) => {
+  if (vendorData?.name) {
+    try {
+      const existingList = await getVendors();
+      const match = findMatchingEntity(vendorData.name, existingList, "name");
+      if (match) {
+        return match;
+      }
+    } catch (err) {
+      console.warn("Vendor deduplication check failed:", err);
+    }
+  }
+
   const response = await axiosInstance.post("/vendors", {
     data: vendorData,
   });
