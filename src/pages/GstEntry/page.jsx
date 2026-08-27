@@ -28,6 +28,10 @@ import { useAuth } from "../../context/auth-context";
 import { GSTSALESENTRY } from "../../router/paths";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { formattedAmount } from "../../utils/FormatAmount";
+import {
+  findMatchingEntity,
+  isNameMatch,
+} from "../../utils/nameNormalizer";
 import { transformBillingData } from "../../utils/transformBillingData";
 
 import { createGstCustomer, getGstCustomers } from "../../api/gstCustomer";
@@ -136,8 +140,6 @@ const GstEntry = () => {
 
       if (!data) return;
 
-      console.log("Edit Data:", data);
-
       const transformed = transformBillingData(data);
 
       setDocumentId(data.documentId);
@@ -167,7 +169,7 @@ const GstEntry = () => {
     } else {
       loadLastBillNo();
     }
-  }, [editId]);
+  }, [editId, loadCustomers, loadEditData, loadLastBillNo]);
 
   const handlePrintClick = () => {
     setActionType("print");
@@ -218,23 +220,54 @@ const GstEntry = () => {
   };
 
   const ensureCustomer = async () => {
-    if (customerId) return customerId;
-
-    if (!customerName.trim()) {
+    const trimmedName = (customerName || "").trim();
+    if (!trimmedName) {
       throw new Error("Customer name is required");
     }
 
+    // 1. Verify if active customerId matches current name
+    if (customerId) {
+      const currentMatch = (customerList || []).find(
+        (c) => c.documentId === customerId,
+      );
+      if (currentMatch && isNameMatch(currentMatch.name, trimmedName)) {
+        return customerId;
+      }
+    }
+
+    // 2. Search local customerList
+    const localMatch = findMatchingEntity(trimmedName, customerList, "name");
+    if (localMatch) {
+      setCustomerId(localMatch.documentId);
+      return localMatch.documentId;
+    }
+
+    // 3. Search freshly fetched database list
+    try {
+      const latestCustomers = await getGstCustomers();
+      setCustomerList(latestCustomers || []);
+      const dbMatch = findMatchingEntity(trimmedName, latestCustomers, "name");
+      if (dbMatch) {
+        setCustomerId(dbMatch.documentId);
+        return dbMatch.documentId;
+      }
+    } catch (fetchErr) {
+      console.warn("Could not refresh GST customer list:", fetchErr);
+    }
+
+    // 4. Create new customer only if no match exists anywhere
     const res = await createGstCustomer({
-      name: customerName,
+      name: trimmedName,
       address,
       delivery_address: deliveryAddress,
       gst_no: gstNo,
     });
 
-    setCustomerId(res?.documentId);
+    const newId = res?.documentId;
+    setCustomerId(newId);
     await loadCustomers();
 
-    return res?.documentId;
+    return newId;
   };
 
   /* ================= ACTIONS ================= */
@@ -360,7 +393,7 @@ const GstEntry = () => {
             value={date}
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
-            minDate={role === "superadmin" ? false : new Date()}
+            minDate={role === "superadmin" ? undefined : new Date()}
           />
 
           <InputField

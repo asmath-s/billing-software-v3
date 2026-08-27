@@ -49,12 +49,20 @@ const AuthProvider = ({ children }) => {
     });
   };
 
+  const canViewOverview =
+    role !== "authenticated" &&
+    role !== "Authenticated" &&
+    role !== null;
+
+  const effectiveShowOverview = canViewOverview ? showOverview : false;
+
   return (
     <AuthContext.Provider
       value={{
         user,
         role,
-        showOverview,
+        showOverview: effectiveShowOverview,
+        canViewOverview,
         login,
         logout,
         toggleOverview,

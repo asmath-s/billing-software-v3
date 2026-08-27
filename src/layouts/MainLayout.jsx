@@ -1,5 +1,4 @@
 import Sidebar from "../components/Sidebar/Sidebar";
-
 import { ToastContainer } from "react-toastify";
 
 const MainLayout = ({ children }) => {

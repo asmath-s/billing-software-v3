@@ -25,12 +25,16 @@ import {
 } from "../../components/icons";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
+import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 const LocalList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const navigate = useNavigate();
 
   /* ================= STATE ================= */
@@ -60,6 +64,17 @@ const LocalList = () => {
   /* ================= LOAD LOCAL LIST ================= */
 
   const loadLocalEntriesData = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
     const query = [];
 
@@ -70,9 +85,9 @@ const LocalList = () => {
       query.push(`filters[customer][documentId][$eq]=${searchCustomer.value}`);
     }
 
-    if (fromDate && toDate) {
-      query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
-      query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
+    if (from && to) {
+      query.push(`fromDate=${from}`);
+      query.push(`toDate=${to}`);
     }
 
     query.push("sort[0]=date:desc");
@@ -82,23 +97,32 @@ const LocalList = () => {
 
     try {
       const res = await getLocalList(queryString);
-      console.log("Local list fetched:", res);
-
-      setLocalData(res.data);
+      setLocalData(res.data || []);
     } catch (error) {
       console.error("Local list fetch failed:", error);
       setLocalData([]);
     } finally {
       setLoading(false);
     }
-  }, [searchCustomer, fromDate, toDate]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
-  /* ================= LOAD LOCAL Amounts ================= */
+  /* ================= LOAD LOCAL AMOUNTS ================= */
+
   const loadLocalTotalAmount = useCallback(async () => {
-    setLoading(true);
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
 
+    if (!shouldFetch) {
+      return;
+    }
+
+    setLoading(true);
     try {
-      let query = [];
+      const query = [];
 
       if (searchCustomer) {
         query.push(
@@ -106,10 +130,7 @@ const LocalList = () => {
         );
       }
 
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
+      if (from && to) {
         query.push(`fromDate=${from}`);
         query.push(`toDate=${to}`);
       }
@@ -118,14 +139,14 @@ const LocalList = () => {
 
       const res = await getLocalAmounts(queryString);
 
-      setLocalAmount(res);
+      setLocalAmount(res || {});
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
-      setLocalAmount([]);
+      setLocalAmount({});
     } finally {
       setLoading(false);
     }
-  }, [searchCustomer, fromDate, toDate]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /* ================= INITIAL LOAD ================= */
   useEffect(() => {
@@ -144,6 +165,15 @@ const LocalList = () => {
 
   /* ================= FILTER + GROUP ================= */
 
+  const customerOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        label: c.name,
+        value: c.documentId,
+      })),
+    [customers],
+  );
+
   const groupedData = useMemo(() => {
     if (!localData?.length) return {};
 
@@ -155,7 +185,7 @@ const LocalList = () => {
 
     const filtered = localData.filter((item) => {
       const customerMatch =
-        !searchCustomer || item.customer.documentId === searchCustomer.value;
+        !searchCustomer || item?.customer?.documentId === searchCustomer.value;
 
       const dateMatch =
         isWithinDateRange(item.date) ||
@@ -280,14 +310,16 @@ const LocalList = () => {
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local List</h1>
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          style={{ marginRight: 8 }}
-          label={"Show Overview"}
-          onChange={() => toggleOverview()}
-        />
+        {role !== "authenticated" && (
+          <Checkbox
+            icon={<CheckBoxIcon />}
+            checkedIcon={<CheckIcon color="#fff" />}
+            checked={showOverview}
+            style={{ marginRight: 8 }}
+            label={"Show Overview"}
+            onChange={() => toggleOverview()}
+          />
+        )}
       </div>
 
       {showOverview && (
@@ -334,23 +366,63 @@ const LocalList = () => {
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((c) => ({
-              label: c.name,
-              value: c.documentId,
-            }))}
-            onChange={(e, val) => setSearchCustomer(val)}
+            options={customerOptions}
+            onChange={(e, val) => {
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
+            }}
           />
         </div>
       </div>
 
       {/* Tables */}
-      {Object.keys(groupedData).map((date) => (
-        <div key={date} className="mt-8">
-          <h2 className="text-lg font-semibold mb-2">
-            Date: {dayjs(date).format("DD/MM/YYYY")}
-          </h2>
+      {Object.keys(groupedData).map((date) => {
+        const groupItems = groupedData[date] || [];
+        const groupTotalCash = groupItems.reduce(
+          (sum, item) =>
+            sum +
+            (item.cash || []).reduce(
+              (cSum, c) => cSum + (Number(c.amount) || 0),
+              0,
+            ),
+          0,
+        );
+        const groupTotalGpay = groupItems.reduce(
+          (sum, item) =>
+            sum +
+            (item.gpay || []).reduce(
+              (gSum, g) => gSum + (Number(g.amount) || 0),
+              0,
+            ),
+          0,
+        );
 
-          <Table borderAxis="both" hoverRow>
+        return (
+          <div key={date} className="mt-8">
+            <div className="flex flex-wrap justify-between items-center mb-2 gap-3">
+              <h2 className="text-lg font-semibold text-gray-800">
+                Date: {dayjs(date).format("DD/MM/YYYY")}
+              </h2>
+
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 bg-green-50 text-green-800 border border-green-200 px-3 py-1 rounded-lg text-sm shadow-xs">
+                  <CashIcon width="18" height="18" color="#166534" />
+                  <span className="font-medium text-xs text-green-700">Total Cash:</span>
+                  <span className="font-bold">₹ {formattedAmount(groupTotalCash)}</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-lg text-sm shadow-xs">
+                  <GpayIcon width="18" height="18" color="#1e40af" />
+                  <span className="font-medium text-xs text-blue-700">Total GPay:</span>
+                  <span className="font-bold">₹ {formattedAmount(groupTotalGpay)}</span>
+                </div>
+              </div>
+            </div>
+
+            <Table borderAxis="both" hoverRow>
             <thead>
               <tr>
                 <th className="w-[10%]">Customer</th>
@@ -446,7 +518,8 @@ const LocalList = () => {
             </div>
           )}
         </div>
-      ))}
+      );
+    })}
 
       {/* Confirm Popup */}
       {confirmOpen && (

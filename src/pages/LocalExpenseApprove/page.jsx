@@ -35,12 +35,18 @@ import {
   LeftArrowIcon,
   RightIcon,
   SaveIcon,
+  SavePdfIcon,
 } from "../../components/icons";
 import InputField from "../../components/InputField/InputField";
+import LocalExpenseExportModal from "../../components/LocalExpenseExportModal/LocalExpenseExportModal";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { resolveApiDateRange } from "../../utils/financialYear";
+import { formattedAmount } from "../../utils/FormatAmount";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -48,6 +54,7 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalExpenseApprove = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const [date, setDate] = useState(new Date());
   const [instruction, setInstruction] = useState("");
   const [searchInstruction, setSearchInstruction] = useState("");
@@ -63,8 +70,20 @@ const LocalExpenseApprove = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [
       `pagination[page]=${page + 1}`,
       `pagination[pageSize]=${rowsPerPage}`,
@@ -82,19 +101,33 @@ const LocalExpenseApprove = () => {
       );
     }
 
-    if (fromDate && toDate) {
+    if (from && to) {
       query.push(
-        `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-        `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+        `filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`,
+        `filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`,
       );
     }
 
     return query.join("&");
-  }, [page, rowsPerPage, fromDate, toDate, searchInstruction]);
+  }, [
+    page,
+    rowsPerPage,
+    fromDate,
+    toDate,
+    fyFromDate,
+    fyToDate,
+    searchInstruction,
+  ]);
 
   const loadExpenseData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      return;
+    }
+
+    setLoading(true);
     try {
-      const res = await getLocalExpense(buildQuery());
+      const res = await getLocalExpense(queryString);
 
       const data = res?.data?.data || [];
       const total = res?.data?.meta?.pagination?.total || 0;
@@ -108,18 +141,31 @@ const LocalExpenseApprove = () => {
 
       setExpenseData([]);
       setTotalCount(0);
+    } finally {
+      setLoading(false);
     }
   }, [buildQuery]);
 
   const loadLocalTotalAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let query = [];
+      const query = [];
 
-      if (fromDate && toDate) {
-        query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
-        query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
+      if (from && to) {
+        query.push(`fromDate=${from}`);
+        query.push(`toDate=${to}`);
       }
 
       if (searchInstruction.trim()) {
@@ -134,14 +180,14 @@ const LocalExpenseApprove = () => {
 
       const res = await getLocalExpenseAmounts(queryString);
 
-      setLocalExpenseAmount(res);
+      setLocalExpenseAmount(res || {});
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
-      setLocalExpenseAmount([]);
+      setLocalExpenseAmount({});
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate, searchInstruction]);
+  }, [fromDate, toDate, fyFromDate, fyToDate, searchInstruction]);
 
   useEffect(() => {
     loadExpenseData();
@@ -228,14 +274,26 @@ const LocalExpenseApprove = () => {
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local Expense List</h1>
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          style={{ marginRight: 8 }}
-          label={"Show Overview"}
-          onChange={() => toggleOverview()}
-        />
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
+          />
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              style={{ marginRight: 8 }}
+              label={"Show Overview"}
+              onChange={() => toggleOverview()}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -302,13 +360,15 @@ const LocalExpenseApprove = () => {
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
             className={"w-full"}
-            minDate={role === "superadmin" ? false : new Date()}
+            minDate={role === "superadmin" ? undefined : new Date()}
           />
 
           <InputField
             placeholder="Instruction"
             value={instruction}
-            onChange={(e) => setInstruction(e.target.value)}
+            onChange={(e) =>
+              setInstruction(capitalizeFirstLetter(e.target.value))
+            }
             required={true}
           />
 
@@ -331,6 +391,7 @@ const LocalExpenseApprove = () => {
             options={[
               { value: "cash", label: "Cash" },
               { value: "gpay", label: "Gpay" },
+              { value: "account", label: "Account" },
             ]}
             value={customType}
             onChange={(e) => setCustomType(e.target.value)}
@@ -372,49 +433,63 @@ const LocalExpenseApprove = () => {
           </thead>
 
           <tbody>
-            {expenseData.map((item) => (
-              <tr key={item.documentId}>
-                <td>{dayjs(item.date).format("DD-MM-YYYY")}</td>
-                <td className="w-[10%]">{item.role}</td>
-                <td>{item.instruction}</td>
-                <td>
-                  <span
-                    className={`p-1 rounded-md flex justify-center capitalize  ${
-                      item.method === "expense"
-                        ? "bg-rose-200 text-rose-800"
-                        : "bg-[#DAF4F0] text-[#0AB39C]"
-                    }`}
-                  >
-                    {item.method}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    className={`p-1 rounded-md flex justify-center capitalize  ${
-                      item.custom_type === "cash"
-                        ? "bg-[#E2E5ED] text-[#405189]"
-                        : "bg-stone-200 text-stone-800"
-                    }`}
-                  >
-                    {item.custom_type}
-                  </span>
-                </td>
-                <td>{item.amount}</td>
-                <td>
-                  <div className="flex gap-2">
-                    <EditButton onClick={() => handleEdit(item)} />
-
-                    <DeletePopup
-                      handleDelete={() => handleDelete(item.documentId)}
-                    />
-                  </div>
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="text-center py-4">
+                  Loading...
                 </td>
               </tr>
-            ))}
+            ) : expenseData.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-4 text-gray-500">
+                  No records found
+                </td>
+              </tr>
+            ) : (
+              expenseData.map((item) => (
+                <tr key={item.documentId}>
+                  <td>{dayjs(item.date).format("DD-MM-YYYY")}</td>
+                  <td className="w-[10%]">{item.role}</td>
+                  <td>{item.instruction}</td>
+                  <td>
+                    <span
+                      className={`p-1 rounded-md flex justify-center capitalize  ${
+                        item.method === "expense"
+                          ? "bg-rose-200 text-rose-800"
+                          : "bg-[#DAF4F0] text-[#0AB39C]"
+                      }`}
+                    >
+                      {item.method}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={`p-1 rounded-md flex justify-center capitalize  ${
+                        item.custom_type === "cash"
+                          ? "bg-[#E2E5ED] text-[#405189]"
+                          : "bg-stone-200 text-stone-800"
+                      }`}
+                    >
+                      {item.custom_type}
+                    </span>
+                  </td>
+                  <td>{formattedAmount(item.amount)}</td>
+                  <td>
+                    <div className="flex gap-2">
+                      <EditButton onClick={() => handleEdit(item)} />
+
+                      <DeletePopup
+                        handleDelete={() => handleDelete(item.documentId)}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={8}>
+              <td colSpan={7}>
                 <Box
                   sx={{
                     display: "flex",
@@ -469,6 +544,13 @@ const LocalExpenseApprove = () => {
           </tfoot>
         </Table>
       </div>
+
+      <LocalExpenseExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        sectionTitle="Local Expense – Approved"
+        status="approved"
+      />
     </MainLayout>
   );
 };

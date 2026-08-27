@@ -1,3 +1,4 @@
+import { findMatchingEntity } from "../utils/nameNormalizer";
 import axiosInstance from "./axiosInstance";
 
 export const getGstCustomers = async () => {
@@ -25,6 +26,18 @@ export const getGstCustomerById = async (id) => {
 };
 
 export const createGstCustomer = async (customerData) => {
+  if (customerData?.name) {
+    try {
+      const existingList = await getGstCustomers();
+      const match = findMatchingEntity(customerData.name, existingList, "name");
+      if (match) {
+        return match;
+      }
+    } catch (err) {
+      console.warn("GST customer deduplication check failed:", err);
+    }
+  }
+
   const response = await axiosInstance.post("/gst-customers", {
     data: customerData,
   });

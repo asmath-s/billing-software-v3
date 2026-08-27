@@ -1,4 +1,5 @@
 import { Autocomplete } from "@mui/joy";
+import { filterOptionsNormalized } from "../../utils/nameNormalizer";
 
 const AutocompleteField = ({
   label,
@@ -10,7 +11,12 @@ const AutocompleteField = ({
   onBlur,
   required,
   disabled,
+  filterOptions,
 }) => {
+  const customFilter =
+    filterOptions ||
+    ((opts, state) => filterOptionsNormalized(opts, state, getOptionLabel));
+
   return (
     <div className="w-full">
       <label className="text-base font-semibold">{label}</label>
@@ -23,6 +29,7 @@ const AutocompleteField = ({
         onBlur={onBlur}
         placeholder={label}
         getOptionLabel={getOptionLabel}
+        filterOptions={customFilter}
         sx={{
           border: "1px solid #9ea5b2",
           borderRadius: "6px",

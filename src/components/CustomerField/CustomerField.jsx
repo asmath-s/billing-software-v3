@@ -2,16 +2,19 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { updateCustomer } from "../../api/customer";
 import { updateGstCustomer } from "../../api/gstCustomer";
+import {
+  findMatchingEntity,
+  isNameMatch,
+  normalizeName,
+} from "../../utils/nameNormalizer";
 import AutocompleteField from "../AutocompleteField/AutocompleteField";
 import Button from "../Button/Button";
 import EditButton from "../EditButton/EditButton";
 import { ClearIcon } from "../icons";
 import InputField from "../InputField/InputField";
 
-const normalize = (str) => str?.toLowerCase().replace(/\s+/g, "").trim();
-
 const CustomerField = ({
-  customerData,
+  customerData = [],
   fetchCustomers,
   customerName,
   setCustomerName,
@@ -32,9 +35,13 @@ const CustomerField = ({
   const resetFields = useCallback(() => {
     setCustomerName("");
     setSelectedCustomerID("");
-    isGstCustomer
-      ? (setAddress(""), setDeliveryAddress(""), setGstNo(""))
-      : setPhoneno("");
+    if (isGstCustomer) {
+      setAddress("");
+      setDeliveryAddress("");
+      setGstNo("");
+    } else {
+      setPhoneno("");
+    }
   }, [
     isGstCustomer,
     setCustomerName,
@@ -72,25 +79,67 @@ const CustomerField = ({
     ],
   );
 
+  const handleNameInputChange = useCallback(
+    (inputValue) => {
+      setCustomerName(inputValue || "");
+      if (!inputValue || !inputValue.trim()) {
+        setSelectedCustomerID("");
+        return;
+      }
+
+      const matched = findMatchingEntity(inputValue, customerData, "name");
+      if (matched) {
+        setSelectedCustomerID(matched.documentId || "");
+        if (isGstCustomer) {
+          setAddress(matched.address || "");
+          setDeliveryAddress(matched.delivery_address || "");
+          setGstNo(matched.gst_no || "");
+        } else {
+          setPhoneno(matched.phonenumber || "");
+        }
+      } else {
+        setSelectedCustomerID("");
+      }
+    },
+    [
+      customerData,
+      isGstCustomer,
+      setCustomerName,
+      setSelectedCustomerID,
+      setAddress,
+      setDeliveryAddress,
+      setGstNo,
+      setPhoneno,
+    ],
+  );
+
   const handleCustomerChange = useCallback(
     (value, field) => {
       if (!value) return resetFields();
 
-      const selected = customerData.find((customer) => {
-        if (field === "name")
-          return normalize(customer.name) === normalize(value);
+      const selected = (customerData || []).find((customer) => {
+        if (!customer) return false;
+        if (field === "name") {
+          return isNameMatch(customer.name, value);
+        }
 
-        if (field === "phone" && !isGstCustomer)
-          return normalize(customer.phonenumber) === normalize(value);
+        if (field === "phone" && !isGstCustomer) {
+          return normalizeName(customer.phonenumber) === normalizeName(value);
+        }
 
-        if (field === "gst" && isGstCustomer)
-          return normalize(customer.gst_no) === normalize(value);
+        if (field === "gst" && isGstCustomer) {
+          return normalizeName(customer.gst_no) === normalizeName(value);
+        }
 
-        if (field === "address" && isGstCustomer)
-          return normalize(customer.address) === normalize(value);
+        if (field === "address" && isGstCustomer) {
+          return normalizeName(customer.address) === normalizeName(value);
+        }
 
-        if (field === "delivery_address" && isGstCustomer)
-          return normalize(customer.delivery_address) === normalize(value);
+        if (field === "delivery_address" && isGstCustomer) {
+          return (
+            normalizeName(customer.delivery_address) === normalizeName(value)
+          );
+        }
 
         return false;
       });
@@ -124,35 +173,41 @@ const CustomerField = ({
       toast.success("Customer updated successfully");
       fetchCustomers(); // refresh list
     } catch (error) {
-      console.error(error);
+      console.error("Failed to update customer:", error);
       toast.error("Failed to update customer");
     }
   };
 
   const nameOptions = useMemo(
-    () => [...new Set(customerData.map((c) => c.name).filter(Boolean))],
+    () => [...new Set((customerData || []).map((c) => c.name).filter(Boolean))],
     [customerData],
   );
 
   const phoneOptions = useMemo(
-    () => [...new Set(customerData.map((c) => c.phonenumber).filter(Boolean))],
+    () => [
+      ...new Set((customerData || []).map((c) => c.phonenumber).filter(Boolean)),
+    ],
     [customerData],
   );
 
   const addressOptions = useMemo(
-    () => [...new Set(customerData.map((c) => c.address).filter(Boolean))],
+    () => [
+      ...new Set((customerData || []).map((c) => c.address).filter(Boolean)),
+    ],
     [customerData],
   );
 
   const deliveryAddressOptions = useMemo(
     () => [
-      ...new Set(customerData.map((c) => c.delivery_address).filter(Boolean)),
+      ...new Set(
+        (customerData || []).map((c) => c.delivery_address).filter(Boolean),
+      ),
     ],
     [customerData],
   );
 
   const gstOptions = useMemo(
-    () => [...new Set(customerData.map((c) => c.gst_no).filter(Boolean))],
+    () => [...new Set((customerData || []).map((c) => c.gst_no).filter(Boolean))],
     [customerData],
   );
 
@@ -163,7 +218,7 @@ const CustomerField = ({
       <AutocompleteField
         label="Customer Name"
         value={customerName}
-        onInputChange={(e, v) => setCustomerName(v)}
+        onInputChange={(e, v) => handleNameInputChange(v)}
         onChange={(e, v) => handleCustomerChange(v, "name")}
         options={nameOptions}
         required
@@ -224,7 +279,7 @@ const CustomerField = ({
         </div>
       )}
 
-      {/* Modal (same as before) */}
+      {/* Modal */}
       {open && (
         <>
           <div className="absolute inset-0 flex items-center justify-center z-[999]">

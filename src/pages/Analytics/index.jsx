@@ -1,14 +1,14 @@
 import { lazy, Suspense } from "react";
 import PreLoader from "../../components/Preloader/Preloader";
 
-const OutstandingGpay = lazy(() => import("./page"));
+const Analytics = lazy(() => import("./page"));
 
-const OutstandingGpayPage = () => {
+const AnalyticsPage = () => {
   return (
     <Suspense fallback={<PreLoader />}>
-      <OutstandingGpay />
+      <Analytics />
     </Suspense>
   );
 };
 
-export default OutstandingGpayPage;
+export default AnalyticsPage;

@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/joy";
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { getCustomers } from "../../api/customer";
@@ -26,7 +26,9 @@ import MainLayout from "../../layouts/MainLayout";
 
 import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
+import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 
 import { getLocalAmounts } from "../../api/localAmount";
 import {
@@ -43,12 +45,15 @@ import {
   GpayIcon,
   PendingIcon,
   SaveIcon,
+  SavePdfIcon,
 } from "../../components/icons";
+import LocalSalesExportModal from "../../components/LocalSalesExportModal/LocalSalesExportModal";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RightIcon from "../../components/icons/RightIcon";
 import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import { setCurrentTime } from "../../utils/DatewithTime";
 
 function labelDisplayedRows({ from, to, count }) {
@@ -57,6 +62,7 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalPartyList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const navigate = useNavigate();
 
   /* ================= STATE ================= */
@@ -64,6 +70,7 @@ const LocalPartyList = () => {
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
   const [searchCustomer, setSearchCustomer] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const [customers, setCustomers] = useState([]);
   const [localData, setLocalData] = useState([]);
@@ -95,7 +102,18 @@ const LocalPartyList = () => {
 
   /* ================= API QUERY BUILDER ================= */
 
-  const buildQuery = () => {
+  const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [];
     query.push("populate=*");
     query.push(`pagination[page]=${page + 1}`);
@@ -108,28 +126,33 @@ const LocalPartyList = () => {
       query.push(`filters[customer][documentId][$eq]=${searchCustomer.value}`);
     }
 
-    if (fromDate && toDate) {
-      const startDate = dayjs(fromDate).startOf("day").toISOString();
-      const endDate = dayjs(toDate).endOf("day").toISOString();
+    if (from && to) {
+      const startDate = dayjs(from).format("YYYY-MM-DD");
+      const endDate = dayjs(to).format("YYYY-MM-DD");
 
-      // GPay OR Cash payment date filter
-      query.push(`filters[$or][0][gpay][date][$gte]=${startDate}`);
-      query.push(`filters[$or][0][gpay][date][$lte]=${endDate}`);
-
-      query.push(`filters[$or][1][cash][date][$gte]=${startDate}`);
-      query.push(`filters[$or][1][cash][date][$lte]=${endDate}`);
+      query.push(`filters[$or][0][date][$gte]=${startDate}`);
+      query.push(`filters[$or][0][date][$lte]=${endDate}`);
+      query.push(`filters[$or][1][gpay][date][$gte]=${startDate}`);
+      query.push(`filters[$or][1][gpay][date][$lte]=${endDate}`);
+      query.push(`filters[$or][2][cash][date][$gte]=${startDate}`);
+      query.push(`filters[$or][2][cash][date][$lte]=${endDate}`);
     }
 
     return `?${query.join("&")}`;
-  };
+  }, [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /* ================= LOAD DATA ================= */
 
   const loadLocalPartyData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await getLocalList(buildQuery());
+      const res = await getLocalList(queryString);
 
       setLocalData(res?.data || []);
       setTotalCount(res?.meta?.pagination?.total || 0);
@@ -140,13 +163,24 @@ const LocalPartyList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, searchCustomer, fromDate, toDate]);
+  }, [buildQuery]);
 
   const loadLocalTotalAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let query = [];
+      const query = [];
 
       if (searchCustomer) {
         query.push(
@@ -154,10 +188,7 @@ const LocalPartyList = () => {
         );
       }
 
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
+      if (from && to) {
         query.push(`fromDate=${from}`);
         query.push(`toDate=${to}`);
       }
@@ -166,14 +197,23 @@ const LocalPartyList = () => {
 
       const res = await getLocalAmounts(queryString);
 
-      setLocalAmount(res);
+      setLocalAmount(res || {});
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
-      setLocalAmount([]);
+      setLocalAmount({});
     } finally {
       setLoading(false);
     }
-  }, [searchCustomer, fromDate, toDate]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
+
+  const customerOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        label: c.name,
+        value: c.documentId,
+      })),
+    [customers],
+  );
 
   /* ================= INITIAL LOAD ================= */
 
@@ -291,14 +331,28 @@ const LocalPartyList = () => {
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local Party List</h1>
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          style={{ marginRight: 8 }}
-          label={"Show Overview"}
-          onChange={() => toggleOverview()}
-        />
+
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
+          />
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              style={{ marginRight: 8 }}
+              label={"Show Overview"}
+              onChange={() => toggleOverview()}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -347,12 +401,13 @@ const LocalPartyList = () => {
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((c) => ({
-              label: c.name,
-              value: c.documentId,
-            }))}
+            options={customerOptions}
             onChange={(e, val) => {
-              setSearchCustomer(val);
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
               setPage(0);
             }}
           />
@@ -366,17 +421,18 @@ const LocalPartyList = () => {
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
             className={"w-full"}
-            minDate={role === "superadmin" ? false : new Date()}
+            minDate={role === "superadmin" ? undefined : new Date()}
           />
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((c) => ({
-              label: c.name,
-              value: c.documentId,
-            }))}
+            options={customerOptions}
             onChange={(e, val) => {
-              setSearchCustomer(val);
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
               setPage(0);
             }}
           />
@@ -438,8 +494,16 @@ const LocalPartyList = () => {
 
           <tbody>
             {loading ? (
-              <tr colSpan={8}>
-                <td>Loading</td>
+              <tr>
+                <td colSpan={9} className="text-center py-4">
+                  Loading...
+                </td>
+              </tr>
+            ) : localData.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="text-center py-4 text-gray-500">
+                  No records found
+                </td>
               </tr>
             ) : (
               localData.map((item) => (
@@ -497,12 +561,10 @@ const LocalPartyList = () => {
                     <div className="flex gap-2">
                       <EditButton
                         onClick={() => {
-                          console.log("item.total_amount", item.total_amount);
                           if (
                             item.total_amount === 0 ||
                             item.total_amount === null
                           ) {
-                            console.log("getting inside", item.total_amount);
                             handleEdit(item);
                           } else {
                             navigate(
@@ -581,6 +643,14 @@ const LocalPartyList = () => {
           </tfoot>
         </Table>
       </div>
+
+      <LocalSalesExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        sectionTitle="Local Sales – Party List"
+        status="party"
+        customerOptions={customerOptions}
+      />
     </MainLayout>
   );
 };

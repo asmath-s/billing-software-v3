@@ -30,12 +30,16 @@ import {
 import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { resolveApiDateRange } from "../../utils/financialYear";
+import { formattedAmount } from "../../utils/FormatAmount";
 
 const LocalExpenseEntry = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
 
   const [date, setDate] = useState(new Date());
   const [instruction, setInstruction] = useState("");
@@ -59,17 +63,24 @@ const LocalExpenseEntry = () => {
   /* ================= LOAD DATA ================= */
 
   const loadExpenseData = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     const query = [];
     query.push(`sort[0]=date:desc`);
     query.push(`filters[approved][$eq]=false`);
 
-    if (fromDate && toDate) {
-      query.push(
-        `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-      );
-      query.push(
-        `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
-      );
+    if (from && to) {
+      query.push(`filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`);
+      query.push(`filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`);
     }
     const pageSize = 100;
     let page = 1;
@@ -86,10 +97,9 @@ const LocalExpenseEntry = () => {
         ].join("&");
 
         const res = await getLocalExpense(params);
-        console.log(res.data);
 
         allData.push(...(res.data.data || []));
-        pageCount = res.data.meta.pagination.pageCount;
+        pageCount = res.data.meta?.pagination?.pageCount || 1;
 
         page++;
       } while (page <= pageCount);
@@ -102,31 +112,42 @@ const LocalExpenseEntry = () => {
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, fyFromDate, fyToDate]);
 
   const loadLocalTotalAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
 
     try {
       const query = [];
 
-      if (fromDate && toDate) {
-        query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
-        query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
+      if (from && to) {
+        query.push(`fromDate=${from}`);
+        query.push(`toDate=${to}`);
       }
 
       const queryString = query.length ? `?${query.join("&")}` : "";
 
       const res = await getLocalExpenseAmounts(queryString);
 
-      setLocalExpenseAmount(res);
+      setLocalExpenseAmount(res || {});
     } catch (error) {
       console.error("Local amounts fetch failed:", error);
-      setLocalExpenseAmount([]);
+      setLocalExpenseAmount({});
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, fyFromDate, fyToDate]);
 
   useEffect(() => {
     loadExpenseData();
@@ -282,27 +303,34 @@ const LocalExpenseEntry = () => {
     setLoading(true);
 
     try {
-      for (const item of groupedData[approveDate]) {
-        if (item.current_status === "admin") {
-          // eslint-disable-next-line no-unused-vars
-          const { id, documentId, publishedAt, updatedAt, createdAt, ...rest } =
-            item;
-          rest.approved = true;
-          await createAdminExpense(rest);
-          await deleteLocalExpense(item.documentId);
-        } else {
-          await updateLocalExpense(item.documentId, {
-            current_status: item.current_status,
-            approved: true,
-          });
-        }
-      }
+      await Promise.all(
+        (groupedData[approveDate] || []).map(async (item) => {
+          if (item.current_status === "admin") {
+            const {
+              id: _id,
+              documentId: _docId,
+              publishedAt: _pub,
+              updatedAt: _upd,
+              createdAt: _cre,
+              ...rest
+            } = item;
+            rest.approved = true;
+            await createAdminExpense(rest);
+            await deleteLocalExpense(item.documentId);
+          } else {
+            await updateLocalExpense(item.documentId, {
+              current_status: item.current_status,
+              approved: true,
+            });
+          }
+        }),
+      );
 
       await loadExpenseData();
       toast.success("Approved successfully!");
       setConfirmOpen(false);
     } catch (error) {
-      console.error(error);
+      console.error("Approval failed:", error);
       toast.error("Approval failed");
     } finally {
       setLoading(false);
@@ -381,7 +409,7 @@ const LocalExpenseEntry = () => {
               label="Date"
               onChange={(d) => setDate(setCurrentTime(d))}
               className={"w-full"}
-              minDate={role === "superadmin" ? false : new Date()}
+              minDate={role === "superadmin" ? undefined : new Date()}
             />
           )}
           <InputField
@@ -486,7 +514,7 @@ const LocalExpenseEntry = () => {
                       {item.custom_type}
                     </span>
                   </td>
-                  <td>{item.amount}</td>
+                  <td>{formattedAmount(item.amount)}</td>
                   <td>
                     <div className="flex gap-2">
                       <EditButton onClick={() => handleEdit(item)} />

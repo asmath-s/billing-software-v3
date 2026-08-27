@@ -37,9 +37,11 @@ import {
 import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { resolveApiDateRange } from "../../utils/financialYear";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -47,6 +49,7 @@ function labelDisplayedRows({ from, to, count }) {
 
 const AdminList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const [date, setDate] = useState(new Date());
   const [instruction, setInstruction] = useState("");
   const [customType, setCustomType] = useState("cash");
@@ -63,7 +66,18 @@ const AdminList = () => {
   const [toDate, setToDate] = useState(null);
   const [searchText, setSearchText] = useState("");
 
-  const buildQuery = () => {
+  const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [];
 
     query.push(`pagination[page]=${page + 1}`);
@@ -76,24 +90,26 @@ const AdminList = () => {
       query.push(`filters[instruction][$containsi]=${searchText}`);
     }
 
-    if (fromDate && toDate) {
+    if (from && to) {
       query.push(
-        `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-      );
-      query.push(
-        `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+        `filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`,
+        `filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`,
       );
     }
 
     return query.join("&");
-  };
+  }, [page, rowsPerPage, searchText, fromDate, toDate, fyFromDate, fyToDate]);
 
   const loadExpenseData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await getAdminExpense(buildQuery());
-      console.log(res);
+      const res = await getAdminExpense(queryString);
 
       setExpenseData(res?.data || []);
       setTotalCount(res?.meta?.pagination?.total || 0);
@@ -104,9 +120,20 @@ const AdminList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, fromDate, toDate, searchText]);
+  }, [buildQuery]);
 
   const LoadAdminAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -120,26 +147,24 @@ const AdminList = () => {
         query.push(`filters[instruction][$containsi]=${searchText}`);
       }
 
-      if (fromDate && toDate) {
+      if (from && to) {
         query.push(
-          `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-        );
-        query.push(
-          `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+          `filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`,
+          `filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`,
         );
       }
       const queryString = query.length ? `?${query.join("&")}` : "";
 
       const res = await getAdminExpenseAmounts(queryString);
 
-      setAdminExpenseAmount(res);
+      setAdminExpenseAmount(res || {});
     } catch (error) {
       console.error("Admin amounts fetch failed:", error);
-      setAdminExpenseAmount([]);
+      setAdminExpenseAmount({});
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate, searchText]);
+  }, [searchText, fromDate, toDate, fyFromDate, fyToDate]);
 
   useEffect(() => {
     loadExpenseData();
@@ -149,7 +174,7 @@ const AdminList = () => {
     if (showOverview) {
       LoadAdminAmount();
     }
-  }, [LoadAdminAmount]);
+  }, [LoadAdminAmount, showOverview]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -227,14 +252,16 @@ const AdminList = () => {
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Admin Expense List</h1>
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          style={{ marginRight: 8 }}
-          label={"Show Overview"}
-          onChange={() => toggleOverview()}
-        />
+        {role !== "authenticated" && (
+          <Checkbox
+            icon={<CheckBoxIcon />}
+            checkedIcon={<CheckIcon color="#fff" />}
+            checked={showOverview}
+            style={{ marginRight: 8 }}
+            label={"Show Overview"}
+            onChange={() => toggleOverview()}
+          />
+        )}
       </div>
 
       {showOverview && (
@@ -304,7 +331,7 @@ const AdminList = () => {
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
             className={"w-full"}
-            minDate={role === "superadmin" ? false : new Date()}
+            minDate={role === "superadmin" ? undefined : new Date()}
           />
 
           <InputField
@@ -377,51 +404,65 @@ const AdminList = () => {
           </thead>
 
           <tbody>
-            {expenseData.map((item) => (
-              <tr key={item.documentId}>
-                <td>{dayjs(item.date).format("DD-MM-YYYY")}</td>
-                <td className="w-[10%]">{item.role}</td>
-                <td>{item.instruction}</td>
-                <td>
-                  <span
-                    className={`p-1 rounded-md flex justify-center capitalize  ${
-                      item.method === "expense"
-                        ? "bg-rose-200 text-rose-800"
-                        : "bg-[#DAF4F0] text-[#0AB39C]"
-                    }`}
-                  >
-                    {item.method}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    className={`p-1 rounded-md flex justify-center capitalize  ${
-                      item.custom_type === "cash"
-                        ? "bg-[#E2E5ED] text-[#000e3b]"
-                        : item.custom_type === "gpay"
-                          ? "bg-stone-200 text-stone-800"
-                          : "bg-[#a2bbfd] text-[#122455]"
-                    }`}
-                  >
-                    {item.custom_type}
-                  </span>
-                </td>
-                <td>{item.amount}</td>
-                <td>
-                  <div className="flex gap-2">
-                    <EditButton onClick={() => handleEdit(item)} />
-
-                    <DeletePopup
-                      handleDelete={() => handleDelete(item.documentId)}
-                    />
-                  </div>
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="text-center py-4">
+                  Loading...
                 </td>
               </tr>
-            ))}
+            ) : expenseData.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-4 text-gray-500">
+                  No records found
+                </td>
+              </tr>
+            ) : (
+              expenseData.map((item) => (
+                <tr key={item.documentId}>
+                  <td>{dayjs(item.date).format("DD-MM-YYYY")}</td>
+                  <td className="w-[10%]">{item.role}</td>
+                  <td>{item.instruction}</td>
+                  <td>
+                    <span
+                      className={`p-1 rounded-md flex justify-center capitalize  ${
+                        item.method === "expense"
+                          ? "bg-rose-200 text-rose-800"
+                          : "bg-[#DAF4F0] text-[#0AB39C]"
+                      }`}
+                    >
+                      {item.method}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={`p-1 rounded-md flex justify-center capitalize  ${
+                        item.custom_type === "cash"
+                          ? "bg-[#E2E5ED] text-[#000e3b]"
+                          : item.custom_type === "gpay"
+                            ? "bg-stone-200 text-stone-800"
+                            : "bg-[#a2bbfd] text-[#122455]"
+                      }`}
+                    >
+                      {item.custom_type}
+                    </span>
+                  </td>
+                  <td>{item.amount}</td>
+                  <td>
+                    <div className="flex gap-2">
+                      <EditButton onClick={() => handleEdit(item)} />
+
+                      <DeletePopup
+                        handleDelete={() => handleDelete(item.documentId)}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={8}>
+              <td colSpan={7}>
                 <Box
                   sx={{
                     display: "flex",

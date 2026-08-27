@@ -7,8 +7,8 @@ import MainLayout from "../../layouts/MainLayout";
 
 import { createVendor, getVendors } from "../../api/vendor";
 
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import AutocompleteField from "../../components/AutocompleteField/AutocompleteField";
@@ -18,9 +18,12 @@ import { AddIcon, SaveIcon } from "../../components/icons";
 import InputField from "../../components/InputField/InputField";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import {
+  findMatchingEntity,
+  isNameMatch,
+} from "../../utils/nameNormalizer";
 
 const GstExpenseEntry = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const editId = searchParams.get("editId");
@@ -37,27 +40,18 @@ const GstExpenseEntry = () => {
   const [vendorList, setVendorList] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadVendors();
-
-    if (editId) {
-      loadEditData(editId);
-    }
-  }, [editId]);
-
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const res = await getVendors();
       setVendorList(res || []);
     } catch {
       setVendorList([]);
     }
-  };
+  }, []);
 
-  const loadEditData = async (id) => {
+  const loadEditData = useCallback(async (id) => {
     try {
       const data = await getGstExpenseListById(id);
-      console.log(data);
 
       if (!data) return;
 
@@ -71,7 +65,15 @@ const GstExpenseEntry = () => {
     } catch {
       toast.error("Failed to load expense");
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadVendors();
+
+    if (editId) {
+      loadEditData(editId);
+    }
+  }, [editId, loadVendors, loadEditData]);
 
   const gstSummary = useMemo(() => {
     const amt = Number(amount) || 0;
@@ -127,23 +129,51 @@ const GstExpenseEntry = () => {
     setDate(setCurrentTime(new Date()));
     setBillNo("");
     setVendorName("");
+    setVendorId("");
     setAmount("");
     setGstPercentage(18);
   };
 
   const ensureVendor = async () => {
-    if (vendorId) return vendorId;
-
-    if (!vendorName.trim()) {
+    const trimmedName = vendorName.trim();
+    if (!trimmedName) {
       throw new Error("Vendor name is required");
     }
 
+    // 1. If vendorId is set and matches current name, use it
+    if (vendorId) {
+      const currentMatch = vendorList.find((v) => v.documentId === vendorId);
+      if (currentMatch && isNameMatch(currentMatch.name, trimmedName)) {
+        return vendorId;
+      }
+    }
+
+    // 2. Check in current local vendorList (space-insensitive and case-insensitive)
+    const existing = findMatchingEntity(trimmedName, vendorList, "name");
+    if (existing) {
+      setVendorId(existing.documentId);
+      return existing.documentId;
+    }
+
+    // 3. Query/Refresh database list before creating to ensure no race or missed items
+    try {
+      const latestVendors = await getVendors();
+      setVendorList(latestVendors || []);
+      const foundInLatest = findMatchingEntity(trimmedName, latestVendors, "name");
+      if (foundInLatest) {
+        setVendorId(foundInLatest.documentId);
+        return foundInLatest.documentId;
+      }
+    } catch (fetchErr) {
+      console.warn("Could not refresh vendor list before creation:", fetchErr);
+    }
+
+    // 4. Only if not found anywhere, create a new vendor
     const res = await createVendor({
-      name: vendorName,
+      name: trimmedName,
     });
 
     setVendorId(res.documentId);
-
     await loadVendors();
 
     return res.documentId;
@@ -186,15 +216,29 @@ const GstExpenseEntry = () => {
             options={vendorList}
             required
             onInputChange={(e, value) => {
-              setVendorName(capitalizeFirstLetter(value));
+              const formatted = capitalizeFirstLetter(value || "");
+              setVendorName(formatted);
+              const matched = findMatchingEntity(value, vendorList, "name");
+              if (matched) {
+                setVendorId(matched.documentId);
+              } else {
+                setVendorId("");
+              }
             }}
             onChange={(e, value) => {
               if (typeof value === "object" && value) {
                 setVendorId(value.documentId);
                 setVendorName(value.name);
               } else {
-                setVendorId("");
-                setVendorName(capitalizeFirstLetter(value || ""));
+                const typedName = capitalizeFirstLetter(value || "");
+                setVendorName(typedName);
+                const matched = findMatchingEntity(typedName, vendorList, "name");
+                if (matched) {
+                  setVendorId(matched.documentId);
+                  setVendorName(matched.name);
+                } else {
+                  setVendorId("");
+                }
               }
             }}
             getOptionLabel={(option) =>
@@ -226,6 +270,7 @@ const GstExpenseEntry = () => {
             <Button
               type={"submit"}
               label={editId ? "Update" : "Save"}
+              disabled={loading}
               icon1={<SaveIcon color="#fff" />}
               icon2={<SaveIcon color="#fff" />}
               className={

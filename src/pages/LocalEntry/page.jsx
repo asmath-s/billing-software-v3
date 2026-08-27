@@ -38,6 +38,10 @@ import { useAuth } from "../../context/auth-context";
 import { LOCALENTRY } from "../../router/paths";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { formattedAmount } from "../../utils/FormatAmount";
+import {
+  findMatchingEntity,
+  isNameMatch,
+} from "../../utils/nameNormalizer";
 import { transformBillingData } from "../../utils/transformBillingData";
 
 const num = (v) => Number(v) || 0;
@@ -87,8 +91,7 @@ const LocalEntry = () => {
       } else {
         setBillNo("1");
       }
-    } catch (err) {
-      console.log(err);
+    } catch {
       setBillNo("1");
     }
   }, []);
@@ -227,22 +230,58 @@ const LocalEntry = () => {
     try {
       setLoading(true);
 
+      const trimmedName = (customerName || "").trim();
+      if (!trimmedName) {
+        toast.error("Customer name is required");
+        setLoading(false);
+        return;
+      }
+
       let finalCustomerId = customerId;
 
-      if (!customerId) {
-        if (!customerName.trim()) {
-          toast.error("Customer name is required");
-          return;
+      // 1. Verify if active customerId matches current name
+      if (finalCustomerId) {
+        const currentMatch = (customerList || []).find(
+          (c) => c.documentId === finalCustomerId,
+        );
+        if (!currentMatch || !isNameMatch(currentMatch.name, trimmedName)) {
+          finalCustomerId = null;
         }
+      }
 
+      // 2. Search local customerList
+      if (!finalCustomerId) {
+        const localMatch = findMatchingEntity(trimmedName, customerList, "name");
+        if (localMatch) {
+          finalCustomerId = localMatch.documentId;
+          setCustomerId(finalCustomerId);
+        }
+      }
+
+      // 3. Search freshly fetched database list
+      if (!finalCustomerId) {
+        try {
+          const latestCustomers = await getCustomers();
+          setCustomerList(latestCustomers || []);
+          const dbMatch = findMatchingEntity(trimmedName, latestCustomers, "name");
+          if (dbMatch) {
+            finalCustomerId = dbMatch.documentId;
+            setCustomerId(finalCustomerId);
+          }
+        } catch (fetchErr) {
+          console.warn("Could not refresh customer list:", fetchErr);
+        }
+      }
+
+      // 4. Create new customer only if no match exists anywhere
+      if (!finalCustomerId) {
         const createdCustomer = await createCustomer({
-          name: customerName,
+          name: trimmedName,
           phonenumber: phone,
         });
 
         finalCustomerId = createdCustomer?.documentId;
         setCustomerId(finalCustomerId);
-
         await loadCustomers();
       }
 
@@ -267,7 +306,6 @@ const LocalEntry = () => {
           return null;
         })
         .filter(Boolean);
-      console.log(sizeData);
 
       const payload = {
         bill_no: billNo,
@@ -290,11 +328,10 @@ const LocalEntry = () => {
         toast.success("Local list created successfully");
       } else {
         await updateLocalList(documentId, payload);
-
         toast.success("Local list updated successfully");
       }
     } catch (error) {
-      console.log(error);
+      console.error("Save error:", error);
       toast.error("Failed to save entry");
     } finally {
       setLoading(false);
@@ -349,10 +386,10 @@ const LocalEntry = () => {
 
   const handleAddCashRow = () => {
     setCashErrorMsg("");
-    const last = cashData[cashData.length - 1];
+    const lastRow = cashData[cashData.length - 1];
 
-    if (!last.date || !last.amount) {
-      setCashErrorMsg("Please enter date and amount");
+    if (!lastRow.date || !lastRow.amount) {
+      setCashErrorMsg("Please fill out the previous Cash row.");
       return;
     }
 
@@ -361,32 +398,44 @@ const LocalEntry = () => {
 
   const handleAddGpayRow = () => {
     setGpayErrorMsg("");
-    const last = gpayData[gpayData.length - 1];
+    const lastRow = gpayData[gpayData.length - 1];
 
-    if (!last.date || !last.amount) {
-      setGpayErrorMsg("Please enter date and amount");
+    if (!lastRow.date || !lastRow.amount) {
+      setGpayErrorMsg("Please fill out the previous Gpay row.");
       return;
     }
 
     setGpayData((prev) => [...prev, { date: null, amount: 0 }]);
   };
 
-  const handleCashChange = (index, e, field) => {
-    const value = field ? e : e.target.value;
-    const name = field || e.target.name;
+  const handleCashChange = (index, eventOrValue, field = "amount") => {
+    setCashData((prev) => {
+      const updated = [...prev];
 
-    setCashData((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [name]: value } : item)),
-    );
+      if (field === "date") {
+        updated[index].date = eventOrValue;
+      } else {
+        const val = eventOrValue.target.value;
+        updated[index].amount = val === "" ? "" : Number(val);
+      }
+
+      return updated;
+    });
   };
 
-  const handleGpayChange = (index, e, field) => {
-    const value = field ? e : e.target.value;
-    const name = field || e.target.name;
+  const handleGpayChange = (index, eventOrValue, field = "amount") => {
+    setGpayData((prev) => {
+      const updated = [...prev];
 
-    setGpayData((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [name]: value } : item)),
-    );
+      if (field === "date") {
+        updated[index].date = eventOrValue;
+      } else {
+        const val = eventOrValue.target.value;
+        updated[index].amount = val === "" ? "" : Number(val);
+      }
+
+      return updated;
+    });
   };
 
   const handleRemoveCashRow = (index) => {
@@ -484,8 +533,7 @@ const LocalEntry = () => {
                         )
                       }
                       label="Cash Date"
-                      minDate={role === "superadmin" ? false : new Date()}
-                      // disabled={Status?.cash[index]}
+                      minDate={role === "superadmin" ? undefined : new Date()}
                       isClearable={true}
                       className={`disabled:cursor-not-allowed disabled:text-gray-400 disabled:border-gray-400`}
                     />
@@ -505,7 +553,6 @@ const LocalEntry = () => {
                       onClick={() => handleRemoveCashRow(index)}
                       icon1={<DeleteIcon color="#fff" />}
                       icon2={<DeleteIcon color="#000" />}
-                      // disabled={Status?.cash[index]}
                       className={
                         "h-[38px] mt-5.5 border-gray-400 disabled:cursor-not-allowed disabled:text-gray-400 disabled:border-gray-400  disabled:bg-gray-300"
                       }
@@ -551,7 +598,6 @@ const LocalEntry = () => {
                       placeholder={"Gpay Amount"}
                       value={row.amount}
                       onChange={(e) => handleGpayChange(index, e)}
-                      // disabled={Status?.gpay[index]}
                       className={`disabled:cursor-not-allowed disabled:text-gray-400 disabled:border-gray-400`}
                     />
                     <Button
@@ -561,7 +607,6 @@ const LocalEntry = () => {
                       className={
                         "h-[38px] mt-5.5 border-gray-400 disabled:cursor-not-allowed disabled:text-gray-400 disabled:border-gray-400 disabled:bg-gray-300"
                       }
-                      // disabled={Status?.gpay[index]}
                     />
                   </div>
                 </div>
@@ -605,7 +650,7 @@ const LocalEntry = () => {
 
           <Button
             type="submit"
-            label={documentId ? "Update" : "Save"}
+            label={loading ? (documentId ? "Updating..." : "Saving...") : (documentId ? "Update" : "Save")}
             icon1={<SaveIcon color="#fff" />}
             icon2={<SaveIcon color="#fff" />}
             disabled={loading}

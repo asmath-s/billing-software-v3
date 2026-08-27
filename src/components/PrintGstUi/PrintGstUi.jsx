@@ -22,8 +22,6 @@ const PrintGstUi = forwardRef((props, ref) => {
     gstPercentage,
   } = props;
 
-  console.log(method, "method");
-
   const totalInWords = useMemo(() => {
     const amount = Math.round(Number(finalAmount || 0));
 

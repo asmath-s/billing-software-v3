@@ -43,7 +43,9 @@ export default [
 
     rules: {
       ...react.configs.recommended.rules,
-      ...reactHooks.configs["recommended-latest"].rules,
+      ...reactHooks.configs.recommended.rules,
+
+      "react-hooks/set-state-in-effect": "off",
 
       "react/prop-types": "off",
 

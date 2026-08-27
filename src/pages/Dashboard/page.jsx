@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { getAdminExpenseAmounts } from "../../api/adminExpense";
@@ -12,7 +11,9 @@ import {
 import AdminCard from "../../components/AdminCard/AdminCard";
 import Datepicker from "../../components/Datepicker/Datepicker";
 import { AccountIcon, CashIcon, GpayIcon } from "../../components/icons";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
+import { resolveApiDateRange } from "../../utils/financialYear";
 
 /* -----------------------------------------------------------------
    Shared formatting / helpers
@@ -109,26 +110,6 @@ const FinanceCard = ({ title, titleColor, tiles = [], panels = [] }) => (
   </div>
 );
 
-const StatCard = ({ title, titleColor, value, valueColor, items = [] }) => (
-  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-    <div className="border-b border-slate-100 px-4 py-3">
-      <h2 className={`text-[14px] font-bold ${titleColor}`}>{title}</h2>
-    </div>
-    <div className="p-4">
-      <p className={`text-xl font-bold ${valueColor} mb-3`}>
-        ₹ {formatAmount(value)}
-      </p>
-      {items.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3">
-          {items.map((item, i) => (
-            <Item key={i} {...item} />
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
-);
-
 const SectionHeading = ({ children }) => (
   <div className="mb-3 mt-8 first:mt-0 flex items-center gap-3">
     <span className="h-5 w-1 rounded-full bg-slate-800" />
@@ -149,8 +130,10 @@ const sectionMotion = {
 ------------------------------------------------------------------*/
 
 const Dashboard = () => {
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
+
   const [localSalesAmount, setLocalSalesAmount] = useState({});
   const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
   const [localAuthenticatedExpenseAmount, setLocalAuthenticatedExpenseAmount] =
@@ -160,167 +143,80 @@ const Dashboard = () => {
   const [gstSalesSummary, setGstSalesSummary] = useState(null);
   const [gstExpenseSummary, setGstExpenseSummary] = useState(null);
 
-  const loadGstExpenseSummary = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
+  const loadDashboardData = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
 
-      if (fromDate && toDate) {
-        params.set("fromDate", dayjs(fromDate).format("YYYY-MM-DD"));
-        params.set("toDate", dayjs(toDate).format("YYYY-MM-DD"));
-      }
-
-      const queryString = params.toString() ? `?${params.toString()}` : "";
-      const res = await getGstExpenseSummary(queryString);
-      setGstExpenseSummary(res);
-    } catch (err) {
-      console.error("GST expense summary fetch failed:", err);
-      setGstExpenseSummary(null);
+    if (!shouldFetch) {
+      return;
     }
-  }, [fromDate, toDate]);
 
-  const loadGstSalesSummary = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-
-      if (fromDate && toDate) {
-        params.set("fromDate", dayjs(fromDate).format("YYYY-MM-DD"));
-        params.set("toDate", dayjs(toDate).format("YYYY-MM-DD"));
-      }
-
-      const queryString = params.toString() ? `?${params.toString()}` : "";
-      const res = await getGstSalesSummary(queryString);
-      setGstSalesSummary(res);
-    } catch (err) {
-      console.error("GST sales summary fetch failed:", err);
-      setGstSalesSummary(null);
-    }
-  }, [fromDate, toDate]);
-
-  const loadLocalTotalAmount = useCallback(async () => {
     setLoading(true);
 
     try {
-      let query = [];
+      const dateQuery = from && to ? `?fromDate=${from}&toDate=${to}` : "";
 
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
-        query.push(`fromDate=${from}`);
-        query.push(`toDate=${to}`);
+      const adminParams = [
+        "sort[0]=date:desc",
+        "filters[approved][$eq]=true",
+        "filters[current_status][$eq]=admin",
+      ];
+      if (from && to) {
+        adminParams.push(`fromDate=${from}`, `toDate=${to}`);
       }
+      const adminQuery = `?${adminParams.join("&")}`;
 
-      const queryString = query.length ? `?${query.join("&")}` : "";
+      const [
+        gstSalesRes,
+        gstExpenseRes,
+        localExpenseRes,
+        localSalesRes,
+        adminExpenseRes,
+        localAuthExpenseRes,
+      ] = await Promise.allSettled([
+        getGstSalesSummary(dateQuery),
+        getGstExpenseSummary(dateQuery),
+        getLocalExpenseAmounts(dateQuery),
+        getLocalAmounts(dateQuery),
+        getAdminExpenseAmounts(adminQuery),
+        getLocalAuthenticatedExpenseAmounts(dateQuery),
+      ]);
 
-      const res = await getLocalAmounts(queryString);
-
-      setLocalSalesAmount(res);
+      setGstSalesSummary(
+        gstSalesRes.status === "fulfilled" ? gstSalesRes.value : null,
+      );
+      setGstExpenseSummary(
+        gstExpenseRes.status === "fulfilled" ? gstExpenseRes.value : null,
+      );
+      setLocalExpenseAmount(
+        localExpenseRes.status === "fulfilled" ? localExpenseRes.value : [],
+      );
+      setLocalSalesAmount(
+        localSalesRes.status === "fulfilled" ? localSalesRes.value : {},
+      );
+      setAdminExpenseAmount(
+        adminExpenseRes.status === "fulfilled" ? adminExpenseRes.value : {},
+      );
+      setLocalAuthenticatedExpenseAmount(
+        localAuthExpenseRes.status === "fulfilled"
+          ? localAuthExpenseRes.value
+          : [],
+      );
     } catch (error) {
-      console.error("Local amounts fetch failed:", error);
-      setLocalSalesAmount({});
+      console.error("Dashboard data load failed:", error);
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
-
-  const loadLocalExpenseTotalAmount = useCallback(async () => {
-    setLoading(true);
-
-    try {
-      let query = [];
-
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
-        query.push(`fromDate=${from}`);
-        query.push(`toDate=${to}`);
-      }
-      const queryString = query.length ? `?${query.join("&")}` : "";
-
-      const res = await getLocalExpenseAmounts(queryString);
-
-      setLocalExpenseAmount(res);
-    } catch (error) {
-      console.error("Local amounts fetch failed:", error);
-      setLocalExpenseAmount([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [fromDate, toDate]);
-
-  const loadAuthenticatedLocalExpenseTotalAmount = useCallback(async () => {
-    setLoading(true);
-
-    try {
-      let query = [];
-
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
-        query.push(`fromDate=${from}`);
-        query.push(`toDate=${to}`);
-      }
-
-      const queryString = query.length ? `?${query.join("&")}` : "";
-
-      const res = await getLocalAuthenticatedExpenseAmounts(queryString);
-
-      setLocalAuthenticatedExpenseAmount(res);
-    } catch (error) {
-      console.error("Local amounts fetch failed:", error);
-      setLocalAuthenticatedExpenseAmount([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [fromDate, toDate]);
-
-  const LoadAdminAmount = useCallback(async () => {
-    setLoading(true);
-
-    try {
-      let query = [];
-
-      query.push(`sort[0]=date:desc`);
-      query.push(`filters[approved][$eq]=true`);
-      query.push(`filters[current_status][$eq]=admin`);
-
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
-        query.push(`fromDate=${from}`);
-        query.push(`toDate=${to}`);
-      }
-      const queryString = query.length ? `?${query.join("&")}` : "";
-
-      const res = await getAdminExpenseAmounts(queryString);
-
-      setAdminExpenseAmount(res);
-    } catch (error) {
-      console.error("Admin amounts fetch failed:", error);
-      setAdminExpenseAmount({});
-    } finally {
-      setLoading(false);
-    }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, fyFromDate, fyToDate]);
 
   useEffect(() => {
-    loadGstSalesSummary();
-    loadGstExpenseSummary();
-    loadLocalExpenseTotalAmount();
-    loadLocalTotalAmount();
-    LoadAdminAmount();
-    loadAuthenticatedLocalExpenseTotalAmount();
-  }, [
-    loadGstSalesSummary,
-    loadGstExpenseSummary,
-    loadLocalExpenseTotalAmount,
-    loadAuthenticatedLocalExpenseTotalAmount,
-    loadLocalTotalAmount,
-    LoadAdminAmount,
-  ]);
+    loadDashboardData();
+  }, [loadDashboardData]);
+
 
   return (
     <MainLayout>

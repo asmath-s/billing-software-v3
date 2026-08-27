@@ -39,13 +39,18 @@ import {
   LeftArrowIcon,
   RightIcon,
   SaveIcon,
+  SavePdfIcon,
 } from "../../components/icons";
+import LocalExpenseExportModal from "../../components/LocalExpenseExportModal/LocalExpenseExportModal";
 
 import InputField from "../../components/InputField/InputField";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { resolveApiDateRange } from "../../utils/financialYear";
+import { formattedAmount } from "../../utils/FormatAmount";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -53,6 +58,7 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalProductionList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
 
   // Form state
   const [date, setDate] = useState(new Date());
@@ -77,14 +83,23 @@ const LocalProductionList = () => {
   // Date filter state
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   /**
    * Build the API query for the production expense list.
-   *
-   * useCallback keeps the function reference stable until one
-   * of its actual dependencies changes.
    */
   const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [
       `pagination[page]=${page + 1}`,
       `pagination[pageSize]=${rowsPerPage}`,
@@ -102,22 +117,35 @@ const LocalProductionList = () => {
       );
     }
 
-    if (fromDate && toDate) {
+    if (from && to) {
       query.push(
-        `filters[date][$gte]=${dayjs(fromDate).startOf("day").toISOString()}`,
-        `filters[date][$lte]=${dayjs(toDate).endOf("day").toISOString()}`,
+        `filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`,
+        `filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`,
       );
     }
 
     return query.join("&");
-  }, [page, rowsPerPage, fromDate, toDate, searchInstruction]);
+  }, [
+    page,
+    rowsPerPage,
+    fromDate,
+    toDate,
+    fyFromDate,
+    fyToDate,
+    searchInstruction,
+  ]);
 
   /**
    * Load production expense list.
    */
   const loadExpenseData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      return;
+    }
+
     try {
-      const res = await getLocalExpense(buildQuery());
+      const res = await getLocalExpense(queryString);
 
       const data = res?.data?.data || [];
       const total = res?.data?.meta?.pagination?.total || 0;
@@ -138,12 +166,23 @@ const LocalProductionList = () => {
    * Load overview totals.
    */
   const loadLocalTotalAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     try {
       const query = [];
 
-      if (fromDate && toDate) {
-        query.push(`fromDate=${dayjs(fromDate).format("YYYY-MM-DD")}`);
-        query.push(`toDate=${dayjs(toDate).format("YYYY-MM-DD")}`);
+      if (from && to) {
+        query.push(`fromDate=${from}`);
+        query.push(`toDate=${to}`);
       }
 
       if (searchInstruction.trim()) {
@@ -164,7 +203,7 @@ const LocalProductionList = () => {
 
       setLocalExpenseAmount([]);
     }
-  }, [fromDate, toDate, searchInstruction]);
+  }, [fromDate, toDate, fyFromDate, fyToDate, searchInstruction]);
 
   /**
    * Reload list whenever pagination or date filters change.
@@ -293,14 +332,27 @@ const LocalProductionList = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local Production List</h1>
 
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          style={{ marginRight: 8 }}
-          label="Show Overview"
-          onChange={() => toggleOverview()}
-        />
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
+          />
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              style={{ marginRight: 8 }}
+              label="Show Overview"
+              onChange={() => toggleOverview()}
+            />
+          )}
+        </div>
       </div>
 
       {/* Overview */}
@@ -398,7 +450,7 @@ const LocalProductionList = () => {
             label="Date"
             onChange={(d) => setDate(setCurrentTime(d))}
             className="w-full"
-            minDate={role === "superadmin" ? false : new Date()}
+            minDate={role === "superadmin" ? undefined : new Date()}
           />
 
           <InputField
@@ -521,7 +573,7 @@ const LocalProductionList = () => {
                     </span>
                   </td>
 
-                  <td>{item.amount ?? 0}</td>
+                  <td>{formattedAmount(item.amount)}</td>
 
                   <td>
                     <div className="flex gap-2">
@@ -545,7 +597,7 @@ const LocalProductionList = () => {
 
           <tfoot>
             <tr>
-              <td colSpan={8}>
+              <td colSpan={7}>
                 <Box
                   sx={{
                     display: "flex",
@@ -614,6 +666,13 @@ const LocalProductionList = () => {
           </tfoot>
         </Table>
       </div>
+
+      <LocalExpenseExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        sectionTitle="Local Expense – Production"
+        status="production"
+      />
     </MainLayout>
   );
 };

@@ -1,10 +1,10 @@
 import AdminList from "../pages/AdminList";
+import Analytics from "../pages/Analytics";
 import Dashboard from "../pages/Dashboard";
-import DebtList from "../pages/DebtList";
 import GstDeliverySlip from "../pages/GstDeliverySlip";
 import GstEntry from "../pages/GstEntry";
 import GstExpenseEntry from "../pages/GstExpenseEntry";
-import GstExpenseList from "../pages/GstExpenseList/page";
+import GstExpenseList from "../pages/GstExpenseList";
 import GstSalesList from "../pages/GstSalesList";
 import LocalEntry from "../pages/LocalEntry";
 import LocalExpenseApprove from "../pages/LocalExpenseApprove";
@@ -21,25 +21,25 @@ import QuotationEntry from "../pages/QuotationEntry";
 import QuotationList from "../pages/QuotationList";
 
 export const elementMap = {
+  AdminList,
+  Analytics,
   Dashboard,
+  GstDeliverySlip,
+  GstEntry,
+  GstExpenseEntry,
+  GstExpenseList,
+  GstSalesList,
   LocalEntry,
+  LocalExpenseApprove,
+  LocalExpenseEntry,
+  LocalHubList,
   LocalList,
   LocalPaidList,
-  LocalPendingList,
   LocalPartyList,
-  LocalExpenseEntry,
-  LocalExpenseApprove,
+  LocalPendingList,
   LocalProductionList,
-  LocalHubList,
-  GstEntry,
-  GstSalesList,
-  GstExpenseList,
-  GstExpenseEntry,
-  AdminList,
-  DebtList,
+  Login,
+  PriceList,
   QuotationEntry,
   QuotationList,
-  PriceList,
-  Login,
-  GstDeliverySlip,
 };

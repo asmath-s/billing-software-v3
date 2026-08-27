@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/joy";
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
@@ -26,16 +26,22 @@ import {
   CheckIcon,
   GpayIcon,
   PendingIcon,
+  SavePdfIcon,
 } from "../../components/icons";
+import Button from "../../components/Button/Button";
+import LocalSalesExportModal from "../../components/LocalSalesExportModal/LocalSalesExportModal";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RightIcon from "../../components/icons/RightIcon";
 import SelectField from "../../components/SelectField/SelectField";
 import MainLayout from "../../layouts/MainLayout";
 
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
+import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 
 import { getLocalAmounts } from "../../api/localAmount";
 import {
@@ -50,11 +56,13 @@ function labelDisplayedRows({ from, to, count }) {
 
 const LocalPendingList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const navigate = useNavigate();
 
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
   const [searchCustomer, setSearchCustomer] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const [customers, setCustomers] = useState([]);
   const [localData, setLocalData] = useState(null);
@@ -71,9 +79,6 @@ const LocalPendingList = () => {
 
   /*
    * Load customers
-   *
-   * No state is updated before the async request starts.
-   * This avoids react-hooks/set-state-in-effect.
    */
   const loadCustomers = useCallback(async () => {
     try {
@@ -85,12 +90,25 @@ const LocalPendingList = () => {
     }
   }, []);
 
+  useEffect(() => {
+    loadCustomers();
+  }, [loadCustomers]);
+
   /*
    * Query builder
-   *
-   * Memoized because it is used by loadLocalPendingData.
    */
   const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [];
 
     query.push("populate=*");
@@ -108,29 +126,22 @@ const LocalPendingList = () => {
       );
     }
 
-    if (fromDate && toDate) {
-      const startDate = dayjs(fromDate).startOf("day").toISOString();
-      const endDate = dayjs(toDate).endOf("day").toISOString();
+    if (from && to) {
+      const startDate = dayjs(from).format("YYYY-MM-DD");
+      const endDate = dayjs(to).format("YYYY-MM-DD");
 
-      /* GPay date filter */
       query.push(
-        `filters[$or][0][gpay][date][$gte]=${encodeURIComponent(startDate)}`,
-      );
-      query.push(
-        `filters[$or][0][gpay][date][$lte]=${encodeURIComponent(endDate)}`,
-      );
-
-      /* Cash date filter */
-      query.push(
-        `filters[$or][1][cash][date][$gte]=${encodeURIComponent(startDate)}`,
-      );
-      query.push(
-        `filters[$or][1][cash][date][$lte]=${encodeURIComponent(endDate)}`,
+        `filters[$or][0][date][$gte]=${encodeURIComponent(startDate)}`,
+        `filters[$or][0][date][$lte]=${encodeURIComponent(endDate)}`,
+        `filters[$or][1][gpay][date][$gte]=${encodeURIComponent(startDate)}`,
+        `filters[$or][1][gpay][date][$lte]=${encodeURIComponent(endDate)}`,
+        `filters[$or][2][cash][date][$gte]=${encodeURIComponent(startDate)}`,
+        `filters[$or][2][cash][date][$lte]=${encodeURIComponent(endDate)}`,
       );
     }
 
     return `?${query.join("&")}`;
-  }, [page, rowsPerPage, searchCustomer, fromDate, toDate]);
+  }, [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /*
    * Load pending data
@@ -150,34 +161,14 @@ const LocalPendingList = () => {
     }
   }, [buildQuery]);
 
-  /*
-   * Initial customer load
-   */
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchCustomers = async () => {
-      try {
-        const res = await getCustomers();
-
-        if (!cancelled) {
-          setCustomers(res || []);
-        }
-      } catch (error) {
-        console.error("Customer fetch failed:", error);
-
-        if (!cancelled) {
-          setCustomers([]);
-        }
-      }
-    };
-
-    fetchCustomers();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const customerOptions = useMemo(
+    () =>
+      customers.map((customer) => ({
+        label: customer.name,
+        value: customer.documentId,
+      })),
+    [customers],
+  );
 
   /*
    * Load pending list whenever pagination/filter values change
@@ -186,8 +177,11 @@ const LocalPendingList = () => {
     let cancelled = false;
 
     const fetchPendingData = async () => {
+      const queryString = buildQuery();
+      if (queryString === null) return;
+
       try {
-        const res = await getLocalList(buildQuery());
+        const res = await getLocalList(queryString);
 
         if (!cancelled) {
           setLocalData(res?.data || []);
@@ -218,6 +212,17 @@ const LocalPendingList = () => {
     if (showOverview) {
       let cancelled = false;
       const fetchLocalTotalAmount = async () => {
+        const { shouldFetch, from, to } = resolveApiDateRange(
+          fromDate,
+          toDate,
+          fyFromDate,
+          fyToDate,
+        );
+
+        if (!shouldFetch) {
+          return;
+        }
+
         try {
           const query = [];
 
@@ -229,10 +234,7 @@ const LocalPendingList = () => {
             );
           }
 
-          if (fromDate && toDate) {
-            const from = dayjs(fromDate).format("YYYY-MM-DD");
-            const to = dayjs(toDate).format("YYYY-MM-DD");
-
+          if (from && to) {
             query.push(`fromDate=${encodeURIComponent(from)}`);
             query.push(`toDate=${encodeURIComponent(to)}`);
           }
@@ -259,7 +261,7 @@ const LocalPendingList = () => {
         cancelled = true;
       };
     }
-  }, [searchCustomer, fromDate, toDate, showOverview]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate, showOverview]);
 
   /*
    * Delete
@@ -343,14 +345,27 @@ const LocalPendingList = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local pending List</h1>
 
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          style={{ marginRight: 8 }}
-          label="Show Overview"
-          onChange={() => toggleOverview()}
-        />
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
+          />
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              style={{ marginRight: 8 }}
+              label="Show Overview"
+              onChange={() => toggleOverview()}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -399,12 +414,13 @@ const LocalPendingList = () => {
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((customer) => ({
-              label: customer.name,
-              value: customer.documentId,
-            }))}
+            options={customerOptions}
             onChange={(_, value) => {
-              setSearchCustomer(value);
+              const resolved =
+                typeof value === "string"
+                  ? findMatchingEntity(value, customerOptions, "label") || value
+                  : value;
+              setSearchCustomer(resolved);
               setPage(0);
             }}
           />
@@ -644,6 +660,14 @@ const LocalPendingList = () => {
           </div>
         </div>
       )}
+
+      <LocalSalesExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        sectionTitle="Local Sales – Pending List"
+        status="pending"
+        customerOptions={customerOptions}
+      />
     </MainLayout>
   );
 };

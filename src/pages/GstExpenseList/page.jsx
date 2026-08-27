@@ -23,10 +23,13 @@ import Datepicker, {
 } from "../../components/Datepicker/Datepicker";
 import DeletePopup from "../../components/DeletePopup/DeletePopup";
 import EditButton from "../../components/EditButton/EditButton";
+import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { GSTEXPENSEENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
+import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 
 import {
   createGstExpenseList,
@@ -48,7 +51,9 @@ import {
   MoneyReceiveIcon,
   PendingIcon,
   SaveIcon,
+  SavePdfIcon,
 } from "../../components/icons";
+import GstExpenseExportModal from "../../components/GstExpenseExportModal/GstExpenseExportModal";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RefreshIcon from "../../components/icons/RefreshIcon";
 import RightIcon from "../../components/icons/RightIcon";
@@ -100,10 +105,12 @@ const INITIAL_FORM_STATE = {
 
 const GstExpenseList = () => {
   const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const navigate = useNavigate();
 
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
+
   const [searchCustomer, setSearchCustomer] = useState(null);
 
   const [gstCustomers, setGstCustomers] = useState([]);
@@ -116,6 +123,7 @@ const GstExpenseList = () => {
 
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const [form, setForm] = useState({
     ...INITIAL_FORM_STATE,
@@ -142,6 +150,17 @@ const GstExpenseList = () => {
 
   const buildQuery = useCallback(
     (extraParams = {}) => {
+      const { shouldFetch, from, to } = resolveApiDateRange(
+        fromDate,
+        toDate,
+        fyFromDate,
+        fyToDate,
+      );
+
+      if (!shouldFetch) {
+        return null;
+      }
+
       const params = new URLSearchParams();
 
       params.set("pagination[page]", String(page + 1));
@@ -152,14 +171,14 @@ const GstExpenseList = () => {
         params.set("filters[vendor][documentId][$eq]", searchCustomer.value);
       }
 
-      if (fromDate && toDate) {
-        const startDate = dayjs(fromDate).startOf("day").toISOString();
-        const endDate = dayjs(toDate).endOf("day").toISOString();
+      if (from && to) {
+        const startDate = dayjs(from).format("YYYY-MM-DD");
+        const endDate = dayjs(to).format("YYYY-MM-DD");
 
         params.set("filters[date][$gte]", startDate);
         params.set("filters[date][$lte]", endDate);
       }
-      console.log("Status filter:", statusFilter);
+
       if (statusFilter.type === "status") {
         params.set("filters[current_status][$in]", statusFilter.value);
       }
@@ -172,7 +191,7 @@ const GstExpenseList = () => {
 
       return params.toString();
     },
-    [page, rowsPerPage, searchCustomer, fromDate, toDate, statusFilter],
+    [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate, statusFilter],
   );
 
   /* ─────────────────────────────────────────────
@@ -190,9 +209,15 @@ const GstExpenseList = () => {
   }, []);
 
   const loadGstSalesData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      setGstSalesData([]);
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await getGstExpenseList(buildQuery());
+      const res = await getGstExpenseList(queryString);
       setGstSalesData(res?.data || []);
       setTotalCount(res?.meta?.pagination?.total || 0);
     } catch (err) {
@@ -205,6 +230,18 @@ const GstExpenseList = () => {
   }, [buildQuery]);
 
   const loadGstSalesSummary = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      setGstSalesSummary(null);
+      return;
+    }
+
     try {
       const params = new URLSearchParams();
 
@@ -212,9 +249,9 @@ const GstExpenseList = () => {
         params.set("filters[vendor][documentId][$eq]", searchCustomer.value);
       }
 
-      if (fromDate && toDate) {
-        params.set("fromDate", dayjs(fromDate).format("YYYY-MM-DD"));
-        params.set("toDate", dayjs(toDate).format("YYYY-MM-DD"));
+      if (from && to) {
+        params.set("fromDate", dayjs(from).format("YYYY-MM-DD"));
+        params.set("toDate", dayjs(to).format("YYYY-MM-DD"));
       }
 
       const queryString = params.toString() ? `?${params.toString()}` : "";
@@ -224,7 +261,7 @@ const GstExpenseList = () => {
       console.error("GST sales summary fetch failed:", err);
       setGstSalesSummary(null);
     }
-  }, [searchCustomer, fromDate, toDate]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /* ─────────────────────────────────────────────
      Effects
@@ -390,9 +427,18 @@ const GstExpenseList = () => {
   const parseBillNos = (value) => {
     try {
       const parsed = typeof value === "string" ? JSON.parse(value) : value;
-      return Array.isArray(parsed)
-        ? parsed.map((b) => b.label).join(", ")
-        : "—";
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return (
+          <div className="flex flex-col gap-0.5">
+            {parsed.map((b, idx) => (
+              <div key={idx} className="whitespace-nowrap">
+                {typeof b === "object" ? b?.label || b?.value || "—" : b}
+              </div>
+            ))}
+          </div>
+        );
+      }
+      return value || "—";
     } catch {
       return value || "—";
     }
@@ -418,13 +464,26 @@ const GstExpenseList = () => {
           </button>
         </div>
 
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          label="Show Overview"
-          onChange={toggleOverview}
-        />
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
+          />
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              label="Show Overview"
+              onChange={toggleOverview}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -512,7 +571,11 @@ const GstExpenseList = () => {
             value={searchCustomer || ""}
             options={customerOptions}
             onChange={(_, val) => {
-              setSearchCustomer(val);
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
               setPage(0);
             }}
           />
@@ -545,7 +608,11 @@ const GstExpenseList = () => {
             value={searchCustomer || ""}
             options={customerOptions}
             onChange={(_, val) => {
-              setSearchCustomer(val);
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
               setPage(0);
               setFormField("sendedBillNo", []);
             }}
@@ -655,7 +722,7 @@ const GstExpenseList = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={role === "superadmin" ? 10 : 9}>
+                <td colSpan={role === "superadmin" ? 11 : 10}>
                   <div className="flex justify-center py-6 text-gray-400 text-sm">
                     Loading…
                   </div>
@@ -663,7 +730,7 @@ const GstExpenseList = () => {
               </tr>
             ) : gstSalesData.length === 0 ? (
               <tr>
-                <td colSpan={role === "superadmin" ? 10 : 9}>
+                <td colSpan={role === "superadmin" ? 11 : 10}>
                   <div className="flex justify-center py-6 text-gray-400 text-sm">
                     No records found.
                   </div>
@@ -800,6 +867,13 @@ const GstExpenseList = () => {
           </tfoot>
         </Table>
       </div>
+
+      <GstExpenseExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        vendorOptions={customerOptions}
+        role={role}
+      />
     </MainLayout>
   );
 };

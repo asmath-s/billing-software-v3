@@ -1,8 +1,8 @@
 const ChartIcon = ({
-  color = "#ffffff",
+  color = "#FFF",
   width = "20",
   height = "20",
-  ...props
+  className = "",
 }) => {
   return (
     <svg
@@ -11,43 +11,26 @@ const ChartIcon = ({
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}
+      className={className}
     >
       <path
-        d="M6.88086 18.15V16.08"
+        d="M21 21H4.6C4.03995 21 3.75992 21 3.54601 20.891C3.35785 20.7951 3.20487 20.6422 3.10899 20.454C3 20.2401 3 19.9601 3 19.4V3"
         stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M12 18.15V14.01"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M17.1191 18.1501V11.9301"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M17.1209 5.84998L16.6609 6.38998C14.1109 9.36998 10.6909 11.48 6.88086 12.43"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M14.1895 5.84998H17.1195V8.76998"
-        stroke={color}
-        strokeWidth="1.5"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M9 22H15C20 22 22 20 22 15V9C22 4 20 2 15 2H9C4 2 2 4 2 9V15C2 20 4 22 9 22Z"
+        d="M7 14L11 10L15 14L21 8"
         stroke={color}
-        strokeWidth="1.5"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M21 11V8H18"
+        stroke={color}
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/joy";
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { getCustomers } from "../../api/customer";
@@ -24,26 +24,32 @@ import {
   CheckBoxIcon,
   CheckIcon,
   GpayIcon,
+  SavePdfIcon,
 } from "../../components/icons";
 
+import Button from "../../components/Button/Button";
+import LocalSalesExportModal from "../../components/LocalSalesExportModal/LocalSalesExportModal";
 import MainLayout from "../../layouts/MainLayout";
 
 import { LOCALENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
+import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
-
+import { findMatchingEntity } from "../../utils/nameNormalizer";
 import { getLocalAmounts } from "../../api/localAmount";
 import { deleteLocalList, getLocalList } from "../../api/localList";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RightIcon from "../../components/icons/RightIcon";
 import { useAuth } from "../../context/auth-context";
+import { useFinancialYear } from "../../context/financial-year-context";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
 }
 
 const LocalPaidList = () => {
-  const { showOverview, toggleOverview } = useAuth();
+  const { role, showOverview, toggleOverview } = useAuth();
+  const { fromDate: fyFromDate, toDate: fyToDate } = useFinancialYear();
   const navigate = useNavigate();
 
   /* ================= STATE ================= */
@@ -51,6 +57,7 @@ const LocalPaidList = () => {
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
   const [searchCustomer, setSearchCustomer] = useState(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const [customers, setCustomers] = useState([]);
   const [localData, setLocalData] = useState([]);
@@ -75,7 +82,18 @@ const LocalPaidList = () => {
 
   /* ================= API QUERY BUILDER ================= */
 
-  const buildQuery = () => {
+  const buildQuery = useCallback(() => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return null;
+    }
+
     const query = [];
     query.push("populate=*");
     query.push(`pagination[page]=${page + 1}`);
@@ -88,29 +106,33 @@ const LocalPaidList = () => {
       query.push(`filters[customer][documentId][$eq]=${searchCustomer.value}`);
     }
 
-    if (fromDate && toDate) {
-      const startDate = dayjs(fromDate).startOf("day").toISOString();
-      const endDate = dayjs(toDate).endOf("day").toISOString();
+    if (from && to) {
+      const startDate = dayjs(from).format("YYYY-MM-DD");
+      const endDate = dayjs(to).format("YYYY-MM-DD");
 
-      // GPay date filter
-      query.push(`filters[$or][0][gpay][date][$gte]=${startDate}`);
-      query.push(`filters[$or][0][gpay][date][$lte]=${endDate}`);
-
-      // Cash date filter
-      query.push(`filters[$or][1][cash][date][$gte]=${startDate}`);
-      query.push(`filters[$or][1][cash][date][$lte]=${endDate}`);
+      query.push(`filters[$or][0][date][$gte]=${startDate}`);
+      query.push(`filters[$or][0][date][$lte]=${endDate}`);
+      query.push(`filters[$or][1][gpay][date][$gte]=${startDate}`);
+      query.push(`filters[$or][1][gpay][date][$lte]=${endDate}`);
+      query.push(`filters[$or][2][cash][date][$gte]=${startDate}`);
+      query.push(`filters[$or][2][cash][date][$lte]=${endDate}`);
     }
 
     return `?${query.join("&")}`;
-  };
+  }, [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /* ================= LOAD DATA ================= */
 
   const loadLocalPaidData = useCallback(async () => {
+    const queryString = buildQuery();
+    if (queryString === null) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await getLocalList(buildQuery());
+      const res = await getLocalList(queryString);
 
       setLocalData(res?.data || []);
       setTotalCount(res?.meta?.pagination?.total || 0);
@@ -121,13 +143,24 @@ const LocalPaidList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, searchCustomer, fromDate, toDate]);
+  }, [buildQuery]);
 
   const loadLocalTotalAmount = useCallback(async () => {
+    const { shouldFetch, from, to } = resolveApiDateRange(
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+    );
+
+    if (!shouldFetch) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let query = [];
+      const query = [];
 
       if (searchCustomer) {
         query.push(
@@ -135,10 +168,7 @@ const LocalPaidList = () => {
         );
       }
 
-      if (fromDate && toDate) {
-        const from = dayjs(fromDate).format("YYYY-MM-DD");
-        const to = dayjs(toDate).format("YYYY-MM-DD");
-
+      if (from && to) {
         query.push(`fromDate=${from}`);
         query.push(`toDate=${to}`);
       }
@@ -154,7 +184,7 @@ const LocalPaidList = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchCustomer, fromDate, toDate]);
+  }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
   /* ================= INITIAL LOAD ================= */
 
@@ -198,19 +228,40 @@ const LocalPaidList = () => {
   const getLabelDisplayedRowsTo = () => {
     return Math.min((page + 1) * rowsPerPage, totalCount);
   };
+  const customerOptions = useMemo(
+    () =>
+      customers.map((c) => ({
+        label: c.name,
+        value: c.documentId,
+      })),
+    [customers],
+  );
 
   return (
     <MainLayout>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold">Local Paid List</h1>
-        <Checkbox
-          icon={<CheckBoxIcon />}
-          checkedIcon={<CheckIcon color="#fff" />}
-          checked={showOverview}
-          style={{ marginRight: 8 }}
-          label={"Show Overview"}
-          onChange={() => toggleOverview()}
-        />
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            label="Export"
+            icon1={<SavePdfIcon color="#fff" />}
+            icon2={<SavePdfIcon color="#fff" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-xs px-4 cursor-pointer"
+            onClick={() => setExportModalOpen(true)}
+          />
+
+          {role !== "authenticated" && (
+            <Checkbox
+              icon={<CheckBoxIcon />}
+              checkedIcon={<CheckIcon color="#fff" />}
+              checked={showOverview}
+              style={{ marginRight: 8 }}
+              label={"Show Overview"}
+              onChange={() => toggleOverview()}
+            />
+          )}
+        </div>
       </div>
 
       {showOverview && (
@@ -237,7 +288,6 @@ const LocalPaidList = () => {
       )}
 
       {/* Filters */}
-
       <div className="flex gap-4 items-center">
         <Datepicker
           type="multipleDatePicker"
@@ -253,12 +303,13 @@ const LocalPaidList = () => {
           <AutocompleteField
             label="Customer Name"
             value={searchCustomer}
-            options={customers.map((c) => ({
-              label: c.name,
-              value: c.documentId,
-            }))}
+            options={customerOptions}
             onChange={(e, val) => {
-              setSearchCustomer(val);
+              const resolved =
+                typeof val === "string"
+                  ? findMatchingEntity(val, customerOptions, "label") || val
+                  : val;
+              setSearchCustomer(resolved);
               setPage(0);
             }}
           />
@@ -284,8 +335,16 @@ const LocalPaidList = () => {
 
           <tbody>
             {loading ? (
-              <tr colSpan={8}>
-                <td>Loading</td>
+              <tr>
+                <td colSpan={8} className="text-center py-4">
+                  Loading...
+                </td>
+              </tr>
+            ) : localData.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="text-center py-4 text-gray-500">
+                  No records found
+                </td>
               </tr>
             ) : (
               localData.map((item) => (
@@ -405,6 +464,14 @@ const LocalPaidList = () => {
           </tfoot>
         </Table>
       </div>
+
+      <LocalSalesExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        sectionTitle="Local Sales – Approved List"
+        status="paid"
+        customerOptions={customerOptions}
+      />
     </MainLayout>
   );
 };
