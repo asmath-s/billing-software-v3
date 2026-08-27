@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import { forwardRef } from "react";
 
 import Logo from "../../assets/logo2.jpg";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { MailIcon, PhoneIcon } from "../icons";
 
 const DeliveryUi = forwardRef((props, ref) => {
@@ -94,7 +95,7 @@ const DeliveryUi = forwardRef((props, ref) => {
                   return (
                     <tr className="h-[24px]" key={index}>
                       <td className="w-[48%] !h-[24px] !p-[0px] !pr-[5px] capitalize">
-                        {data?.instruction || ""}
+                        {capitalizeFirstLetter(data?.instruction || "")}
                       </td>
 
                       <td className="w-[18%] !h-[24px] !p-[0px] text-center">

@@ -1,6 +1,7 @@
 import { Table } from "@mui/joy";
 import { forwardRef } from "react";
 import Logo from "../../assets/logo2.jpg";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { MailIcon, PhoneIcon } from "../icons";
 
 const PrintUi = forwardRef((props, ref) => {
@@ -18,22 +19,33 @@ const PrintUi = forwardRef((props, ref) => {
         instruction: "",
         piece_count: "",
         sq_ft_price: "",
-        total: "",
+        per_piece_total: "",
+        per_piece_amount: "",
       }),
     ];
+  } else {
+    filledSizeData = Array(12).fill({
+      type: "",
+      width: "",
+      height: "",
+      material: "",
+      instruction: "",
+      piece_count: "",
+      sq_ft_price: "",
+      per_piece_total: "",
+      per_piece_amount: "",
+    });
   }
 
   return (
-    <div className="w-[210mm] h-[145mm] mt-[5px]" ref={ref}>
+    <div className="w-[210mm] h-[145mm]" ref={ref}>
       <div className="relative">
-        <div className="w-[390px] my-0 mx-auto pt-[2px] pb-[10px] px-[10px]">
+        <div className="w-[390px] my-0 mx-auto pt-[0px] pb-[10px] px-[10px]">
           <div className="flex justify-between items-center border-b pb-[2px]">
-            <img src={Logo} width={100} height={100} alt="" />
+            <img src={Logo} width={100} height={100} alt="Logo" />
 
-            <p className="absolute right-[45%] top-[18px] text-center leading-[14px]">
-              {props.billNo}
-              <br />
-              <span className="text-[12px]">Memo/Quotation</span>
+            <p className="absolute right-[45%] top-[18px] text-center text-[14px]">
+              Bill No: {props.billNo}
             </p>
 
             <div>
@@ -44,6 +56,7 @@ const PrintUi = forwardRef((props, ref) => {
                   <p className="text-[12px] font-medium">+91 63809 74082</p>
                 </div>
               </div>
+
               <div className="flex items-center">
                 <MailIcon />
                 <p className="text-[12px] font-medium pl-2">
@@ -55,27 +68,31 @@ const PrintUi = forwardRef((props, ref) => {
 
           <div className="flex justify-between mt-[5px]">
             <div className="flex text-[12px] w-[70%] gap-1 overflow-hidden">
-              <span>Name: </span>
+              <span>Name:</span>
+
               <p className="truncate text-ellipsis overflow-hidden whitespace-nowrap">
                 {props.name}
               </p>
             </div>
 
             <div className="flex text-[12px] gap-1">
-              <span>Date: </span> <p>{props.date}</p>
+              <span>Date:</span>
+              <p>{props.date}</p>
             </div>
           </div>
 
-          <div className="mt-[5x]">
+          <div className="mt-[5px]">
             <Table borderAxis="y" className="border border-[#E0E1E3]">
               <thead>
                 <tr>
                   <th className="!bg-[#2A3042] !text-white !w-[48%] !h-[20px]">
                     Particular
                   </th>
+
                   <th className="!bg-[#2A3042] !text-white !w-[12%] !h-[20px] text-center">
-                    Qty
+                    Pcs
                   </th>
+
                   <th className="!bg-[#2A3042] !text-white !w-[14%] !h-[20px] text-center">
                     Sq.Ft
                   </th>
@@ -89,14 +106,17 @@ const PrintUi = forwardRef((props, ref) => {
                   <tr key={index} style={{ height: "24px" }}>
                     {data.type === "flex" ? (
                       <td className="w-[48%] !h-[24px] !p-[0px] !pr-[5px] !pl-[3px] capitalize">
-                        {data.width} X {data.height} {data.instruction}{" "}
+                        {data.width} X {data.height}{" "}
+                        {data.instruction
+                          ? `${capitalizeFirstLetter(data.instruction)} `
+                          : ""}
                         {data.material}
                       </td>
                     ) : (
                       <>
                         {data.type === "instruction" && (
                           <td className="w-[48%] !h-[24px] !p-[0px] !pr-[5px] !pl-[3px] capitalize">
-                            {data.instruction}
+                            {capitalizeFirstLetter(data.instruction || "")}
                           </td>
                         )}
                       </>

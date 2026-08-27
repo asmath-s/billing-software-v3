@@ -27,6 +27,7 @@ import {
 import { useAuth } from "../../context/auth-context";
 import { GSTSALESENTRY } from "../../router/paths";
 import { setCurrentTime } from "../../utils/DatewithTime";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { formattedAmount } from "../../utils/FormatAmount";
 import {
   findMatchingEntity,
@@ -48,15 +49,16 @@ import PrintGstUi from "../../components/PrintGstUI/PrintGstUi";
 const toNumber = (val) => Number(val) || 0;
 
 const DEFAULTS = {
-  HSN: "3910",
+  HSN: "4911",
   UOM: "NOS",
   GST: "18",
   METHOD: "gst",
 };
 
 const GstEntry = () => {
+  const { user } = useAuth();
+  const role = user?.role?.name?.toLowerCase();
   const navigate = useNavigate();
-  const { role } = useAuth();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("editId");
 
@@ -98,18 +100,15 @@ const GstEntry = () => {
 
   const gstSummary = useMemo(() => {
     const gst = toNumber(gstPercentage);
-
-    const totalGST = (totalAmount * gst) / 100;
-
-    const final = totalAmount + totalGST;
-
+    const tax = (totalAmount * gst) / 100;
+    const final = totalAmount + tax;
     const rounded = Math.round(final);
-    const roundOff = +(rounded - final).toFixed(2);
+    const roundOff = (rounded - final).toFixed(2);
 
     return {
-      taxAmount: totalGST.toFixed(2),
-      finalAmount: rounded.toFixed(2),
-      roundOff: roundOff.toFixed(2),
+      taxAmount: tax.toFixed(2),
+      finalAmount: rounded,
+      roundOff,
     };
   }, [totalAmount, gstPercentage]);
   /* ================= API ================= */
@@ -127,7 +126,7 @@ const GstEntry = () => {
     try {
       const res = await getLastGstList();
       const last = res?.[0]?.bill_no;
-      setBillNo(String((Number(last) || 0) + 1));
+      setBillNo(last ? String(Number(last) + 1) : "1");
     } catch {
       setBillNo("1");
     }
@@ -202,15 +201,21 @@ const GstEntry = () => {
   const buildParticulars = () => {
     return sizeData
       .map((item) => {
+        const inst = capitalizeFirstLetter(item.instruction || "");
         if (item.type === "instruction") {
           return {
-            text: `${item.instruction} - ${item.piece_count} pcs - ${formattedAmount(item.per_piece_total)}`,
+            text: `${inst} - ${item.piece_count} pcs - ${formattedAmount(item.per_piece_total)}`,
           };
         }
 
         if (item.type === "flex") {
+          const pieceCount = Number(item.piece_count) || 1;
+          const perPieceRate =
+            Number(item.per_piece_total) > 0
+              ? Number(item.per_piece_total) / pieceCount
+              : Number(item.sq_ft_price) || 0;
           return {
-            text: `${item.width} x ${item.height} ${item.material} - ${item.sq_ft_price} sqft - ${item.piece_count} pcs - ${formattedAmount(item.per_piece_total)}`,
+            text: `${inst ? inst + " " : ""}${item.width} x ${item.height} ${item.material} - rate ₹${perPieceRate.toFixed(2)}/pc - ${item.piece_count} pcs - ${formattedAmount(item.per_piece_total)}`,
           };
         }
 
@@ -257,10 +262,10 @@ const GstEntry = () => {
 
     // 4. Create new customer only if no match exists anywhere
     const res = await createGstCustomer({
-      name: trimmedName,
-      address,
-      delivery_address: deliveryAddress,
-      gst_no: gstNo,
+      name: trimmedName.toUpperCase(),
+      address: (address || "").toUpperCase(),
+      delivery_address: (deliveryAddress || "").toUpperCase(),
+      gst_no: (gstNo || "").toUpperCase(),
     });
 
     const newId = res?.documentId;

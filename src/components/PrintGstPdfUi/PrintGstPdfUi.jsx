@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import numberToWords from "number-to-words";
 import { forwardRef, useMemo } from "react";
 import Logo from "../../assets/logo2.jpg";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { GlobelIcon, LocationIcon, MobileIcon, SmsIcon } from "../icons";
 
 const PrintGstUi = forwardRef((props, ref) => {
@@ -85,18 +86,18 @@ const PrintGstUi = forwardRef((props, ref) => {
           <div className="flex border-t border-l text-sm h-[110px]">
             <div className="w-[49.9%] border-r pt-[5px]">
               <h5 className="pl-[5px]">To</h5>
-              <p className="pl-[20px]">{name}</p>
-              <p className="pl-[20px]">{address}</p>
-              {gstNo && <p className="pl-[20px]">GSTIN: {gstNo}</p>}
+              <p className="pl-[20px] uppercase font-medium">{name?.toUpperCase()}</p>
+              <p className="pl-[20px] uppercase">{address?.toUpperCase()}</p>
+              {gstNo && <p className="pl-[20px] uppercase">GSTIN: {gstNo?.toUpperCase()}</p>}
             </div>
 
             <div className="w-[50.1%] border-r pt-[5px]">
               <h5 className="pl-[5px]">Delivery To</h5>
-              <p className="pl-[20px]">{name}</p>
-              <p className="pl-[20px]">
-                {!deliveryAddress ? address : deliveryAddress}
+              <p className="pl-[20px] uppercase font-medium">{name?.toUpperCase()}</p>
+              <p className="pl-[20px] uppercase">
+                {(!deliveryAddress ? address : deliveryAddress)?.toUpperCase()}
               </p>
-              {gstNo && <p className="pl-[20px]">GSTIN: {gstNo}</p>}
+              {gstNo && <p className="pl-[20px] uppercase">GSTIN: {gstNo?.toUpperCase()}</p>}
             </div>
           </div>
 
@@ -125,15 +126,19 @@ const PrintGstUi = forwardRef((props, ref) => {
             {/* Data rows */}
             <div className="flex flex-col absolute top-[20px] w-full">
               {sizeData?.map((data, index) => {
+                const inst = capitalizeFirstLetter(data.instruction || "");
                 const particulars =
                   data.type?.toLowerCase() === "flex"
-                    ? `${data.instruction?.toUpperCase() || ""} ${data.width} X ${data.height}`
-                    : data.instruction?.toUpperCase() || "-";
+                    ? `${inst}${inst ? " " : ""}${data.width} X ${data.height}`
+                    : inst || "-";
 
-                const rate =
-                  Number(data.per_piece_amount) > 0
-                    ? Number(data.per_piece_amount)
-                    : Number(data.sq_ft_price || 0);
+                const pieceCount = Number(data.piece_count) || 1;
+                const perPieceRate =
+                  Number(data.per_piece_total) > 0
+                    ? Number(data.per_piece_total) / pieceCount
+                    : Number(data.per_piece_amount) > 0
+                      ? Number(data.per_piece_amount)
+                      : 0;
 
                 return (
                   <div
@@ -157,7 +162,7 @@ const PrintGstUi = forwardRef((props, ref) => {
                     </p>
 
                     <p className="w-[72px] text-[14px] text-right pr-[3px]">
-                      {rate.toFixed(2)}
+                      {perPieceRate.toFixed(2)}
                     </p>
 
                     <p className="w-[95px] text-[14px] text-right pr-[3px]">

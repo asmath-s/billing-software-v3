@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { materialdata } from "../../lib/materialdata";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import AutocompleteField from "../AutocompleteField/AutocompleteField";
 import Button from "../Button/Button";
 import { AddIcon, DeleteIcon } from "../icons";
@@ -129,7 +130,11 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
                 placeholder="Instruction"
                 value={row.instruction}
                 onChange={(e) =>
-                  updateRow(index, "instruction", e.target.value)
+                  updateRow(
+                    index,
+                    "instruction",
+                    capitalizeFirstLetter(e.target.value),
+                  )
                 }
               />
 
@@ -200,7 +205,11 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
                 placeholder="Instruction"
                 value={row.instruction}
                 onChange={(e) =>
-                  updateRow(index, "instruction", e.target.value)
+                  updateRow(
+                    index,
+                    "instruction",
+                    capitalizeFirstLetter(e.target.value),
+                  )
                 }
               />
 
