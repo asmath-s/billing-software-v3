@@ -171,8 +171,8 @@ const GstExpenseList = () => {
       }
 
       if (from && to) {
-        const startDate = dayjs(from).startOf("day").toISOString();
-        const endDate = dayjs(to).endOf("day").toISOString();
+        const startDate = dayjs(from).format("YYYY-MM-DD");
+        const endDate = dayjs(to).format("YYYY-MM-DD");
 
         params.set("filters[date][$gte]", startDate);
         params.set("filters[date][$lte]", endDate);

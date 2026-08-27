@@ -126,15 +126,15 @@ const LocalPartyList = () => {
     }
 
     if (from && to) {
-      const startDate = dayjs(from).startOf("day").toISOString();
-      const endDate = dayjs(to).endOf("day").toISOString();
+      const startDate = dayjs(from).format("YYYY-MM-DD");
+      const endDate = dayjs(to).format("YYYY-MM-DD");
 
-      // GPay OR Cash payment date filter
-      query.push(`filters[$or][0][gpay][date][$gte]=${startDate}`);
-      query.push(`filters[$or][0][gpay][date][$lte]=${endDate}`);
-
-      query.push(`filters[$or][1][cash][date][$gte]=${startDate}`);
-      query.push(`filters[$or][1][cash][date][$lte]=${endDate}`);
+      query.push(`filters[$or][0][date][$gte]=${startDate}`);
+      query.push(`filters[$or][0][date][$lte]=${endDate}`);
+      query.push(`filters[$or][1][gpay][date][$gte]=${startDate}`);
+      query.push(`filters[$or][1][gpay][date][$lte]=${endDate}`);
+      query.push(`filters[$or][2][cash][date][$gte]=${startDate}`);
+      query.push(`filters[$or][2][cash][date][$lte]=${endDate}`);
     }
 
     return `?${query.join("&")}`;

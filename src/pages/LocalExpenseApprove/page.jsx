@@ -102,8 +102,8 @@ const LocalExpenseApprove = () => {
 
     if (from && to) {
       query.push(
-        `filters[date][$gte]=${dayjs(from).startOf("day").toISOString()}`,
-        `filters[date][$lte]=${dayjs(to).endOf("day").toISOString()}`,
+        `filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`,
+        `filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`,
       );
     }
 
