@@ -50,6 +50,7 @@ import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { resolveApiDateRange } from "../../utils/financialYear";
+import { formattedAmount } from "../../utils/FormatAmount";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -124,7 +125,15 @@ const LocalProductionList = () => {
     }
 
     return query.join("&");
-  }, [page, rowsPerPage, fromDate, toDate, fyFromDate, fyToDate, searchInstruction]);
+  }, [
+    page,
+    rowsPerPage,
+    fromDate,
+    toDate,
+    fyFromDate,
+    fyToDate,
+    searchInstruction,
+  ]);
 
   /**
    * Load production expense list.
@@ -564,7 +573,7 @@ const LocalProductionList = () => {
                     </span>
                   </td>
 
-                  <td>{item.amount ?? 0}</td>
+                  <td>{formattedAmount(item.amount)}</td>
 
                   <td>
                     <div className="flex gap-2">

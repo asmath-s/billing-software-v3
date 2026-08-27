@@ -37,8 +37,8 @@ import {
   SaveIcon,
   SavePdfIcon,
 } from "../../components/icons";
-import LocalExpenseExportModal from "../../components/LocalExpenseExportModal/LocalExpenseExportModal";
 import InputField from "../../components/InputField/InputField";
+import LocalExpenseExportModal from "../../components/LocalExpenseExportModal/LocalExpenseExportModal";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
 import { useFinancialYear } from "../../context/financial-year-context";
@@ -46,6 +46,7 @@ import MainLayout from "../../layouts/MainLayout";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { resolveApiDateRange } from "../../utils/financialYear";
+import { formattedAmount } from "../../utils/FormatAmount";
 
 function labelDisplayedRows({ from, to, count }) {
   return `${from}–${to} of ${count}`;
@@ -108,7 +109,15 @@ const LocalExpenseApprove = () => {
     }
 
     return query.join("&");
-  }, [page, rowsPerPage, fromDate, toDate, fyFromDate, fyToDate, searchInstruction]);
+  }, [
+    page,
+    rowsPerPage,
+    fromDate,
+    toDate,
+    fyFromDate,
+    fyToDate,
+    searchInstruction,
+  ]);
 
   const loadExpenseData = useCallback(async () => {
     const queryString = buildQuery();
@@ -464,7 +473,7 @@ const LocalExpenseApprove = () => {
                       {item.custom_type}
                     </span>
                   </td>
-                  <td>{item.amount}</td>
+                  <td>{formattedAmount(item.amount)}</td>
                   <td>
                     <div className="flex gap-2">
                       <EditButton onClick={() => handleEdit(item)} />

@@ -426,9 +426,18 @@ const GstExpenseList = () => {
   const parseBillNos = (value) => {
     try {
       const parsed = typeof value === "string" ? JSON.parse(value) : value;
-      return Array.isArray(parsed)
-        ? parsed.map((b) => b.label).join(", ")
-        : "—";
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return (
+          <div className="flex flex-col gap-0.5">
+            {parsed.map((b, idx) => (
+              <div key={idx} className="whitespace-nowrap">
+                {typeof b === "object" ? b?.label || b?.value || "—" : b}
+              </div>
+            ))}
+          </div>
+        );
+      }
+      return value || "—";
     } catch {
       return value || "—";
     }

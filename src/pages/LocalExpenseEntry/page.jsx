@@ -35,6 +35,7 @@ import MainLayout from "../../layouts/MainLayout";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { resolveApiDateRange } from "../../utils/financialYear";
+import { formattedAmount } from "../../utils/FormatAmount";
 
 const LocalExpenseEntry = () => {
   const { role, showOverview, toggleOverview } = useAuth();
@@ -78,12 +79,8 @@ const LocalExpenseEntry = () => {
     query.push(`filters[approved][$eq]=false`);
 
     if (from && to) {
-      query.push(
-        `filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`,
-      );
-      query.push(
-        `filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`,
-      );
+      query.push(`filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`);
+      query.push(`filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`);
     }
     const pageSize = 100;
     let page = 1;
@@ -517,7 +514,7 @@ const LocalExpenseEntry = () => {
                       {item.custom_type}
                     </span>
                   </td>
-                  <td>{item.amount}</td>
+                  <td>{formattedAmount(item.amount)}</td>
                   <td>
                     <div className="flex gap-2">
                       <EditButton onClick={() => handleEdit(item)} />

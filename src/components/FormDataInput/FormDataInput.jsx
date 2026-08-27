@@ -139,6 +139,7 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
                 step="any"
                 value={row.width === 0 ? "" : row.width}
                 onChange={(e) => updateRow(index, "width", e.target.value)}
+                required
               />
 
               <InputField
@@ -147,6 +148,7 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
                 step="any"
                 value={row.height === 0 ? "" : row.height}
                 onChange={(e) => updateRow(index, "height", e.target.value)}
+                required
               />
 
               <AutocompleteField
@@ -157,6 +159,7 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
                 onInputChange={(e, value) =>
                   updateRow(index, "material", value)
                 }
+                required
               />
 
               <InputField
@@ -167,6 +170,7 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
                 onChange={(e) =>
                   updateRow(index, "sq_ft_price", e.target.value)
                 }
+                required
               />
 
               <InputField
@@ -176,6 +180,7 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
                 onChange={(e) =>
                   updateRow(index, "piece_count", e.target.value)
                 }
+                required
               />
 
               <Button
