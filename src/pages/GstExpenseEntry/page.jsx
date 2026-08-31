@@ -179,6 +179,54 @@ const GstExpenseEntry = () => {
     return res.documentId;
   };
 
+  const handleVendorInputChange = (value) => {
+    const formatted = capitalizeFirstLetter(value || "");
+    setVendorName(formatted);
+    if (vendorId) {
+      const currentVendor = vendorList.find((v) => v.documentId === vendorId);
+      if (
+        currentVendor &&
+        !isNameMatch(currentVendor.name, value || "")
+      ) {
+        setVendorId("");
+      }
+    }
+  };
+
+  const handleVendorBlur = () => {
+    const trimmed = (vendorName || "").trim();
+    if (!trimmed) {
+      setVendorId("");
+      return;
+    }
+    const matched = findMatchingEntity(trimmed, vendorList, "name");
+    if (matched) {
+      setVendorId(matched.documentId || "");
+      setVendorName(matched.name || "");
+    } else {
+      setVendorId("");
+    }
+  };
+
+  const handleVendorChange = (value) => {
+    if (typeof value === "object" && value) {
+      setVendorId(value.documentId || "");
+      setVendorName(value.name || "");
+    } else if (typeof value === "string" && value) {
+      const matched = findMatchingEntity(value, vendorList, "name");
+      if (matched) {
+        setVendorId(matched.documentId || "");
+        setVendorName(matched.name || "");
+      } else {
+        setVendorName(capitalizeFirstLetter(value));
+        setVendorId("");
+      }
+    } else {
+      setVendorName("");
+      setVendorId("");
+    }
+  };
+
   return (
     <MainLayout>
       <div className="flex justify-between">
@@ -215,32 +263,9 @@ const GstExpenseEntry = () => {
             value={vendorName}
             options={vendorList}
             required
-            onInputChange={(e, value) => {
-              const formatted = capitalizeFirstLetter(value || "");
-              setVendorName(formatted);
-              const matched = findMatchingEntity(value, vendorList, "name");
-              if (matched) {
-                setVendorId(matched.documentId);
-              } else {
-                setVendorId("");
-              }
-            }}
-            onChange={(e, value) => {
-              if (typeof value === "object" && value) {
-                setVendorId(value.documentId);
-                setVendorName(value.name);
-              } else {
-                const typedName = capitalizeFirstLetter(value || "");
-                setVendorName(typedName);
-                const matched = findMatchingEntity(typedName, vendorList, "name");
-                if (matched) {
-                  setVendorId(matched.documentId);
-                  setVendorName(matched.name);
-                } else {
-                  setVendorId("");
-                }
-              }
-            }}
+            onInputChange={(e, value) => handleVendorInputChange(value)}
+            onChange={(e, value) => handleVendorChange(value)}
+            onBlur={handleVendorBlur}
             getOptionLabel={(option) =>
               typeof option === "string" ? option : option?.name || ""
             }

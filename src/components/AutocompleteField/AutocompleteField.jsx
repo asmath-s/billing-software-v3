@@ -12,6 +12,7 @@ const AutocompleteField = ({
   required,
   disabled,
   filterOptions,
+  ...rest
 }) => {
   const customFilter =
     filterOptions ||
@@ -22,6 +23,10 @@ const AutocompleteField = ({
       <label className="text-base font-semibold">{label}</label>
       <Autocomplete
         freeSolo
+        autoComplete={false}
+        autoHighlight={false}
+        autoSelect={false}
+        clearOnBlur={false}
         options={options.filter(Boolean)}
         value={value}
         onChange={onChange}
@@ -44,6 +49,7 @@ const AutocompleteField = ({
         }}
         required={required}
         disabled={disabled}
+        {...rest}
       />
     </div>
   );

@@ -54,7 +54,10 @@ const CustomerField = ({
 
   const applyCustomer = useCallback(
     (customer) => {
-      if (!customer) return resetFields();
+      if (!customer) {
+        setSelectedCustomerID("");
+        return;
+      }
 
       setSelectedCustomerID(customer.documentId || "");
       setCustomerName(customer.name || "");
@@ -75,78 +78,164 @@ const CustomerField = ({
       setDeliveryAddress,
       setGstNo,
       setPhoneno,
-      resetFields,
     ],
   );
 
   const handleNameInputChange = useCallback(
     (inputValue) => {
       setCustomerName(inputValue || "");
-      if (!inputValue || !inputValue.trim()) {
-        setSelectedCustomerID("");
-        return;
-      }
-
-      const matched = findMatchingEntity(inputValue, customerData, "name");
-      if (matched) {
-        setSelectedCustomerID(matched.documentId || "");
-        if (isGstCustomer) {
-          setAddress(matched.address || "");
-          setDeliveryAddress(matched.delivery_address || "");
-          setGstNo(matched.gst_no || "");
-        } else {
-          setPhoneno(matched.phonenumber || "");
+      if (SelectCustomerID) {
+        const currentCustomer = (customerData || []).find(
+          (c) => c.documentId === SelectCustomerID,
+        );
+        if (
+          currentCustomer &&
+          !isNameMatch(currentCustomer.name, inputValue || "")
+        ) {
+          setSelectedCustomerID("");
         }
-      } else {
-        setSelectedCustomerID("");
       }
     },
-    [
-      customerData,
-      isGstCustomer,
-      setCustomerName,
-      setSelectedCustomerID,
-      setAddress,
-      setDeliveryAddress,
-      setGstNo,
-      setPhoneno,
-    ],
+    [SelectCustomerID, customerData, setCustomerName, setSelectedCustomerID],
   );
+
+  const handleNameBlur = useCallback(() => {
+    const trimmed = (customerName || "").trim();
+    if (!trimmed) {
+      setSelectedCustomerID("");
+      return;
+    }
+
+    const matched = findMatchingEntity(trimmed, customerData, "name");
+    if (matched) {
+      applyCustomer(matched);
+    } else {
+      setSelectedCustomerID("");
+    }
+  }, [customerName, customerData, applyCustomer, setSelectedCustomerID]);
+
+  const handlePhoneBlur = useCallback(() => {
+    if (isGstCustomer || SelectCustomerID) return;
+    const trimmed = (phoneno || "").trim();
+    if (!trimmed) return;
+    const matched = (customerData || []).find(
+      (c) => normalizeName(c.phonenumber) === normalizeName(trimmed),
+    );
+    if (matched) {
+      applyCustomer(matched);
+    }
+  }, [isGstCustomer, SelectCustomerID, phoneno, customerData, applyCustomer]);
+
+  const handleGstBlur = useCallback(() => {
+    if (!isGstCustomer || SelectCustomerID) return;
+    const trimmed = (gstNo || "").trim();
+    if (!trimmed) return;
+    const matched = (customerData || []).find(
+      (c) => normalizeName(c.gst_no) === normalizeName(trimmed),
+    );
+    if (matched) {
+      applyCustomer(matched);
+    }
+  }, [isGstCustomer, SelectCustomerID, gstNo, customerData, applyCustomer]);
+
+  const handleAddressBlur = useCallback(() => {
+    if (!isGstCustomer || SelectCustomerID) return;
+    const trimmed = (address || "").trim();
+    if (!trimmed) return;
+    const matched = (customerData || []).find(
+      (c) => normalizeName(c.address) === normalizeName(trimmed),
+    );
+    if (matched) {
+      applyCustomer(matched);
+    }
+  }, [isGstCustomer, SelectCustomerID, address, customerData, applyCustomer]);
+
+  const handleDeliveryAddressBlur = useCallback(() => {
+    if (!isGstCustomer || SelectCustomerID) return;
+    const trimmed = (deliveryAddress || "").trim();
+    if (!trimmed) return;
+    const matched = (customerData || []).find(
+      (c) => normalizeName(c.delivery_address) === normalizeName(trimmed),
+    );
+    if (matched) {
+      applyCustomer(matched);
+    }
+  }, [
+    isGstCustomer,
+    SelectCustomerID,
+    deliveryAddress,
+    customerData,
+    applyCustomer,
+  ]);
 
   const handleCustomerChange = useCallback(
     (value, field) => {
-      if (!value) return resetFields();
+      if (!value) {
+        if (field === "name") {
+          resetFields();
+        }
+        return;
+      }
+
+      const rawValue =
+        typeof value === "object" ? value?.name || value?.label || "" : value;
 
       const selected = (customerData || []).find((customer) => {
         if (!customer) return false;
         if (field === "name") {
-          return isNameMatch(customer.name, value);
+          return isNameMatch(customer.name, rawValue);
         }
 
         if (field === "phone" && !isGstCustomer) {
-          return normalizeName(customer.phonenumber) === normalizeName(value);
+          return normalizeName(customer.phonenumber) === normalizeName(rawValue);
         }
 
         if (field === "gst" && isGstCustomer) {
-          return normalizeName(customer.gst_no) === normalizeName(value);
+          return normalizeName(customer.gst_no) === normalizeName(rawValue);
         }
 
         if (field === "address" && isGstCustomer) {
-          return normalizeName(customer.address) === normalizeName(value);
+          return normalizeName(customer.address) === normalizeName(rawValue);
         }
 
         if (field === "delivery_address" && isGstCustomer) {
           return (
-            normalizeName(customer.delivery_address) === normalizeName(value)
+            normalizeName(customer.delivery_address) === normalizeName(rawValue)
           );
         }
 
         return false;
       });
 
-      applyCustomer(selected);
+      if (selected) {
+        applyCustomer(selected);
+      } else {
+        if (field === "name") {
+          setCustomerName(rawValue);
+          setSelectedCustomerID("");
+        } else if (field === "phone" && !isGstCustomer) {
+          setPhoneno(rawValue);
+        } else if (field === "gst" && isGstCustomer) {
+          setGstNo((rawValue || "").toUpperCase());
+        } else if (field === "address" && isGstCustomer) {
+          setAddress(rawValue);
+        } else if (field === "delivery_address" && isGstCustomer) {
+          setDeliveryAddress(rawValue);
+        }
+      }
     },
-    [customerData, isGstCustomer, applyCustomer, resetFields],
+    [
+      customerData,
+      isGstCustomer,
+      applyCustomer,
+      resetFields,
+      setCustomerName,
+      setSelectedCustomerID,
+      setPhoneno,
+      setGstNo,
+      setAddress,
+      setDeliveryAddress,
+    ],
   );
 
   const handleUpdate = async () => {
@@ -220,6 +309,7 @@ const CustomerField = ({
         value={customerName}
         onInputChange={(e, v) => handleNameInputChange(v)}
         onChange={(e, v) => handleCustomerChange(v, "name")}
+        onBlur={handleNameBlur}
         options={nameOptions}
         required
       />
@@ -231,6 +321,7 @@ const CustomerField = ({
             value={address}
             onInputChange={(e, v) => setAddress(v)}
             onChange={(e, v) => handleCustomerChange(v, "address")}
+            onBlur={handleAddressBlur}
             options={addressOptions}
             disabled={!!SelectCustomerID}
           />
@@ -239,6 +330,7 @@ const CustomerField = ({
             value={gstNo}
             onInputChange={(e, v) => setGstNo((v || "").toUpperCase())}
             onChange={(e, v) => handleCustomerChange(v, "gst")}
+            onBlur={handleGstBlur}
             options={gstOptions}
             disabled={!!SelectCustomerID}
           />
@@ -249,6 +341,7 @@ const CustomerField = ({
               value={deliveryAddress}
               onInputChange={(e, v) => setDeliveryAddress(v)}
               onChange={(e, v) => handleCustomerChange(v, "delivery_address")}
+              onBlur={handleDeliveryAddressBlur}
               options={deliveryAddressOptions}
               disabled={!!SelectCustomerID}
             />
@@ -267,6 +360,7 @@ const CustomerField = ({
             value={phoneno}
             onInputChange={(e, v) => setPhoneno(v)}
             onChange={(e, v) => handleCustomerChange(v, "phone")}
+            onBlur={handlePhoneBlur}
             options={phoneOptions}
             type="tel"
             disabled={!!SelectCustomerID}
