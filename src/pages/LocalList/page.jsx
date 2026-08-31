@@ -86,8 +86,15 @@ const LocalList = () => {
     }
 
     if (from && to) {
-      query.push(`fromDate=${from}`);
-      query.push(`toDate=${to}`);
+      const startDate = dayjs(from).startOf("day").toISOString();
+      const endDate = dayjs(to).endOf("day").toISOString();
+
+      query.push(`filters[$or][0][date][$gte]=${encodeURIComponent(startDate)}`);
+      query.push(`filters[$or][0][date][$lte]=${encodeURIComponent(endDate)}`);
+      query.push(`filters[$or][1][gpay][date][$gte]=${encodeURIComponent(startDate)}`);
+      query.push(`filters[$or][1][gpay][date][$lte]=${encodeURIComponent(endDate)}`);
+      query.push(`filters[$or][2][cash][date][$gte]=${encodeURIComponent(startDate)}`);
+      query.push(`filters[$or][2][cash][date][$lte]=${encodeURIComponent(endDate)}`);
     }
 
     query.push("sort[0]=date:desc");

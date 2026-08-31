@@ -86,10 +86,8 @@ export const fetchAllLocalExpensesForExport = async ({
 
   if (fromDate && toDate) {
     baseParams.push(
-      `filters[date][$gte]=${dayjs(fromDate).format("YYYY-MM-DD")}`,
-    );
-    baseParams.push(
-      `filters[date][$lte]=${dayjs(toDate).format("YYYY-MM-DD")}`,
+      `filters[date][$gte]=${encodeURIComponent(dayjs(fromDate).startOf("day").toISOString())}`,
+      `filters[date][$lte]=${encodeURIComponent(dayjs(toDate).endOf("day").toISOString())}`,
     );
   }
 

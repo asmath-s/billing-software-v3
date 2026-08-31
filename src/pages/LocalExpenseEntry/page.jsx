@@ -79,8 +79,8 @@ const LocalExpenseEntry = () => {
     query.push(`filters[approved][$eq]=false`);
 
     if (from && to) {
-      query.push(`filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`);
-      query.push(`filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`);
+      query.push(`filters[date][$gte]=${encodeURIComponent(dayjs(from).startOf("day").toISOString())}`);
+      query.push(`filters[date][$lte]=${encodeURIComponent(dayjs(to).endOf("day").toISOString())}`);
     }
     const pageSize = 100;
     let page = 1;

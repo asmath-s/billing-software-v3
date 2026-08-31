@@ -74,8 +74,8 @@ export const fetchAllLocalSalesForExport = async ({
   }
 
   if (fromDate && toDate) {
-    const startDate = dayjs(fromDate).format("YYYY-MM-DD");
-    const endDate = dayjs(toDate).format("YYYY-MM-DD");
+    const startDate = dayjs(fromDate).startOf("day").toISOString();
+    const endDate = dayjs(toDate).endOf("day").toISOString();
 
     baseParams.push(
       `filters[$or][0][gpay][date][$gte]=${encodeURIComponent(startDate)}`,

@@ -127,8 +127,8 @@ const LocalPendingList = () => {
     }
 
     if (from && to) {
-      const startDate = dayjs(from).format("YYYY-MM-DD");
-      const endDate = dayjs(to).format("YYYY-MM-DD");
+      const startDate = dayjs(from).startOf("day").toISOString();
+      const endDate = dayjs(to).endOf("day").toISOString();
 
       query.push(
         `filters[$or][0][date][$gte]=${encodeURIComponent(startDate)}`,

@@ -92,8 +92,8 @@ const AdminList = () => {
 
     if (from && to) {
       query.push(
-        `filters[date][$gte]=${dayjs(from).format("YYYY-MM-DD")}`,
-        `filters[date][$lte]=${dayjs(to).format("YYYY-MM-DD")}`,
+        `filters[date][$gte]=${encodeURIComponent(dayjs(from).startOf("day").toISOString())}`,
+        `filters[date][$lte]=${encodeURIComponent(dayjs(to).endOf("day").toISOString())}`,
       );
     }
 
