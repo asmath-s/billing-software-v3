@@ -46,21 +46,21 @@ const AdminCard = ({
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Summary
-          title="Received"
+          title="Give To Office"
           value={receivedAmount}
           color="text-green-600"
           bg="bg-green-50"
         />
 
         <Summary
-          title="Expense"
+          title="Get From Office"
           value={expenseAmount}
           color="text-red-600"
           bg="bg-red-50"
         />
 
         <Summary
-          title="Taken Amount"
+          title="Total Taken Amount"
           value={balanceAmount}
           color={balanceAmount >= 0 ? "text-blue-600" : "text-orange-600"}
           bg="bg-blue-50"

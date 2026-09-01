@@ -472,18 +472,38 @@ const LocalExpenseEntry = () => {
       {/* TABLES */}
       {Object.keys(groupedData).map((date) => {
         const groupItems = groupedData[date] || [];
-        const groupTotalCash = groupItems.reduce(
+        const groupTotalReceiveCash = groupItems.reduce(
           (sum, item) =>
             sum +
-            (item.custom_type?.toLowerCase() === "cash"
+            (item.method?.toLowerCase() === "receive" &&
+            item.custom_type?.toLowerCase() === "cash"
               ? Number(item.amount) || 0
               : 0),
           0,
         );
-        const groupTotalGpay = groupItems.reduce(
+        const groupTotalExpenseCash = groupItems.reduce(
           (sum, item) =>
             sum +
-            (item.custom_type?.toLowerCase() === "gpay"
+            (item.method?.toLowerCase() === "expense" &&
+            item.custom_type?.toLowerCase() === "cash"
+              ? Number(item.amount) || 0
+              : 0),
+          0,
+        );
+        const groupTotalReceiveGpay = groupItems.reduce(
+          (sum, item) =>
+            sum +
+            (item.method?.toLowerCase() === "receive" &&
+            item.custom_type?.toLowerCase() === "gpay"
+              ? Number(item.amount) || 0
+              : 0),
+          0,
+        );
+        const groupTotalExpenseGpay = groupItems.reduce(
+          (sum, item) =>
+            sum +
+            (item.method?.toLowerCase() === "expense" &&
+            item.custom_type?.toLowerCase() === "gpay"
               ? Number(item.amount) || 0
               : 0),
           0,
@@ -496,24 +516,44 @@ const LocalExpenseEntry = () => {
                 Date: {dayjs(date).format("DD/MM/YYYY")}
               </h2>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-1.5 bg-green-50 text-green-800 border border-green-200 px-3 py-1 rounded-lg text-sm shadow-xs">
                   <CashIcon width="18" height="18" color="#166534" />
                   <span className="font-medium text-xs text-green-700">
-                    Total Cash:
+                    Total Receive Cash:
                   </span>
                   <span className="font-bold">
-                    ₹ {formattedAmount(groupTotalCash)}
+                    ₹ {formattedAmount(groupTotalReceiveCash)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-red-50 text-red-800 border border-red-200 px-3 py-1 rounded-lg text-sm shadow-xs">
+                  <CashIcon width="18" height="18" color="#991b1b" />
+                  <span className="font-medium text-xs text-red-700">
+                    Total Expense Cash:
+                  </span>
+                  <span className="font-bold">
+                    ₹ {formattedAmount(groupTotalExpenseCash)}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-1.5 bg-blue-50 text-blue-800 border border-blue-200 px-3 py-1 rounded-lg text-sm shadow-xs">
                   <GpayIcon width="18" height="18" color="#1e40af" />
                   <span className="font-medium text-xs text-blue-700">
-                    Total GPay:
+                    Total Receive GPay:
                   </span>
                   <span className="font-bold">
-                    ₹ {formattedAmount(groupTotalGpay)}
+                    ₹ {formattedAmount(groupTotalReceiveGpay)}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-rose-50 text-rose-800 border border-rose-200 px-3 py-1 rounded-lg text-sm shadow-xs">
+                  <GpayIcon width="18" height="18" color="#9f1239" />
+                  <span className="font-medium text-xs text-rose-700">
+                    Total Expense GPay:
+                  </span>
+                  <span className="font-bold">
+                    ₹ {formattedAmount(groupTotalExpenseGpay)}
                   </span>
                 </div>
               </div>
