@@ -1,33 +1,25 @@
 import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Area,
-  AreaChart,
   Bar,
+  BarChart,
   CartesianGrid,
-  Cell,
-  ComposedChart,
   Legend,
-  Line,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { getAdminExpense } from "../../api/adminExpense";
 import { getGstExpenseSummary } from "../../api/gstExpense";
 import { getGstSalesSummary } from "../../api/gstList";
 import { getLocalAmounts } from "../../api/localAmount";
-import { getLocalExpenseAmounts } from "../../api/localExpense";
-import Datepicker from "../../components/Datepicker/Datepicker";
 import {
-  AccountIcon,
-  CashIcon,
-  ChartIcon,
-  GpayIcon,
-  RefreshIcon,
-} from "../../components/icons";
+  getLocalExpense,
+  getLocalExpenseAmounts,
+} from "../../api/localExpense";
+import Datepicker from "../../components/Datepicker/Datepicker";
+import { ChartIcon, RefreshIcon } from "../../components/icons";
 import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { resolveApiDateRange } from "../../utils/financialYear";
@@ -73,63 +65,358 @@ const MONTH_NAMES = [
 const AVAILABLE_YEARS = [2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020];
 
 /* -----------------------------------------------------------------
-   Custom Tooltip Component
+   Category Matchers
 ------------------------------------------------------------------*/
-const CustomChartTooltip = ({ active, payload, label }) => {
+const isElectricBill = (inst) => {
+  if (!inst || typeof inst !== "string") return false;
+  const s = inst.toLowerCase().trim();
+  return (
+    s.includes("electric") ||
+    s.includes("electricity") ||
+    s.includes("current") ||
+    s.includes("power") ||
+    s.includes("tneb") ||
+    s.includes("eb bill") ||
+    s.includes("eb charge") ||
+    s.includes("eb amount") ||
+    s.includes("eb payment") ||
+    /\beb\b/i.test(s) ||
+    /\be\.b\b/i.test(s)
+  );
+};
+
+const isOfficeRent = (inst) => {
+  if (!inst || typeof inst !== "string") return false;
+  const s = inst.toLowerCase().trim();
+  return s.includes("office rent") || s.includes("officerent");
+};
+
+/* -----------------------------------------------------------------
+   Custom Tooltip for Local Sales vs Local Expense
+------------------------------------------------------------------*/
+const LocalChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
+  const data = payload[0]?.payload;
+  if (!data) return null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/95 p-3.5 shadow-xl backdrop-blur-md">
-      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-        {label}
-      </p>
-      <div className="space-y-1.5">
-        {payload.map((entry, index) => (
-          <div
-            key={`item-${index}`}
-            className="flex items-center justify-between gap-4 text-xs"
-          >
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: entry.color || entry.fill }}
-              />
-              <span className="font-medium text-slate-600">{entry.name}:</span>
+    <div className="min-w-[280px] rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-xl backdrop-blur-md">
+      <div className="mb-3 border-b border-slate-100 pb-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          {label || data.period}
+        </p>
+      </div>
+
+      <div className="space-y-3.5">
+        {/* Local Sales Breakdown */}
+        <div className="rounded-xl border border-emerald-100/80 bg-emerald-50/40 p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-sm" />
+              <span className="text-xs font-bold text-emerald-950">
+                Local Sales
+              </span>
             </div>
-            <span className="font-bold text-slate-900">
-              ₹ {formatINR(entry.value)}
+            <span className="text-xs font-extrabold text-emerald-700">
+              ₹ {formatINR(data.localSales)}
             </span>
           </div>
-        ))}
+
+          <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-emerald-100/80 pt-2 text-[11px]">
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Cash:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.localSalesCash)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">GPay:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.localSalesGpay)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Account:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.localSalesAccount)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Pending:</span>
+              <span className="font-semibold text-amber-700">
+                ₹ {formatINR(data.localSalesPending)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Local Expense Breakdown */}
+        <div className="rounded-xl border border-rose-100/80 bg-rose-50/40 p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-sm" />
+              <span className="text-xs font-bold text-rose-950">
+                Local Expense
+              </span>
+            </div>
+            <span className="text-xs font-extrabold text-rose-700">
+              ₹ {formatINR(data.localExpense)}
+            </span>
+          </div>
+
+          <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-rose-100/80 pt-2 text-[11px]">
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Cash:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.localExpenseCash)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">GPay:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.localExpenseGpay)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Account:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.localExpenseAccount)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Pending:</span>
+              <span className="font-semibold text-amber-700">
+                ₹ {formatINR(data.localExpensePending)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 /* -----------------------------------------------------------------
-   Payment Donut Tooltip Component
+   Custom Tooltip for GST Sales vs GST Expense
 ------------------------------------------------------------------*/
-const PaymentTooltip = ({ active, payload }) => {
+const GstChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
-  const data = payload[0];
+  const data = payload[0]?.payload;
+  if (!data) return null;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur-md">
-      <div className="flex items-center gap-2">
-        <span
-          className="h-3 w-3 rounded-full"
-          style={{ backgroundColor: data.payload.color }}
-        />
-        <span className="text-xs font-semibold text-slate-700">
-          {data.name}
-        </span>
+    <div className="min-w-[280px] rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-xl backdrop-blur-md">
+      <div className="mb-3 border-b border-slate-100 pb-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          {label || data.period}
+        </p>
       </div>
-      <p className="mt-1 text-sm font-bold text-slate-900">
-        ₹ {formatINR(data.value)}
-      </p>
-      <p className="text-[11px] text-slate-400">
-        {data.payload.percentage}% of total collections
-      </p>
+
+      <div className="space-y-3.5">
+        {/* GST Sales Breakdown */}
+        <div className="rounded-xl border border-emerald-100/80 bg-emerald-50/40 p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-600 shadow-sm" />
+              <span className="text-xs font-bold text-emerald-950">
+                GST Sales
+              </span>
+            </div>
+            <span className="text-xs font-extrabold text-emerald-700">
+              ₹ {formatINR(data.gstSales)}
+            </span>
+          </div>
+
+          <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-emerald-100/80 pt-2 text-[11px]">
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Cash:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.gstSalesCash)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">GPay:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.gstSalesGpay)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Account:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.gstSalesAccount)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Pending:</span>
+              <span className="font-semibold text-amber-700">
+                ₹ {formatINR(data.gstSalesPending)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* GST Expense Breakdown */}
+        <div className="rounded-xl border border-rose-100/80 bg-rose-50/40 p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-600 shadow-sm" />
+              <span className="text-xs font-bold text-rose-950">
+                GST Expense
+              </span>
+            </div>
+            <span className="text-xs font-extrabold text-rose-700">
+              ₹ {formatINR(data.gstExpense)}
+            </span>
+          </div>
+
+          <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-rose-100/80 pt-2 text-[11px]">
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Cash:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.gstExpenseCash)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">GPay:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.gstExpenseGpay)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Account:</span>
+              <span className="font-semibold text-slate-800">
+                ₹ {formatINR(data.gstExpenseAccount)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="text-slate-400">Pending:</span>
+              <span className="font-semibold text-amber-700">
+                ₹ {formatINR(data.gstExpensePending)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* -----------------------------------------------------------------
+   Custom Tooltip for Electric Bill Chart (Month-wise)
+------------------------------------------------------------------*/
+const ElectricChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  return (
+    <div className="min-w-[260px] rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-xl backdrop-blur-md">
+      <div className="mb-3 border-b border-slate-100 pb-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          {label || data.period}
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-amber-100/80 bg-amber-50/40 p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shadow-sm" />
+            <span className="text-xs font-bold text-amber-950">
+              Electric Bill
+            </span>
+          </div>
+          <span className="text-xs font-extrabold text-amber-700">
+            ₹ {formatINR(data.electricTotal)}
+          </span>
+        </div>
+
+        <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-amber-100/80 pt-2 text-[11px]">
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-slate-400">Cash:</span>
+            <span className="font-semibold text-slate-800">
+              ₹ {formatINR(data.electricCash)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-slate-400">GPay:</span>
+            <span className="font-semibold text-slate-800">
+              ₹ {formatINR(data.electricGpay)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-slate-400">Account:</span>
+            <span className="font-semibold text-slate-800">
+              ₹ {formatINR(data.electricAccount)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-slate-400">Pending:</span>
+            <span className="font-semibold text-amber-700">
+              ₹ {formatINR(data.electricPending)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* -----------------------------------------------------------------
+   Custom Tooltip for Rent Chart (Month-wise)
+------------------------------------------------------------------*/
+const RentChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  return (
+    <div className="min-w-[260px] rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-xl backdrop-blur-md">
+      <div className="mb-3 border-b border-slate-100 pb-2">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          {label || data.period}
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-indigo-100/80 bg-indigo-50/40 p-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-indigo-600 shadow-sm" />
+            <span className="text-xs font-bold text-indigo-950">
+              Office Rent (Hub)
+            </span>
+          </div>
+          <span className="text-xs font-extrabold text-indigo-700">
+            ₹ {formatINR(data.rentTotal)}
+          </span>
+        </div>
+
+        <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-indigo-100/80 pt-2 text-[11px]">
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-slate-400">Cash:</span>
+            <span className="font-semibold text-slate-800">
+              ₹ {formatINR(data.rentCash)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-slate-400">GPay:</span>
+            <span className="font-semibold text-slate-800">
+              ₹ {formatINR(data.rentGpay)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-slate-400">Account:</span>
+            <span className="font-semibold text-slate-800">
+              ₹ {formatINR(data.rentAccount)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-slate-400">Pending:</span>
+            <span className="font-semibold text-amber-700">
+              ₹ {formatINR(data.rentPending)}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -160,16 +447,41 @@ const Analytics = () => {
   const [chartData, setChartData] = useState([]);
   const [summaryTotals, setSummaryTotals] = useState({
     localSales: 0,
-    gstSales: 0,
-    totalSales: 0,
+    localSalesCash: 0,
+    localSalesGpay: 0,
+    localSalesAccount: 0,
+    localSalesPending: 0,
     localExpense: 0,
+    localExpenseCash: 0,
+    localExpenseGpay: 0,
+    localExpenseAccount: 0,
+    localExpensePending: 0,
+    gstSales: 0,
+    gstSalesCash: 0,
+    gstSalesGpay: 0,
+    gstSalesAccount: 0,
+    gstSalesPending: 0,
     gstExpense: 0,
-    totalExpense: 0,
-    netAmount: 0,
+    gstExpenseCash: 0,
+    gstExpenseGpay: 0,
+    gstExpenseAccount: 0,
+    gstExpensePending: 0,
+    electricTotal: 0,
+    electricCash: 0,
+    electricGpay: 0,
+    electricAccount: 0,
+    electricPending: 0,
+    rentTotal: 0,
+    rentCash: 0,
+    rentGpay: 0,
+    rentAccount: 0,
+    rentPending: 0,
     cash: 0,
     gpay: 0,
     account: 0,
-    totalReceived: 0,
+    totalSales: 0,
+    totalExpense: 0,
+    netAmount: 0,
   });
 
   /* -----------------------------------------------------------------
@@ -179,13 +491,48 @@ const Analytics = () => {
     const dateQuery =
       fromStr && toStr ? `?fromDate=${fromStr}&toDate=${toStr}` : "";
 
-    const [localSalesRes, gstSalesRes, localExpRes, gstExpRes] =
-      await Promise.allSettled([
-        getLocalAmounts(dateQuery),
-        getGstSalesSummary(dateQuery),
-        getLocalExpenseAmounts(dateQuery),
-        getGstExpenseSummary(dateQuery),
-      ]);
+    // Hub rent query (strictly hub status and instruction contains "Office Rent")
+    const hubRentParams = [
+      "sort[0]=date:desc",
+      "filters[current_status][$eq]=hub",
+      `filters[instruction][$containsi]=${encodeURIComponent("Office Rent")}`,
+    ];
+    if (fromStr && toStr) {
+      hubRentParams.push(
+        `filters[date][$gte]=${encodeURIComponent(dayjs(fromStr).startOf("day").toISOString())}`,
+        `filters[date][$lte]=${encodeURIComponent(dayjs(toStr).endOf("day").toISOString())}`,
+      );
+    }
+    hubRentParams.push("pagination[pageSize]=100");
+
+    // Electric bill query (from local-expenses and admin-expenses)
+    const electricFilterParams = [];
+    if (fromStr && toStr) {
+      electricFilterParams.push(
+        `filters[date][$gte]=${encodeURIComponent(dayjs(fromStr).startOf("day").toISOString())}`,
+        `filters[date][$lte]=${encodeURIComponent(dayjs(toStr).endOf("day").toISOString())}`,
+      );
+    }
+    electricFilterParams.push("pagination[pageSize]=100");
+    electricFilterParams.push("sort[0]=date:desc");
+
+    const [
+      localSalesRes,
+      gstSalesRes,
+      localExpRes,
+      gstExpRes,
+      hubRentRes,
+      rawLocalExpRes,
+      rawAdminExpRes,
+    ] = await Promise.allSettled([
+      getLocalAmounts(dateQuery),
+      getGstSalesSummary(dateQuery),
+      getLocalExpenseAmounts(dateQuery),
+      getGstExpenseSummary(dateQuery),
+      getLocalExpense(hubRentParams.join("&")),
+      getLocalExpense(electricFilterParams.join("&")),
+      getAdminExpense(electricFilterParams.join("&")),
+    ]);
 
     const localSalesData =
       localSalesRes.status === "fulfilled" ? localSalesRes.value : {};
@@ -196,7 +543,7 @@ const Analytics = () => {
     const gstExpData =
       gstExpRes.status === "fulfilled" ? gstExpRes.value : {};
 
-    // 1. Local Sales Extraction (matches Dashboard sales_total)
+    // 1. Local Sales Extraction
     let localSales = getNum(localSalesData?.sales_total);
     if (!localSales) {
       localSales =
@@ -225,7 +572,28 @@ const Analytics = () => {
         getNum(localSalesData?.local_pending?.total_gpay) +
         getNum(localSalesData?.local_party?.total_gpay);
 
-    // 2. GST Sales Extraction (matches Dashboard total_sales)
+    const localSalesAccount =
+      getNum(localSalesData?.local_total?.total_account) ||
+      getNum(localSalesData?.local_list?.total_account) ||
+      0;
+
+    const localSalesPending =
+      getNum(localSalesData?.local_pending?.total_balance) +
+        getNum(localSalesData?.local_party?.total_balance) ||
+      Math.max(
+        0,
+        localSales - (localSalesCash + localSalesGpay + localSalesAccount),
+      );
+
+    if (!localSales) {
+      localSales =
+        localSalesCash +
+        localSalesGpay +
+        localSalesAccount +
+        localSalesPending;
+    }
+
+    // 2. GST Sales Extraction
     let gstSales = getNum(gstSalesData?.total_sales);
     if (!gstSales) {
       gstSales =
@@ -240,8 +608,16 @@ const Analytics = () => {
     const gstSalesCash = getNum(gstSalesData?.total_cash);
     const gstSalesGpay = getNum(gstSalesData?.total_gpay);
     const gstSalesAccount = getNum(gstSalesData?.total_account);
+    const gstSalesPending =
+      getNum(gstSalesData?.total_balance) ||
+      Math.max(0, gstSales - (gstSalesCash + gstSalesGpay + gstSalesAccount));
 
-    // 3. Local Expense Extraction (matches Dashboard local_expense_total)
+    if (!gstSales) {
+      gstSales =
+        gstSalesCash + gstSalesGpay + gstSalesAccount + gstSalesPending;
+    }
+
+    // 3. Local Expense Extraction
     let localExpense = getNum(localExpData?.local_expense_total);
     if (!localExpense) {
       localExpense =
@@ -254,7 +630,39 @@ const Analytics = () => {
           getNum(localExpData?.approved?.total_exp_account);
     }
 
-    // 4. GST Expense Extraction (matches Dashboard total_expense)
+    const localExpenseCash =
+      getNum(localExpData?.total?.total_exp_cash) ||
+      getNum(localExpData?.approved?.total_exp_cash) ||
+      0;
+
+    const localExpenseGpay =
+      getNum(localExpData?.total?.total_exp_gpay) ||
+      getNum(localExpData?.approved?.total_exp_gpay) ||
+      0;
+
+    const localExpenseAccount =
+      getNum(localExpData?.total?.total_exp_account) ||
+      getNum(localExpData?.approved?.total_exp_account) ||
+      0;
+
+    const localExpensePending =
+      getNum(localExpData?.total?.total_balance) ||
+      getNum(localExpData?.total_balance) ||
+      Math.max(
+        0,
+        localExpense -
+          (localExpenseCash + localExpenseGpay + localExpenseAccount),
+      );
+
+    if (!localExpense) {
+      localExpense =
+        localExpenseCash +
+        localExpenseGpay +
+        localExpenseAccount +
+        localExpensePending;
+    }
+
+    // 4. GST Expense Extraction
     let gstExpense = getNum(gstExpData?.total_expense);
     if (!gstExpense) {
       gstExpense =
@@ -262,8 +670,96 @@ const Analytics = () => {
         getNum(gstExpData?.total_base) + getNum(gstExpData?.total_tax) ||
         getNum(gstExpData?.total_cash) +
           getNum(gstExpData?.total_gpay) +
-          getNum(gstExpData?.total_account);
+          getNum(gstExpData?.total_account) +
+          getNum(gstExpData?.total_balance);
     }
+
+    const gstExpenseCash = getNum(gstExpData?.total_cash);
+    const gstExpenseGpay = getNum(gstExpData?.total_gpay);
+    const gstExpenseAccount = getNum(gstExpData?.total_account);
+    const gstExpensePending =
+      getNum(gstExpData?.total_balance) ||
+      Math.max(
+        0,
+        gstExpense - (gstExpenseCash + gstExpenseGpay + gstExpenseAccount),
+      );
+
+    if (!gstExpense) {
+      gstExpense =
+        gstExpenseCash +
+        gstExpenseGpay +
+        gstExpenseAccount +
+        gstExpensePending;
+    }
+
+    // 5. Office Rent Extraction (strictly from Hub)
+    const hubRentList =
+      hubRentRes.status === "fulfilled"
+        ? hubRentRes.value?.data?.data || hubRentRes.value?.data || []
+        : [];
+
+    let rentTotal = 0;
+    let rentCash = 0;
+    let rentGpay = 0;
+    let rentAccount = 0;
+    let rentPending = 0;
+
+    hubRentList.forEach((item) => {
+      const inst = item.instruction || "";
+      if (!isOfficeRent(inst)) return;
+      const amt = Number(item.amount || 0);
+      if (amt <= 0) return;
+
+      const type = (item.custom_type || "cash").toLowerCase();
+      rentTotal += amt;
+      if (type === "cash") rentCash += amt;
+      else if (type === "gpay") rentGpay += amt;
+      else if (type === "account") rentAccount += amt;
+      else rentPending += amt;
+    });
+
+    // 6. Electric Bill Extraction (from local-expenses and admin-expenses)
+    const rawLocalList =
+      rawLocalExpRes.status === "fulfilled"
+        ? rawLocalExpRes.value?.data?.data ||
+          rawLocalExpRes.value?.data ||
+          []
+        : [];
+    const rawAdminList =
+      rawAdminExpRes.status === "fulfilled"
+        ? rawAdminExpRes.value?.data || rawAdminExpRes.value || []
+        : [];
+
+    const allElectricRecords = [];
+    const seenElectricIds = new Set();
+    [...rawLocalList, ...rawAdminList].forEach((item) => {
+      const id = item.documentId || item.id;
+      if (id && seenElectricIds.has(id)) return;
+      if (id) seenElectricIds.add(id);
+      allElectricRecords.push(item);
+    });
+
+    let electricTotal = 0;
+    let electricCash = 0;
+    let electricGpay = 0;
+    let electricAccount = 0;
+    let electricPending = 0;
+
+    allElectricRecords.forEach((item) => {
+      const inst = item.instruction || "";
+      if (!isElectricBill(inst)) return;
+      const amt = Number(item.amount || 0);
+      const isExp =
+        (item.method || "expense").toLowerCase() !== "receive";
+      if (!isExp || amt <= 0) return;
+
+      const type = (item.custom_type || "cash").toLowerCase();
+      electricTotal += amt;
+      if (type === "cash") electricCash += amt;
+      else if (type === "gpay") electricGpay += amt;
+      else if (type === "account") electricAccount += amt;
+      else electricPending += amt;
+    });
 
     const totalSales = localSales + gstSales;
     const totalExpense = localExpense + gstExpense;
@@ -271,21 +767,52 @@ const Analytics = () => {
 
     const cash = localSalesCash + gstSalesCash;
     const gpay = localSalesGpay + gstSalesGpay;
-    const account = gstSalesAccount;
-    const totalReceived = cash + gpay + account;
+    const account = gstSalesAccount + localSalesAccount;
 
     return {
       localSales,
-      gstSales,
-      totalSales,
+      localSalesCash,
+      localSalesGpay,
+      localSalesAccount,
+      localSalesPending,
+
       localExpense,
+      localExpenseCash,
+      localExpenseGpay,
+      localExpenseAccount,
+      localExpensePending,
+
+      gstSales,
+      gstSalesCash,
+      gstSalesGpay,
+      gstSalesAccount,
+      gstSalesPending,
+
       gstExpense,
-      totalExpense,
-      netAmount,
+      gstExpenseCash,
+      gstExpenseGpay,
+      gstExpenseAccount,
+      gstExpensePending,
+
+      electricTotal,
+      electricCash,
+      electricGpay,
+      electricAccount,
+      electricPending,
+
+      rentTotal,
+      rentCash,
+      rentGpay,
+      rentAccount,
+      rentPending,
+
       cash,
       gpay,
       account,
-      totalReceived,
+
+      totalSales,
+      totalExpense,
+      netAmount,
     };
   };
 
@@ -297,10 +824,10 @@ const Analytics = () => {
 
     try {
       if (viewMode === "all") {
-        // Overall / All-Time (No date filter bounds - matches default Dashboard)
+        // Overall / All-Time (No date filter bounds)
         const overallSummary = await fetchIntervalSummary(null, null);
 
-        // Also fetch monthly breakdown for current year so chart has visual data
+        // Fetch monthly breakdown for current year so charts have interval data
         const monthPromises = Array.from({ length: 12 }, async (_, m) => {
           const start = dayjs(new Date(selectedYear, m, 1)).format(
             "YYYY-MM-DD",
@@ -317,7 +844,9 @@ const Analytics = () => {
         });
 
         const monthsData = await Promise.all(monthPromises);
-        const hasMonthData = monthsData.some((item) => item.totalSales > 0 || item.totalExpense > 0);
+        const hasMonthData = monthsData.some(
+          (item) => item.totalSales > 0 || item.totalExpense > 0,
+        );
 
         if (hasMonthData) {
           setChartData(monthsData);
@@ -325,7 +854,39 @@ const Analytics = () => {
           setChartData([{ period: "All Time", ...overallSummary }]);
         }
 
-        setSummaryTotals(overallSummary);
+        // Calculate year-wide totals from the 12 months for this year's KPI display
+        const yearSums = monthsData.reduce(
+          (acc, item) => ({
+            electricTotal: acc.electricTotal + item.electricTotal,
+            electricCash: acc.electricCash + item.electricCash,
+            electricGpay: acc.electricGpay + item.electricGpay,
+            electricAccount: acc.electricAccount + item.electricAccount,
+            electricPending: acc.electricPending + item.electricPending,
+
+            rentTotal: acc.rentTotal + item.rentTotal,
+            rentCash: acc.rentCash + item.rentCash,
+            rentGpay: acc.rentGpay + item.rentGpay,
+            rentAccount: acc.rentAccount + item.rentAccount,
+            rentPending: acc.rentPending + item.rentPending,
+          }),
+          {
+            electricTotal: 0,
+            electricCash: 0,
+            electricGpay: 0,
+            electricAccount: 0,
+            electricPending: 0,
+            rentTotal: 0,
+            rentCash: 0,
+            rentGpay: 0,
+            rentAccount: 0,
+            rentPending: 0,
+          },
+        );
+
+        setSummaryTotals({
+          ...overallSummary,
+          ...yearSums,
+        });
       } else if (viewMode === "month") {
         // Month-wise aggregation for selectedYear (Jan to Dec)
         const monthPromises = Array.from({ length: 12 }, async (_, m) => {
@@ -353,33 +914,94 @@ const Analytics = () => {
 
         setChartData(filteredMonths);
 
-        // Compute overarching totals for the selected year/months
+        // Overarching totals for the selected year
         const totals = monthsData.reduce(
           (acc, item) => ({
             localSales: acc.localSales + item.localSales,
-            gstSales: acc.gstSales + item.gstSales,
-            totalSales: acc.totalSales + item.totalSales,
+            localSalesCash: acc.localSalesCash + item.localSalesCash,
+            localSalesGpay: acc.localSalesGpay + item.localSalesGpay,
+            localSalesAccount: acc.localSalesAccount + item.localSalesAccount,
+            localSalesPending: acc.localSalesPending + item.localSalesPending,
+
             localExpense: acc.localExpense + item.localExpense,
+            localExpenseCash: acc.localExpenseCash + item.localExpenseCash,
+            localExpenseGpay: acc.localExpenseGpay + item.localExpenseGpay,
+            localExpenseAccount:
+              acc.localExpenseAccount + item.localExpenseAccount,
+            localExpensePending:
+              acc.localExpensePending + item.localExpensePending,
+
+            gstSales: acc.gstSales + item.gstSales,
+            gstSalesCash: acc.gstSalesCash + item.gstSalesCash,
+            gstSalesGpay: acc.gstSalesGpay + item.gstSalesGpay,
+            gstSalesAccount: acc.gstSalesAccount + item.gstSalesAccount,
+            gstSalesPending: acc.gstSalesPending + item.gstSalesPending,
+
             gstExpense: acc.gstExpense + item.gstExpense,
-            totalExpense: acc.totalExpense + item.totalExpense,
-            netAmount: acc.netAmount + item.netAmount,
+            gstExpenseCash: acc.gstExpenseCash + item.gstExpenseCash,
+            gstExpenseGpay: acc.gstExpenseGpay + item.gstExpenseGpay,
+            gstExpenseAccount:
+              acc.gstExpenseAccount + item.gstExpenseAccount,
+            gstExpensePending:
+              acc.gstExpensePending + item.gstExpensePending,
+
+            electricTotal: acc.electricTotal + item.electricTotal,
+            electricCash: acc.electricCash + item.electricCash,
+            electricGpay: acc.electricGpay + item.electricGpay,
+            electricAccount: acc.electricAccount + item.electricAccount,
+            electricPending: acc.electricPending + item.electricPending,
+
+            rentTotal: acc.rentTotal + item.rentTotal,
+            rentCash: acc.rentCash + item.rentCash,
+            rentGpay: acc.rentGpay + item.rentGpay,
+            rentAccount: acc.rentAccount + item.rentAccount,
+            rentPending: acc.rentPending + item.rentPending,
+
             cash: acc.cash + item.cash,
             gpay: acc.gpay + item.gpay,
             account: acc.account + item.account,
-            totalReceived: acc.totalReceived + item.totalReceived,
+
+            totalSales: acc.totalSales + item.totalSales,
+            totalExpense: acc.totalExpense + item.totalExpense,
+            netAmount: acc.netAmount + item.netAmount,
           }),
           {
             localSales: 0,
-            gstSales: 0,
-            totalSales: 0,
+            localSalesCash: 0,
+            localSalesGpay: 0,
+            localSalesAccount: 0,
+            localSalesPending: 0,
             localExpense: 0,
+            localExpenseCash: 0,
+            localExpenseGpay: 0,
+            localExpenseAccount: 0,
+            localExpensePending: 0,
+            gstSales: 0,
+            gstSalesCash: 0,
+            gstSalesGpay: 0,
+            gstSalesAccount: 0,
+            gstSalesPending: 0,
             gstExpense: 0,
-            totalExpense: 0,
-            netAmount: 0,
+            gstExpenseCash: 0,
+            gstExpenseGpay: 0,
+            gstExpenseAccount: 0,
+            gstExpensePending: 0,
+            electricTotal: 0,
+            electricCash: 0,
+            electricGpay: 0,
+            electricAccount: 0,
+            electricPending: 0,
+            rentTotal: 0,
+            rentCash: 0,
+            rentGpay: 0,
+            rentAccount: 0,
+            rentPending: 0,
             cash: 0,
             gpay: 0,
             account: 0,
-            totalReceived: 0,
+            totalSales: 0,
+            totalExpense: 0,
+            netAmount: 0,
           },
         );
 
@@ -403,29 +1025,90 @@ const Analytics = () => {
         const totals = yearsData.reduce(
           (acc, item) => ({
             localSales: acc.localSales + item.localSales,
-            gstSales: acc.gstSales + item.gstSales,
-            totalSales: acc.totalSales + item.totalSales,
+            localSalesCash: acc.localSalesCash + item.localSalesCash,
+            localSalesGpay: acc.localSalesGpay + item.localSalesGpay,
+            localSalesAccount: acc.localSalesAccount + item.localSalesAccount,
+            localSalesPending: acc.localSalesPending + item.localSalesPending,
+
             localExpense: acc.localExpense + item.localExpense,
+            localExpenseCash: acc.localExpenseCash + item.localExpenseCash,
+            localExpenseGpay: acc.localExpenseGpay + item.localExpenseGpay,
+            localExpenseAccount:
+              acc.localExpenseAccount + item.localExpenseAccount,
+            localExpensePending:
+              acc.localExpensePending + item.localExpensePending,
+
+            gstSales: acc.gstSales + item.gstSales,
+            gstSalesCash: acc.gstSalesCash + item.gstSalesCash,
+            gstSalesGpay: acc.gstSalesGpay + item.gstSalesGpay,
+            gstSalesAccount: acc.gstSalesAccount + item.gstSalesAccount,
+            gstSalesPending: acc.gstSalesPending + item.gstSalesPending,
+
             gstExpense: acc.gstExpense + item.gstExpense,
-            totalExpense: acc.totalExpense + item.totalExpense,
-            netAmount: acc.netAmount + item.netAmount,
+            gstExpenseCash: acc.gstExpenseCash + item.gstExpenseCash,
+            gstExpenseGpay: acc.gstExpenseGpay + item.gstExpenseGpay,
+            gstExpenseAccount:
+              acc.gstExpenseAccount + item.gstExpenseAccount,
+            gstExpensePending:
+              acc.gstExpensePending + item.gstExpensePending,
+
+            electricTotal: acc.electricTotal + item.electricTotal,
+            electricCash: acc.electricCash + item.electricCash,
+            electricGpay: acc.electricGpay + item.electricGpay,
+            electricAccount: acc.electricAccount + item.electricAccount,
+            electricPending: acc.electricPending + item.electricPending,
+
+            rentTotal: acc.rentTotal + item.rentTotal,
+            rentCash: acc.rentCash + item.rentCash,
+            rentGpay: acc.rentGpay + item.rentGpay,
+            rentAccount: acc.rentAccount + item.rentAccount,
+            rentPending: acc.rentPending + item.rentPending,
+
             cash: acc.cash + item.cash,
             gpay: acc.gpay + item.gpay,
             account: acc.account + item.account,
-            totalReceived: acc.totalReceived + item.totalReceived,
+
+            totalSales: acc.totalSales + item.totalSales,
+            totalExpense: acc.totalExpense + item.totalExpense,
+            netAmount: acc.netAmount + item.netAmount,
           }),
           {
             localSales: 0,
-            gstSales: 0,
-            totalSales: 0,
+            localSalesCash: 0,
+            localSalesGpay: 0,
+            localSalesAccount: 0,
+            localSalesPending: 0,
             localExpense: 0,
+            localExpenseCash: 0,
+            localExpenseGpay: 0,
+            localExpenseAccount: 0,
+            localExpensePending: 0,
+            gstSales: 0,
+            gstSalesCash: 0,
+            gstSalesGpay: 0,
+            gstSalesAccount: 0,
+            gstSalesPending: 0,
             gstExpense: 0,
-            totalExpense: 0,
-            netAmount: 0,
+            gstExpenseCash: 0,
+            gstExpenseGpay: 0,
+            gstExpenseAccount: 0,
+            gstExpensePending: 0,
+            electricTotal: 0,
+            electricCash: 0,
+            electricGpay: 0,
+            electricAccount: 0,
+            electricPending: 0,
+            rentTotal: 0,
+            rentCash: 0,
+            rentGpay: 0,
+            rentAccount: 0,
+            rentPending: 0,
             cash: 0,
             gpay: 0,
             account: 0,
-            totalReceived: 0,
+            totalSales: 0,
+            totalExpense: 0,
+            netAmount: 0,
           },
         );
 
@@ -457,45 +1140,19 @@ const Analytics = () => {
     } finally {
       setLoading(false);
     }
-  }, [viewMode, selectedYear, selectedMonth, fromDate, toDate, fyFromDate, fyToDate]);
+  }, [
+    viewMode,
+    selectedYear,
+    selectedMonth,
+    fromDate,
+    toDate,
+    fyFromDate,
+    fyToDate,
+  ]);
 
   useEffect(() => {
     loadAnalyticsData();
   }, [loadAnalyticsData]);
-
-  /* -----------------------------------------------------------------
-     Payment Breakdown Donut Data
-  ------------------------------------------------------------------*/
-  const paymentDonutData = useMemo(() => {
-    const total = summaryTotals.totalReceived || 0;
-    const cashShare =
-      total > 0 ? Math.round((summaryTotals.cash / total) * 100) : 0;
-    const gpayShare =
-      total > 0 ? Math.round((summaryTotals.gpay / total) * 100) : 0;
-    const accShare =
-      total > 0 ? Math.round((summaryTotals.account / total) * 100) : 0;
-
-    return [
-      {
-        name: "Cash",
-        value: summaryTotals.cash,
-        percentage: cashShare,
-        color: "#10B981", // Emerald
-      },
-      {
-        name: "GPay",
-        value: summaryTotals.gpay,
-        percentage: gpayShare,
-        color: "#3B82F6", // Blue
-      },
-      {
-        name: "Account",
-        value: summaryTotals.account,
-        percentage: accShare,
-        color: "#8B5CF6", // Purple
-      },
-    ].filter((item) => item.value > 0);
-  }, [summaryTotals]);
 
   const profitMarginPercent = useMemo(() => {
     if (!summaryTotals.totalSales) return 0;
@@ -520,7 +1177,7 @@ const Analytics = () => {
               </h1>
             </div>
             <p className="mt-1 text-sm text-slate-500">
-              Interactive visualization of sales, expenses, net profits, and payment channels
+              Interactive visualization of sales, expenses, electric bills, and rent
             </p>
           </div>
 
@@ -669,7 +1326,7 @@ const Analytics = () => {
         </div>
 
         {/* ================= EXECUTIVE SUMMARY KPI CARDS ================= */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-8 grid grid-cols-1 gap-5 md:grid-cols-3">
           {/* Total Sales Card */}
           <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/30 p-5 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
@@ -703,7 +1360,7 @@ const Analytics = () => {
           <div className="relative overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-br from-white to-rose-50/30 p-5 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-rose-700">
-                Total Expenses
+                Total Expense
               </span>
               <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">
                 Spent
@@ -732,7 +1389,7 @@ const Analytics = () => {
           <div className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-white to-indigo-50/30 p-5 shadow-sm transition hover:shadow-md">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-indigo-700">
-                Net Profit / Margin
+                Net Profit
               </span>
               <span
                 className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
@@ -764,59 +1421,27 @@ const Analytics = () => {
               </span>
             </div>
           </div>
-
-          {/* Total Collections Card */}
-          <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-5 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                Total Collections
-              </span>
-              <span className="rounded-md bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-800">
-                Received
-              </span>
-            </div>
-            <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900">
-              ₹ {formatINR(summaryTotals.totalReceived)}
-            </h3>
-            <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3 text-[11px]">
-              <div className="flex items-center gap-1 text-emerald-700 font-medium">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span>Cash: {formatCompactINR(summaryTotals.cash)}</span>
-              </div>
-              <div className="flex items-center gap-1 text-blue-700 font-medium">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                <span>GPay: {formatCompactINR(summaryTotals.gpay)}</span>
-              </div>
-              <div className="flex items-center gap-1 text-purple-700 font-medium">
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
-                <span>Acc: {formatCompactINR(summaryTotals.account)}</span>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* ================= PRIMARY CHART SECTION: SALES VS EXPENSES ================= */}
-        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Main Composed Chart: Sales vs Expense & Net Trend */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-2">
+        {/* ================= PRIMARY SALES VS EXPENSE CHARTS ================= */}
+        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Local Sales vs Local Expense Chart */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
               <div>
                 <h2 className="text-base font-bold text-slate-900">
-                  Sales vs. Expenses & Profit Trend
+                  Local Sales vs Local Expense
                 </h2>
                 <p className="text-xs text-slate-400">
-                  Comparison of total sales generated versus operational expenditures
+                  Direct comparison of local sales revenue vs. local expenditures
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1.5">
-                  <span className="h-3 w-3 rounded bg-emerald-500" /> Total Sales
+                  <span className="h-3 w-3 rounded bg-emerald-500" /> Local Sales
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-3 w-3 rounded bg-rose-500" /> Total Expense
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-3 rounded bg-indigo-600" /> Net Profit
+                  <span className="h-3 w-3 rounded bg-rose-500" /> Local Expense
                 </span>
               </div>
             </div>
@@ -824,11 +1449,11 @@ const Analytics = () => {
             <div className="h-80 w-full">
               {chartData.length === 0 ? (
                 <div className="flex h-full items-center justify-center text-sm text-slate-400">
-                  No transaction data available for this period.
+                  No local transaction data available for this period.
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
+                  <BarChart
                     data={chartData}
                     margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
                   >
@@ -845,171 +1470,57 @@ const Analytics = () => {
                       tickFormatter={formatCompactINR}
                       tickLine={false}
                     />
-                    <Tooltip content={<CustomChartTooltip />} />
+                    <Tooltip content={<LocalChartTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                     <Bar
-                      dataKey="totalSales"
-                      name="Total Sales"
+                      dataKey="localSales"
+                      name="Local Sales"
                       fill="#10B981"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={38}
                     />
                     <Bar
-                      dataKey="totalExpense"
-                      name="Total Expense"
+                      dataKey="localExpense"
+                      name="Local Expense"
                       fill="#F43F5E"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={38}
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="netAmount"
-                      name="Net Profit"
-                      stroke="#4F46E5"
-                      strokeWidth={3}
-                      dot={{ r: 4, fill: "#4F46E5" }}
-                      activeDot={{ r: 6 }}
-                    />
-                  </ComposedChart>
+                  </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
           </div>
 
-          {/* Payment Method Distribution Donut Chart */}
+          {/* GST Sales vs GST Expense Chart */}
           <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="mb-2">
-              <h2 className="text-base font-bold text-slate-900">
-                Payment Channel Breakdown
-              </h2>
-              <p className="text-xs text-slate-400">
-                Distribution of collections across Cash, GPay, and Bank Account
-              </p>
-            </div>
-
-            <div className="relative flex h-56 w-full items-center justify-center">
-              {paymentDonutData.length === 0 ? (
-                <p className="text-xs text-slate-400">No collections in this period</p>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={paymentDonutData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={58}
-                      outerRadius={80}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {paymentDonutData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<PaymentTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-
-            {/* Donut Legend Cards */}
-            <div className="mt-2 space-y-2 border-t border-slate-100 pt-3">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-50">
-                    <CashIcon width="14" height="14" color="#059669" />
-                  </span>
-                  <span className="font-medium text-slate-700">Cash</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-slate-900">
-                    ₹ {formatINR(summaryTotals.cash)}
-                  </span>
-                  <span className="ml-1.5 text-[11px] text-slate-400">
-                    (
-                    {summaryTotals.totalReceived > 0
-                      ? Math.round(
-                          (summaryTotals.cash / summaryTotals.totalReceived) *
-                            100,
-                        )
-                      : 0}
-                    %)
-                  </span>
-                </div>
+            <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">
+                  GST Sales vs GST Expense
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Direct comparison of GST-registered sales vs. GST expenditures
+                </p>
               </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded bg-blue-50">
-                    <GpayIcon width="14" height="14" color="#2563EB" />
-                  </span>
-                  <span className="font-medium text-slate-700">GPay</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-slate-900">
-                    ₹ {formatINR(summaryTotals.gpay)}
-                  </span>
-                  <span className="ml-1.5 text-[11px] text-slate-400">
-                    (
-                    {summaryTotals.totalReceived > 0
-                      ? Math.round(
-                          (summaryTotals.gpay / summaryTotals.totalReceived) *
-                            100,
-                        )
-                      : 0}
-                    %)
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded bg-purple-50">
-                    <AccountIcon width="14" height="14" color="#7C3AED" />
-                  </span>
-                  <span className="font-medium text-slate-700">Bank Account</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-bold text-slate-900">
-                    ₹ {formatINR(summaryTotals.account)}
-                  </span>
-                  <span className="ml-1.5 text-[11px] text-slate-400">
-                    (
-                    {summaryTotals.totalReceived > 0
-                      ? Math.round(
-                          (summaryTotals.account /
-                            summaryTotals.totalReceived) *
-                            100,
-                        )
-                      : 0}
-                    %)
-                  </span>
-                </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded bg-emerald-600" /> GST Sales
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded bg-rose-600" /> GST Expense
+                </span>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* ================= SECONDARY CHARTS: DETAILED COMPOSITION & PAYMENT TRENDS ================= */}
-        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Detailed Composition: Local vs GST Sales & Expenses */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-base font-bold text-slate-900">
-                Sales & Expense Composition (Local vs. GST)
-              </h2>
-              <p className="text-xs text-slate-400">
-                Breakdown of direct local transactions compared to GST registered entries
-              </p>
-            </div>
-
-            <div className="h-72 w-full">
+            <div className="h-80 w-full">
               {chartData.length === 0 ? (
                 <div className="flex h-full items-center justify-center text-sm text-slate-400">
-                  No data available.
+                  No GST transaction data available for this period.
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
+                  <BarChart
                     data={chartData}
                     margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
                   >
@@ -1026,125 +1537,195 @@ const Analytics = () => {
                       tickFormatter={formatCompactINR}
                       tickLine={false}
                     />
-                    <Tooltip content={<CustomChartTooltip />} />
+                    <Tooltip content={<GstChartTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                    <Bar
-                      dataKey="localSales"
-                      name="Local Sales"
-                      fill="#34D399"
-                      radius={[3, 3, 0, 0]}
-                    />
                     <Bar
                       dataKey="gstSales"
                       name="GST Sales"
                       fill="#059669"
-                      radius={[3, 3, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="localExpense"
-                      name="Local Expense"
-                      fill="#FB7185"
-                      radius={[3, 3, 0, 0]}
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={38}
                     />
                     <Bar
                       dataKey="gstExpense"
                       name="GST Expense"
                       fill="#E11D48"
-                      radius={[3, 3, 0, 0]}
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={38}
                     />
-                  </ComposedChart>
+                  </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Monthly Payment Channel Trend (Area Chart) */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-base font-bold text-slate-900">
-                Payment Channel Inflow Trends
-              </h2>
-              <p className="text-xs text-slate-400">
-                Timeline visualization of cash, gpay, and account collection volumes
-              </p>
+        {/* ================= OPERATIONAL & FACILITY EXPENSE CHARTS (ELECTRIC BILL & OFFICE RENT - HUB) ================= */}
+        <div className="mb-8">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-slate-900">
+              Operational & Facility Expenses
+            </h2>
+            <p className="text-xs text-slate-400">
+              Month-wise breakdown with annual year-level totals for Electric Bills and Hub Office Rent
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Electric Bill Chart (Month-wise with Top-Left Year-wise Total) */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900">
+                      Electric Bill
+                    </h3>
+                    <span className="rounded-lg bg-amber-100/80 px-2.5 py-1 text-xs font-bold text-amber-900 border border-amber-200">
+                      Year {selectedYear} Total: ₹ {formatINR(summaryTotals.electricTotal)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Month-wise electricity expenditure tracking
+                  </p>
+                </div>
+              </div>
+
+              {/* Sub-channel breakdown chips for the year */}
+              <div className="mb-4 flex flex-wrap items-center gap-3 border-y border-slate-100 py-2.5 text-xs">
+                <span className="text-[11px] font-medium text-slate-400">
+                  {selectedYear} Breakdown:
+                </span>
+                <span className="font-semibold text-slate-700">
+                  Cash: <span className="text-emerald-700">₹ {formatCompactINR(summaryTotals.electricCash)}</span>
+                </span>
+                <span className="font-semibold text-slate-700">
+                  GPay: <span className="text-blue-700">₹ {formatCompactINR(summaryTotals.electricGpay)}</span>
+                </span>
+                <span className="font-semibold text-slate-700">
+                  Account: <span className="text-purple-700">₹ {formatCompactINR(summaryTotals.electricAccount)}</span>
+                </span>
+                {summaryTotals.electricPending > 0 && (
+                  <span className="font-semibold text-slate-700">
+                    Pending: <span className="text-amber-700">₹ {formatCompactINR(summaryTotals.electricPending)}</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="h-72 w-full">
+                {chartData.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                    No electric bill records found for this period.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={chartData}
+                      margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                      <XAxis
+                        dataKey="period"
+                        stroke="#94A3B8"
+                        fontSize={12}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        stroke="#94A3B8"
+                        fontSize={11}
+                        tickFormatter={formatCompactINR}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<ElectricChartTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                      <Bar
+                        dataKey="electricTotal"
+                        name="Electric Bill"
+                        fill="#F59E0B"
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={38}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
 
-            <div className="h-72 w-full">
-              {chartData.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-400">
-                  No collection data available.
+            {/* Office Rent Chart (Hub only - Month-wise with Top-Left Year-wise Total) */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900">
+                      Office Rent
+                    </h3>
+                    <span className="rounded-lg bg-indigo-100/80 px-2.5 py-1 text-xs font-bold text-indigo-900 border border-indigo-200">
+                      Year {selectedYear} Total: ₹ {formatINR(summaryTotals.rentTotal)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Month-wise facility rent payments (Hub only)
+                  </p>
                 </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={chartData}
-                    margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorCash" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorGpay" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient
-                        id="colorAccount"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                    <XAxis
-                      dataKey="period"
-                      stroke="#94A3B8"
-                      fontSize={12}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      stroke="#94A3B8"
-                      fontSize={11}
-                      tickFormatter={formatCompactINR}
-                      tickLine={false}
-                    />
-                    <Tooltip content={<CustomChartTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                    <Area
-                      type="monotone"
-                      dataKey="cash"
-                      name="Cash Inflow"
-                      stroke="#10B981"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorCash)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="gpay"
-                      name="GPay Inflow"
-                      stroke="#3B82F6"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorGpay)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="account"
-                      name="Bank Account"
-                      stroke="#8B5CF6"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorAccount)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
+              </div>
+
+              {/* Sub-channel breakdown chips for the year */}
+              <div className="mb-4 flex flex-wrap items-center gap-3 border-y border-slate-100 py-2.5 text-xs">
+                <span className="text-[11px] font-medium text-slate-400">
+                  {selectedYear} Breakdown:
+                </span>
+                <span className="font-semibold text-slate-700">
+                  Cash: <span className="text-emerald-700">₹ {formatCompactINR(summaryTotals.rentCash)}</span>
+                </span>
+                <span className="font-semibold text-slate-700">
+                  GPay: <span className="text-blue-700">₹ {formatCompactINR(summaryTotals.rentGpay)}</span>
+                </span>
+                <span className="font-semibold text-slate-700">
+                  Account: <span className="text-purple-700">₹ {formatCompactINR(summaryTotals.rentAccount)}</span>
+                </span>
+                {summaryTotals.rentPending > 0 && (
+                  <span className="font-semibold text-slate-700">
+                    Pending: <span className="text-amber-700">₹ {formatCompactINR(summaryTotals.rentPending)}</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="h-72 w-full">
+                {chartData.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                    No office rent records found in Hub.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={chartData}
+                      margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                      <XAxis
+                        dataKey="period"
+                        stroke="#94A3B8"
+                        fontSize={12}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        stroke="#94A3B8"
+                        fontSize={11}
+                        tickFormatter={formatCompactINR}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<RentChartTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                      <Bar
+                        dataKey="rentTotal"
+                        name="Office Rent"
+                        fill="#6366F1"
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={38}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1156,12 +1737,12 @@ const Analytics = () => {
               Financial Breakdown Data Matrix
             </h2>
             <p className="text-xs text-slate-400">
-              Exact accounting breakdown per period with income, expenses, and collection channel totals
+              Period-wise accounting matrix with sales, expenses, net profit, payment channels, and pending balances
             </p>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="border-b border-slate-200 bg-slate-50/70 text-slate-600">
                 <tr>
                   <th className="py-3.5 px-4 font-semibold">Period</th>
@@ -1178,9 +1759,12 @@ const Analytics = () => {
                   <th className="py-3.5 px-4 font-semibold text-indigo-800">
                     Net Profit
                   </th>
-                  <th className="py-3.5 px-4 font-semibold">Cash</th>
-                  <th className="py-3.5 px-4 font-semibold">GPay</th>
-                  <th className="py-3.5 px-4 font-semibold">Account</th>
+                  <th className="py-3.5 px-4 font-semibold text-emerald-700">Cash</th>
+                  <th className="py-3.5 px-4 font-semibold text-blue-700">GPay</th>
+                  <th className="py-3.5 px-4 font-semibold text-purple-700">Account</th>
+                  <th className="py-3.5 px-4 font-semibold text-amber-700">Local Need to Get</th>
+                  <th className="py-3.5 px-4 font-semibold text-amber-700">GST Need to Get</th>
+                  <th className="py-3.5 px-4 font-semibold text-rose-700">GST Need to Pay</th>
                 </tr>
               </thead>
 
@@ -1220,6 +1804,15 @@ const Analytics = () => {
                     </td>
                     <td className="py-3 px-4 font-medium text-purple-700">
                       ₹ {formatINR(row.account)}
+                    </td>
+                    <td className="py-3 px-4 font-medium text-amber-700">
+                      ₹ {formatINR(row.localSalesPending)}
+                    </td>
+                    <td className="py-3 px-4 font-medium text-amber-700">
+                      ₹ {formatINR(row.gstSalesPending)}
+                    </td>
+                    <td className="py-3 px-4 font-medium text-rose-700">
+                      ₹ {formatINR(row.gstExpensePending)}
                     </td>
                   </tr>
                 ))}
@@ -1265,6 +1858,15 @@ const Analytics = () => {
                   </td>
                   <td className="py-3.5 px-4 text-purple-800">
                     ₹ {formatINR(summaryTotals.account)}
+                  </td>
+                  <td className="py-3.5 px-4 text-amber-800">
+                    ₹ {formatINR(summaryTotals.localSalesPending)}
+                  </td>
+                  <td className="py-3.5 px-4 text-amber-800">
+                    ₹ {formatINR(summaryTotals.gstSalesPending)}
+                  </td>
+                  <td className="py-3.5 px-4 text-rose-800">
+                    ₹ {formatINR(summaryTotals.gstExpensePending)}
                   </td>
                 </tr>
               </tfoot>
