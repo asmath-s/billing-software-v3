@@ -130,10 +130,13 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
                 placeholder="Instruction"
                 value={row.instruction}
                 onChange={(e) =>
+                  updateRow(index, "instruction", e.target.value)
+                }
+                onBlur={() =>
                   updateRow(
                     index,
                     "instruction",
-                    capitalizeFirstLetter(e.target.value),
+                    capitalizeFirstLetter(row.instruction || ""),
                   )
                 }
               />
@@ -205,10 +208,13 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
                 placeholder="Instruction"
                 value={row.instruction}
                 onChange={(e) =>
+                  updateRow(index, "instruction", e.target.value)
+                }
+                onBlur={() =>
                   updateRow(
                     index,
                     "instruction",
-                    capitalizeFirstLetter(e.target.value),
+                    capitalizeFirstLetter(row.instruction || ""),
                   )
                 }
               />

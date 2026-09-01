@@ -204,7 +204,7 @@ const LocalExpenseApprove = () => {
 
     const basePayload = {
       date,
-      instruction,
+      instruction: capitalizeFirstLetter(instruction || ""),
       method,
       custom_type: customType,
       amount: amount,
@@ -366,8 +366,9 @@ const LocalExpenseApprove = () => {
           <InputField
             placeholder="Instruction"
             value={instruction}
-            onChange={(e) =>
-              setInstruction(capitalizeFirstLetter(e.target.value))
+            onChange={(e) => setInstruction(e.target.value)}
+            onBlur={() =>
+              setInstruction((prev) => capitalizeFirstLetter(prev || ""))
             }
             required={true}
           />

@@ -3,12 +3,14 @@ const InputField = ({
   name,
   value,
   onChange,
+  onBlur,
   placeholder,
   className,
   required = false,
   readOnly = false,
   disabled = false,
   dontallowDecimal = false,
+  ...props
 }) => {
   const handleInputChange = (e) => {
     let newValue = e.target.value;
@@ -16,7 +18,7 @@ const InputField = ({
     if (dontallowDecimal && newValue !== "" && !/^\d+$/.test(newValue)) {
       return;
     }
-    onChange(e);
+    onChange?.(e);
   };
 
   return (
@@ -28,11 +30,13 @@ const InputField = ({
         placeholder={placeholder}
         value={value}
         onChange={handleInputChange}
-        className={`w-full border border-gray-400 rounded-md mb-2 focus:outline-none pt-[6px] pr-[10px] pb-[5px] pl-[8px] h-9 ${className}`}
+        onBlur={onBlur}
+        className={`w-full border border-gray-400 rounded-md mb-2 focus:outline-none pt-[6px] pr-[10px] pb-[5px] pl-[8px] h-9 ${className || ""}`}
         required={required}
         autoComplete="off"
         readOnly={readOnly}
         disabled={disabled}
+        {...props}
       />
     </div>
   );

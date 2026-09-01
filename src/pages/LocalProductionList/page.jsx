@@ -48,6 +48,7 @@ import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
 import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
@@ -229,7 +230,7 @@ const LocalProductionList = () => {
 
     const basePayload = {
       date,
-      instruction,
+      instruction: capitalizeFirstLetter(instruction || ""),
       method,
       custom_type: customType,
       amount,
@@ -457,6 +458,9 @@ const LocalProductionList = () => {
             placeholder="Instruction"
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
+            onBlur={() =>
+              setInstruction((prev) => capitalizeFirstLetter(prev || ""))
+            }
             required
           />
 

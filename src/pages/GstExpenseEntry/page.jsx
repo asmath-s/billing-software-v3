@@ -180,8 +180,7 @@ const GstExpenseEntry = () => {
   };
 
   const handleVendorInputChange = (value) => {
-    const formatted = capitalizeFirstLetter(value || "");
-    setVendorName(formatted);
+    setVendorName(value || "");
     if (vendorId) {
       const currentVendor = vendorList.find((v) => v.documentId === vendorId);
       if (
@@ -204,6 +203,7 @@ const GstExpenseEntry = () => {
       setVendorId(matched.documentId || "");
       setVendorName(matched.name || "");
     } else {
+      setVendorName(capitalizeFirstLetter(trimmed));
       setVendorId("");
     }
   };

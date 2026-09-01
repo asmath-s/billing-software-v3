@@ -181,7 +181,7 @@ const AdminList = () => {
 
     const basePayload = {
       date,
-      instruction,
+      instruction: capitalizeFirstLetter(instruction || ""),
       method,
       custom_type: customType,
       amount: parseInt(amount),
@@ -316,9 +316,7 @@ const AdminList = () => {
           <InputField
             placeholder="Search Instruction"
             value={searchText}
-            onChange={(e) =>
-              setSearchText(capitalizeFirstLetter(e.target.value))
-            }
+            onChange={(e) => setSearchText(e.target.value)}
             required={true}
           />
         </div>
@@ -337,8 +335,9 @@ const AdminList = () => {
           <InputField
             placeholder="Instruction"
             value={instruction}
-            onChange={(e) =>
-              setInstruction(capitalizeFirstLetter(e.target.value))
+            onChange={(e) => setInstruction(e.target.value)}
+            onBlur={() =>
+              setInstruction((prev) => capitalizeFirstLetter(prev || ""))
             }
             required={true}
           />

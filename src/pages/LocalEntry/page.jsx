@@ -36,6 +36,7 @@ import { toPng } from "html-to-image";
 
 import { useAuth } from "../../context/auth-context";
 import { LOCALENTRY } from "../../router/paths";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { formattedAmount } from "../../utils/FormatAmount";
 import {
@@ -287,9 +288,10 @@ const LocalEntry = () => {
 
       const particulars = sizeData
         .map((s) => {
+          const inst = capitalizeFirstLetter(s.instruction || "");
           if (s.type === "instruction") {
             return {
-              text: `${s.instruction} - ${s.piece_count} pcs - ${formattedAmount(
+              text: `${inst} - ${s.piece_count} pcs - ${formattedAmount(
                 s.per_piece_total,
               )}`,
             };
@@ -297,7 +299,7 @@ const LocalEntry = () => {
 
           if (s.type === "flex") {
             return {
-              text: `${s.width} x ${s.height} ${s.material} - ${s.sq_ft_price} sqft - ${s.piece_count} pcs - ${formattedAmount(
+              text: `${inst ? inst + " " : ""}${s.width} x ${s.height} ${s.material} - ${s.sq_ft_price} sqft - ${s.piece_count} pcs - ${formattedAmount(
                 s.per_piece_total,
               )}`,
             };
@@ -307,12 +309,17 @@ const LocalEntry = () => {
         })
         .filter(Boolean);
 
+      const sanitizedSizeData = sizeData.map((row) => ({
+        ...row,
+        instruction: capitalizeFirstLetter(row.instruction || ""),
+      }));
+
       const payload = {
         bill_no: billNo,
         date,
         note,
         customer: finalCustomerId,
-        size_data: sizeData,
+        size_data: sanitizedSizeData,
         cash: validCash,
         gpay: validGpay,
         received_amount: receivedAmount,

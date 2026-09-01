@@ -290,6 +290,11 @@ const GstEntry = () => {
 
       const finalCustomerId = await ensureCustomer();
 
+      const sanitizedSizeData = sizeData.map((row) => ({
+        ...row,
+        instruction: capitalizeFirstLetter(row.instruction || ""),
+      }));
+
       const payload = {
         bill_no: billNo,
         date,
@@ -297,7 +302,7 @@ const GstEntry = () => {
         uom,
         method,
         gst_customer: finalCustomerId,
-        size_data: sizeData,
+        size_data: sanitizedSizeData,
         gst_percentage: gstPercentage,
         total_amount: gstSummary.finalAmount,
         tax_amount: gstSummary.taxAmount,

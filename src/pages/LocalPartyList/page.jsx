@@ -25,6 +25,7 @@ import EditButton from "../../components/EditButton/EditButton";
 import MainLayout from "../../layouts/MainLayout";
 
 import { LOCALENTRY } from "../../router/paths";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import dayjs from "../../utils/dayjs";
 import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
@@ -263,7 +264,7 @@ const LocalPartyList = () => {
     const payload = {
       date,
       customer: searchCustomer.value,
-      particulars: [{ text: particulars }],
+      particulars: [{ text: capitalizeFirstLetter(particulars || "") }],
 
       cash:
         customType === "cash"
@@ -440,6 +441,9 @@ const LocalPartyList = () => {
             placeholder="Instruction"
             value={particulars}
             onChange={(e) => setParticulars(e.target.value)}
+            onBlur={() =>
+              setParticulars((prev) => capitalizeFirstLetter(prev || ""))
+            }
           />
 
           <SelectField
