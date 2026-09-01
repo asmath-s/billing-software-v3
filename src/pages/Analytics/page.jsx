@@ -47,19 +47,20 @@ const getNum = (v) => {
   return isNaN(n) ? 0 : n;
 };
 
-const MONTH_NAMES = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
+// Financial Year Months (April to March)
+const FY_MONTHS = [
+  { name: "Apr", monthIndex: 3, offset: 0, key: 0 },
+  { name: "May", monthIndex: 4, offset: 0, key: 1 },
+  { name: "Jun", monthIndex: 5, offset: 0, key: 2 },
+  { name: "Jul", monthIndex: 6, offset: 0, key: 3 },
+  { name: "Aug", monthIndex: 7, offset: 0, key: 4 },
+  { name: "Sep", monthIndex: 8, offset: 0, key: 5 },
+  { name: "Oct", monthIndex: 9, offset: 0, key: 6 },
+  { name: "Nov", monthIndex: 10, offset: 0, key: 7 },
+  { name: "Dec", monthIndex: 11, offset: 0, key: 8 },
+  { name: "Jan", monthIndex: 0, offset: 1, key: 9 },
+  { name: "Feb", monthIndex: 1, offset: 1, key: 10 },
+  { name: "Mar", monthIndex: 2, offset: 1, key: 11 },
 ];
 
 const AVAILABLE_YEARS = [2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020];
@@ -827,18 +828,19 @@ const Analytics = () => {
         // Overall / All-Time (No date filter bounds)
         const overallSummary = await fetchIntervalSummary(null, null);
 
-        // Fetch monthly breakdown for current year so charts have interval data
-        const monthPromises = Array.from({ length: 12 }, async (_, m) => {
-          const start = dayjs(new Date(selectedYear, m, 1)).format(
-            "YYYY-MM-DD",
-          );
-          const end = dayjs(new Date(selectedYear, m + 1, 0)).format(
-            "YYYY-MM-DD",
-          );
+        // Fetch monthly breakdown in Financial Year sequence (April to March)
+        const monthPromises = FY_MONTHS.map(async (mItem) => {
+          const yr = selectedYear + mItem.offset;
+          const start = dayjs(new Date(yr, mItem.monthIndex, 1))
+            .startOf("month")
+            .format("YYYY-MM-DD");
+          const end = dayjs(new Date(yr, mItem.monthIndex, 1))
+            .endOf("month")
+            .format("YYYY-MM-DD");
           const summary = await fetchIntervalSummary(start, end);
           return {
-            period: MONTH_NAMES[m],
-            monthIndex: m,
+            period: mItem.name,
+            monthKey: mItem.key,
             ...summary,
           };
         });
@@ -888,18 +890,19 @@ const Analytics = () => {
           ...yearSums,
         });
       } else if (viewMode === "month") {
-        // Month-wise aggregation for selectedYear (Jan to Dec)
-        const monthPromises = Array.from({ length: 12 }, async (_, m) => {
-          const start = dayjs(new Date(selectedYear, m, 1)).format(
-            "YYYY-MM-DD",
-          );
-          const end = dayjs(new Date(selectedYear, m + 1, 0)).format(
-            "YYYY-MM-DD",
-          );
+        // Month-wise aggregation for selectedYear in Financial Year sequence (April to March)
+        const monthPromises = FY_MONTHS.map(async (mItem) => {
+          const yr = selectedYear + mItem.offset;
+          const start = dayjs(new Date(yr, mItem.monthIndex, 1))
+            .startOf("month")
+            .format("YYYY-MM-DD");
+          const end = dayjs(new Date(yr, mItem.monthIndex, 1))
+            .endOf("month")
+            .format("YYYY-MM-DD");
           const summary = await fetchIntervalSummary(start, end);
           return {
-            period: MONTH_NAMES[m],
-            monthIndex: m,
+            period: mItem.name,
+            monthKey: mItem.key,
             ...summary,
           };
         });
@@ -910,7 +913,7 @@ const Analytics = () => {
         const filteredMonths =
           selectedMonth === "all"
             ? monthsData
-            : monthsData.filter((item) => item.monthIndex === selectedMonth);
+            : monthsData.filter((item) => item.monthKey === selectedMonth);
 
         setChartData(filteredMonths);
 
@@ -1010,11 +1013,11 @@ const Analytics = () => {
         // Year-wise aggregation across the available years
         const sortedYears = [...AVAILABLE_YEARS].sort((a, b) => a - b);
         const yearPromises = sortedYears.map(async (yr) => {
-          const start = `${yr}-01-01`;
-          const end = `${yr}-12-31`;
+          const start = `${yr}-04-01`;
+          const end = `${yr + 1}-03-31`;
           const summary = await fetchIntervalSummary(start, end);
           return {
-            period: `${yr}`,
+            period: `FY ${yr}-${(yr + 1).toString().slice(2)}`,
             ...summary,
           };
         });
@@ -1250,15 +1253,29 @@ const Analytics = () => {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm">
           <div className="flex flex-wrap items-center gap-3">
             {viewMode === "all" && (
-              <span className="text-xs font-medium text-slate-600">
-                Displaying All-Time Cumulative Accounting Totals
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-500">Financial Year:</span>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5 text-xs font-semibold text-slate-800 outline-none transition hover:bg-slate-100 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                >
+                  {AVAILABLE_YEARS.map((yr) => (
+                    <option key={yr} value={yr}>
+                      FY {yr} – {yr + 1}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs font-medium text-slate-400">
+                  (Showing April to March monthly progression)
+                </span>
+              </div>
             )}
 
             {viewMode === "month" && (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-500">Year:</span>
+                  <span className="text-xs font-medium text-slate-500">Financial Year:</span>
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -1266,7 +1283,7 @@ const Analytics = () => {
                   >
                     {AVAILABLE_YEARS.map((yr) => (
                       <option key={yr} value={yr}>
-                        {yr}
+                        FY {yr} – {yr + 1}
                       </option>
                     ))}
                   </select>
@@ -1283,10 +1300,10 @@ const Analytics = () => {
                     }
                     className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-1.5 text-xs font-semibold text-slate-800 outline-none transition hover:bg-slate-100 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                   >
-                    <option value="all">All 12 Months</option>
-                    {MONTH_NAMES.map((name, i) => (
-                      <option key={name} value={i}>
-                        {name}
+                    <option value="all">All 12 Months (Apr – Mar)</option>
+                    {FY_MONTHS.map((mItem) => (
+                      <option key={mItem.key} value={mItem.key}>
+                        {mItem.name}
                       </option>
                     ))}
                   </select>
@@ -1433,7 +1450,7 @@ const Analytics = () => {
                   Local Sales vs Local Expense
                 </h2>
                 <p className="text-xs text-slate-400">
-                  Direct comparison of local sales revenue vs. local expenditures
+                  Direct comparison of local sales revenue vs. local expenditures (April – March)
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs">
@@ -1500,7 +1517,7 @@ const Analytics = () => {
                   GST Sales vs GST Expense
                 </h2>
                 <p className="text-xs text-slate-400">
-                  Direct comparison of GST-registered sales vs. GST expenditures
+                  Direct comparison of GST-registered sales vs. GST expenditures (April – March)
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs">
@@ -1567,12 +1584,12 @@ const Analytics = () => {
               Operational & Facility Expenses
             </h2>
             <p className="text-xs text-slate-400">
-              Month-wise breakdown with annual year-level totals for Electric Bills and Hub Office Rent
+              Month-wise breakdown (April to March) with annual year-level totals for Electric Bills and Hub Office Rent
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Electric Bill Chart (Month-wise with Top-Left Year-wise Total) */}
+            {/* Electric Bill Chart (Month-wise April to March with Top-Left Year-wise Total) */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
               <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                 <div>
@@ -1581,11 +1598,11 @@ const Analytics = () => {
                       Electric Bill
                     </h3>
                     <span className="rounded-lg bg-amber-100/80 px-2.5 py-1 text-xs font-bold text-amber-900 border border-amber-200">
-                      Year {selectedYear} Total: ₹ {formatINR(summaryTotals.electricTotal)}
+                      FY {selectedYear}–{(selectedYear + 1).toString().slice(2)} Total: ₹ {formatINR(summaryTotals.electricTotal)}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-slate-400">
-                    Month-wise electricity expenditure tracking
+                    Month-wise electricity expenditure tracking (April – March)
                   </p>
                 </div>
               </div>
@@ -1593,7 +1610,7 @@ const Analytics = () => {
               {/* Sub-channel breakdown chips for the year */}
               <div className="mb-4 flex flex-wrap items-center gap-3 border-y border-slate-100 py-2.5 text-xs">
                 <span className="text-[11px] font-medium text-slate-400">
-                  {selectedYear} Breakdown:
+                  FY {selectedYear}–{(selectedYear + 1).toString().slice(2)} Breakdown:
                 </span>
                 <span className="font-semibold text-slate-700">
                   Cash: <span className="text-emerald-700">₹ {formatCompactINR(summaryTotals.electricCash)}</span>
@@ -1650,7 +1667,7 @@ const Analytics = () => {
               </div>
             </div>
 
-            {/* Office Rent Chart (Hub only - Month-wise with Top-Left Year-wise Total) */}
+            {/* Office Rent Chart (Hub only - Month-wise April to March with Top-Left Year-wise Total) */}
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
               <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                 <div>
@@ -1659,11 +1676,11 @@ const Analytics = () => {
                       Office Rent
                     </h3>
                     <span className="rounded-lg bg-indigo-100/80 px-2.5 py-1 text-xs font-bold text-indigo-900 border border-indigo-200">
-                      Year {selectedYear} Total: ₹ {formatINR(summaryTotals.rentTotal)}
+                      FY {selectedYear}–{(selectedYear + 1).toString().slice(2)} Total: ₹ {formatINR(summaryTotals.rentTotal)}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-slate-400">
-                    Month-wise facility rent payments (Hub only)
+                    Month-wise facility rent payments (Hub only, April – March)
                   </p>
                 </div>
               </div>
@@ -1671,7 +1688,7 @@ const Analytics = () => {
               {/* Sub-channel breakdown chips for the year */}
               <div className="mb-4 flex flex-wrap items-center gap-3 border-y border-slate-100 py-2.5 text-xs">
                 <span className="text-[11px] font-medium text-slate-400">
-                  {selectedYear} Breakdown:
+                  FY {selectedYear}–{(selectedYear + 1).toString().slice(2)} Breakdown:
                 </span>
                 <span className="font-semibold text-slate-700">
                   Cash: <span className="text-emerald-700">₹ {formatCompactINR(summaryTotals.rentCash)}</span>
@@ -1737,7 +1754,7 @@ const Analytics = () => {
               Financial Breakdown Data Matrix
             </h2>
             <p className="text-xs text-slate-400">
-              Period-wise accounting matrix with sales, expenses, net profit, payment channels, and pending balances
+              Period-wise accounting matrix with sales, expenses, net profit, payment channels, and pending balances (April – March)
             </p>
           </div>
 
