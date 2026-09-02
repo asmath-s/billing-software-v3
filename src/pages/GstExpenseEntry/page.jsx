@@ -18,10 +18,7 @@ import { AddIcon, SaveIcon } from "../../components/icons";
 import InputField from "../../components/InputField/InputField";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
-import {
-  findMatchingEntity,
-  isNameMatch,
-} from "../../utils/nameNormalizer";
+import { findMatchingEntity, isNameMatch } from "../../utils/nameNormalizer";
 
 const GstExpenseEntry = () => {
   const [searchParams] = useSearchParams();
@@ -101,9 +98,11 @@ const GstExpenseEntry = () => {
         base_amount: Number(amount),
         gst_percentage: Number(gstPercentage),
         tax_amount:
-          vendorName === "Tax" ? Number(amount) : Number(gstSummary.taxAmount),
+          vendorName === "Gst tax"
+            ? Number(amount)
+            : Number(gstSummary.taxAmount),
         total_amount:
-          vendorName === "Tax"
+          vendorName === "Gst tax"
             ? Number(amount)
             : Math.round(Number(gstSummary.finalAmount)),
         current_status: "status",
@@ -159,7 +158,11 @@ const GstExpenseEntry = () => {
     try {
       const latestVendors = await getVendors();
       setVendorList(latestVendors || []);
-      const foundInLatest = findMatchingEntity(trimmedName, latestVendors, "name");
+      const foundInLatest = findMatchingEntity(
+        trimmedName,
+        latestVendors,
+        "name",
+      );
       if (foundInLatest) {
         setVendorId(foundInLatest.documentId);
         return foundInLatest.documentId;
@@ -183,10 +186,7 @@ const GstExpenseEntry = () => {
     setVendorName(value || "");
     if (vendorId) {
       const currentVendor = vendorList.find((v) => v.documentId === vendorId);
-      if (
-        currentVendor &&
-        !isNameMatch(currentVendor.name, value || "")
-      ) {
+      if (currentVendor && !isNameMatch(currentVendor.name, value || "")) {
         setVendorId("");
       }
     }
@@ -277,13 +277,13 @@ const GstExpenseEntry = () => {
             onChange={(e) => setAmount(e.target.value)}
             required
           />
-
-          <InputField
-            placeholder="GST %"
-            value={gstPercentage}
-            onChange={(e) => setGstPercentage(e.target.value)}
-            disabled={vendorName === "Tax"}
-          />
+          {vendorName !== "Gst tax" && (
+            <InputField
+              placeholder="GST %"
+              value={gstPercentage}
+              onChange={(e) => setGstPercentage(e.target.value)}
+            />
+          )}
 
           <InputField
             placeholder="Total Amount"
