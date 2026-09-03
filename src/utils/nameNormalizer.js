@@ -57,7 +57,11 @@ export const isNameMatch = (nameA, nameB) => {
  * @param {string} [nameKey="name"] - Property name for name comparison
  * @returns {any|null} The matching entity from list or null
  */
-export const findMatchingEntity = (enteredName, list = [], nameKey = "name") => {
+export const findMatchingEntity = (
+  enteredName,
+  list = [],
+  nameKey = "name",
+) => {
   const normalizedInput = normalizeName(enteredName);
   if (!normalizedInput || !Array.isArray(list)) return null;
 
@@ -103,5 +107,43 @@ export const filterOptionsNormalized = (options, state, getOptionLabel) => {
 
     const normalizedLabel = normalizeName(label);
     return normalizedLabel.includes(normalizedQuery);
+  });
+};
+
+/**
+ * Checks whether a given customer name is in the list of normal calculated customers.
+ * Normal calculation bypasses the minimum rate rule (uses actual sqft rate * area * pieces).
+ * If the list is empty, not passed, or customer does not match, returns false.
+ *
+ * @param {string} customerName
+ * @param {Array<string>} normalCalculatedCustomer
+ * @returns {boolean}
+ */
+export const isNormalCalculatedCustomer = (
+  customerName,
+  normalCalculatedCustomer = [],
+) => {
+  if (
+    !customerName ||
+    typeof customerName !== "string" ||
+    !Array.isArray(normalCalculatedCustomer) ||
+    normalCalculatedCustomer.length === 0
+  ) {
+    return false;
+  }
+
+  const cleanCustomer = customerName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!cleanCustomer) return false;
+
+  return normalCalculatedCustomer.some((item) => {
+    if (!item || typeof item !== "string") return false;
+    const cleanItem = item.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!cleanItem) return false;
+
+    return (
+      cleanCustomer === cleanItem ||
+      cleanCustomer.includes(cleanItem) ||
+      cleanItem.includes(cleanCustomer)
+    );
   });
 };

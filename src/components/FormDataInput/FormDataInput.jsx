@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { materialdata } from "../../lib/materialdata";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
+import { isNormalCalculatedCustomer } from "../../utils/nameNormalizer";
 import AutocompleteField from "../AutocompleteField/AutocompleteField";
 import Button from "../Button/Button";
 import { AddIcon, DeleteIcon } from "../icons";
@@ -18,8 +19,74 @@ const createRow = (type) => ({
   per_piece_total: 0,
 });
 
-const FormDataInput = ({ sizeData = [], setSizeData }) => {
+export const calculateFlexTotal = (
+  row,
+  customerName = "",
+  normalCalculatedCustomer = [],
+) => {
+  const width = Number(row.width) || 0;
+  const height = Number(row.height) || 0;
+  const rate = Number(row.sq_ft_price) || 0;
+  const pieces = Number(row.piece_count) || 1;
+
+  if (width && height && rate) {
+    const area = width * height;
+    const calculated = area * rate * pieces;
+
+    if (isNormalCalculatedCustomer(customerName, normalCalculatedCustomer)) {
+      return Number(calculated.toFixed(2));
+    }
+
+    if (
+      calculated >= 100 &&
+      (area >= 10 || area * pieces >= 20 || rate > 10)
+    ) {
+      return Number(calculated.toFixed(2));
+    } else {
+      return 100 * pieces;
+    }
+  }
+
+  return 0;
+};
+
+const FormDataInput = ({
+  sizeData = [],
+  setSizeData,
+  customerName = "",
+  normalCalculatedCustomer = [],
+}) => {
   const [errorMsg, setErrorMsg] = useState("");
+
+  const isNormal = isNormalCalculatedCustomer(
+    customerName,
+    normalCalculatedCustomer,
+  );
+  const prevIsNormalRef = useRef(isNormal);
+
+  useEffect(() => {
+    if (prevIsNormalRef.current !== isNormal) {
+      prevIsNormalRef.current = isNormal;
+      setSizeData((prevSizeData) => {
+        let hasChanges = false;
+        const nextSizeData = prevSizeData.map((row) => {
+          if (row.type === "flex") {
+            const newTotal = calculateFlexTotal(
+              row,
+              customerName,
+              normalCalculatedCustomer,
+            );
+            if (newTotal !== row.per_piece_total) {
+              hasChanges = true;
+              return { ...row, per_piece_total: newTotal };
+            }
+          }
+          return row;
+        });
+        return hasChanges ? nextSizeData : prevSizeData;
+      });
+    }
+  }, [isNormal, customerName, normalCalculatedCustomer, setSizeData]);
 
   /* ---------------- VALIDATION ---------------- */
 
@@ -87,29 +154,16 @@ const FormDataInput = ({ sizeData = [], setSizeData }) => {
 
     const row = updated[index];
 
-    const width = Number(row.width) || 0;
-    const height = Number(row.height) || 0;
-    const rate = Number(row.sq_ft_price) || 0;
     const pieces = Number(row.piece_count) || 1;
     const amount = Number(row.per_piece_amount) || 0;
 
     /* ---------- FLEX CALCULATION ---------- */
     if (row.type === "flex") {
-      const area = width * height;
-      const calculated = area * rate * pieces;
-
-      if (width && height && rate) {
-        if (
-          calculated >= 100 &&
-          (area >= 10 || area * pieces >= 20 || rate > 10)
-        ) {
-          row.per_piece_total = Number(calculated.toFixed(2));
-        } else {
-          row.per_piece_total = 100 * pieces;
-        }
-      } else {
-        row.per_piece_total = 0;
-      }
+      row.per_piece_total = calculateFlexTotal(
+        row,
+        customerName,
+        normalCalculatedCustomer,
+      );
     }
 
     /* ---------- INSTRUCTION CALCULATION ---------- */

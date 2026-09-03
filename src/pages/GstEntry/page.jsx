@@ -26,13 +26,10 @@ import {
 
 import { useAuth } from "../../context/auth-context";
 import { GSTSALESENTRY } from "../../router/paths";
-import { setCurrentTime } from "../../utils/DatewithTime";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
+import { setCurrentTime } from "../../utils/DatewithTime";
 import { formattedAmount } from "../../utils/FormatAmount";
-import {
-  findMatchingEntity,
-  isNameMatch,
-} from "../../utils/nameNormalizer";
+import { findMatchingEntity, isNameMatch } from "../../utils/nameNormalizer";
 import { transformBillingData } from "../../utils/transformBillingData";
 
 import { createGstCustomer, getGstCustomers } from "../../api/gstCustomer";
@@ -54,6 +51,11 @@ const DEFAULTS = {
   GST: "18",
   METHOD: "gst",
 };
+
+const NORMAL_CALCULATED_CUSTOMERS = [
+  "MR Big Fireworks Pvt Ltd",
+  "Standard Fireworks(P)LTD",
+];
 
 const GstEntry = () => {
   const { user } = useAuth();
@@ -436,7 +438,12 @@ const GstEntry = () => {
           setDeliveryAddress={setDeliveryAddress}
         />
 
-        <FormDataInput sizeData={sizeData} setSizeData={setSizeData} />
+        <FormDataInput
+          sizeData={sizeData}
+          setSizeData={setSizeData}
+          customerName={customerName}
+          normalCalculatedCustomer={["Standard Fireworks(P)LTD"]}
+        />
 
         <div className="grid grid-cols-3 gap-4">
           <InputField

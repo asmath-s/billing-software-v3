@@ -509,7 +509,11 @@ const LocalEntry = () => {
           setPhoneno={setPhone}
         />
 
-        <FormDataInput sizeData={sizeData} setSizeData={setSizeData} />
+        <FormDataInput
+          sizeData={sizeData}
+          setSizeData={setSizeData}
+          customerName={customerName}
+        />
 
         <div className="grid grid-cols-4 gap-4 mt-4 mb-12">
           <CurrencyConverter
