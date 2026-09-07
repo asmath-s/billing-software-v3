@@ -277,7 +277,7 @@ const LocalEntry = () => {
       // 4. Create new customer only if no match exists anywhere
       if (!finalCustomerId) {
         const createdCustomer = await createCustomer({
-          name: trimmedName,
+          name: capitalizeFirstLetter(trimmedName),
           phonenumber: phone,
         });
 

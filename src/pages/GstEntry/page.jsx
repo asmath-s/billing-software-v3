@@ -264,9 +264,9 @@ const GstEntry = () => {
 
     // 4. Create new customer only if no match exists anywhere
     const res = await createGstCustomer({
-      name: trimmedName.toUpperCase(),
-      address: (address || "").toUpperCase(),
-      delivery_address: (deliveryAddress || "").toUpperCase(),
+      name: capitalizeFirstLetter(trimmedName),
+      address: capitalizeFirstLetter(address || ""),
+      delivery_address: capitalizeFirstLetter(deliveryAddress || ""),
       gst_no: (gstNo || "").toUpperCase(),
     });
 

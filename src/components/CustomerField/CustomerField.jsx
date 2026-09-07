@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { updateCustomer } from "../../api/customer";
 import { updateGstCustomer } from "../../api/gstCustomer";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import {
   findMatchingEntity,
   isNameMatch,
@@ -16,6 +17,7 @@ import InputField from "../InputField/InputField";
 const CustomerField = ({
   customerData = [],
   fetchCustomers,
+  setCustomerData,
   customerName,
   setCustomerName,
   phoneno,
@@ -31,6 +33,33 @@ const CustomerField = ({
   isGstCustomer = false,
 }) => {
   const [open, setOpen] = useState(false);
+  const [editingCustomerId, setEditingCustomerId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    address: "",
+    deliveryAddress: "",
+    gstNo: "",
+    phoneno: "",
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleOpenModal = () => {
+    setEditingCustomerId(SelectCustomerID);
+    setEditForm({
+      name: capitalizeFirstLetter(customerName || ""),
+      address: capitalizeFirstLetter(address || ""),
+      deliveryAddress: capitalizeFirstLetter(deliveryAddress || ""),
+      gstNo: (gstNo || "").toUpperCase(),
+      phoneno: phoneno || "",
+    });
+    setOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    if (isUpdating) return;
+    setOpen(false);
+    setEditingCustomerId(null);
+  };
 
   const resetFields = useCallback(() => {
     setCustomerName("");
@@ -59,13 +88,15 @@ const CustomerField = ({
         return;
       }
 
-      setSelectedCustomerID(customer.documentId || "");
-      setCustomerName(customer.name || "");
+      setSelectedCustomerID(customer.documentId || customer.id || "");
+      setCustomerName(capitalizeFirstLetter(customer.name || ""));
 
       if (isGstCustomer) {
-        setAddress(customer.address || "");
-        setDeliveryAddress(customer.delivery_address || "");
-        setGstNo(customer.gst_no || "");
+        setAddress(capitalizeFirstLetter(customer.address || ""));
+        setDeliveryAddress(
+          capitalizeFirstLetter(customer.delivery_address || ""),
+        );
+        setGstNo((customer.gst_no || "").toUpperCase());
       } else {
         setPhoneno(customer.phonenumber || "");
       }
@@ -82,11 +113,11 @@ const CustomerField = ({
   );
 
   const handleNameInputChange = useCallback(
-    (inputValue) => {
+    (inputValue, reason) => {
       setCustomerName(inputValue || "");
-      if (SelectCustomerID) {
+      if (reason === "input" && SelectCustomerID) {
         const currentCustomer = (customerData || []).find(
-          (c) => c.documentId === SelectCustomerID,
+          (c) => (c.documentId || c.id) === SelectCustomerID,
         );
         if (
           currentCustomer &&
@@ -111,8 +142,15 @@ const CustomerField = ({
       applyCustomer(matched);
     } else {
       setSelectedCustomerID("");
+      setCustomerName(capitalizeFirstLetter(trimmed));
     }
-  }, [customerName, customerData, applyCustomer, setSelectedCustomerID]);
+  }, [
+    customerName,
+    customerData,
+    applyCustomer,
+    setSelectedCustomerID,
+    setCustomerName,
+  ]);
 
   const handlePhoneBlur = useCallback(() => {
     if (isGstCustomer || SelectCustomerID) return;
@@ -128,15 +166,23 @@ const CustomerField = ({
 
   const handleGstBlur = useCallback(() => {
     if (!isGstCustomer || SelectCustomerID) return;
-    const trimmed = (gstNo || "").trim();
+    const trimmed = (gstNo || "").trim().toUpperCase();
     if (!trimmed) return;
+    setGstNo(trimmed);
     const matched = (customerData || []).find(
       (c) => normalizeName(c.gst_no) === normalizeName(trimmed),
     );
     if (matched) {
       applyCustomer(matched);
     }
-  }, [isGstCustomer, SelectCustomerID, gstNo, customerData, applyCustomer]);
+  }, [
+    isGstCustomer,
+    SelectCustomerID,
+    gstNo,
+    customerData,
+    applyCustomer,
+    setGstNo,
+  ]);
 
   const handleAddressBlur = useCallback(() => {
     if (!isGstCustomer || SelectCustomerID) return;
@@ -147,8 +193,17 @@ const CustomerField = ({
     );
     if (matched) {
       applyCustomer(matched);
+    } else {
+      setAddress(capitalizeFirstLetter(trimmed));
     }
-  }, [isGstCustomer, SelectCustomerID, address, customerData, applyCustomer]);
+  }, [
+    isGstCustomer,
+    SelectCustomerID,
+    address,
+    customerData,
+    applyCustomer,
+    setAddress,
+  ]);
 
   const handleDeliveryAddressBlur = useCallback(() => {
     if (!isGstCustomer || SelectCustomerID) return;
@@ -159,6 +214,8 @@ const CustomerField = ({
     );
     if (matched) {
       applyCustomer(matched);
+    } else {
+      setDeliveryAddress(capitalizeFirstLetter(trimmed));
     }
   }, [
     isGstCustomer,
@@ -166,6 +223,7 @@ const CustomerField = ({
     deliveryAddress,
     customerData,
     applyCustomer,
+    setDeliveryAddress,
   ]);
 
   const handleCustomerChange = useCallback(
@@ -187,7 +245,9 @@ const CustomerField = ({
         }
 
         if (field === "phone" && !isGstCustomer) {
-          return normalizeName(customer.phonenumber) === normalizeName(rawValue);
+          return (
+            normalizeName(customer.phonenumber) === normalizeName(rawValue)
+          );
         }
 
         if (field === "gst" && isGstCustomer) {
@@ -211,16 +271,16 @@ const CustomerField = ({
         applyCustomer(selected);
       } else {
         if (field === "name") {
-          setCustomerName(rawValue);
+          setCustomerName(capitalizeFirstLetter(rawValue));
           setSelectedCustomerID("");
         } else if (field === "phone" && !isGstCustomer) {
           setPhoneno(rawValue);
         } else if (field === "gst" && isGstCustomer) {
           setGstNo((rawValue || "").toUpperCase());
         } else if (field === "address" && isGstCustomer) {
-          setAddress(rawValue);
+          setAddress(capitalizeFirstLetter(rawValue));
         } else if (field === "delivery_address" && isGstCustomer) {
-          setDeliveryAddress(rawValue);
+          setDeliveryAddress(capitalizeFirstLetter(rawValue));
         }
       }
     },
@@ -239,49 +299,110 @@ const CustomerField = ({
   );
 
   const handleUpdate = async () => {
-    if (!SelectCustomerID) {
+    const targetId = editingCustomerId || SelectCustomerID;
+    if (!targetId) {
       setOpen(false);
       return;
     }
 
-    try {
-      const updated = isGstCustomer
-        ? await updateGstCustomer(SelectCustomerID, {
-            name: customerName,
-            address,
-            delivery_address: deliveryAddress,
-            gst_no: gstNo,
-          })
-        : await updateCustomer(SelectCustomerID, {
-            name: customerName,
-            phonenumber: phoneno,
-          });
+    const formattedName = capitalizeFirstLetter((editForm.name || "").trim());
+    const formattedAddress = capitalizeFirstLetter(
+      (editForm.address || "").trim(),
+    );
+    const formattedDeliveryAddress = capitalizeFirstLetter(
+      (editForm.deliveryAddress || "").trim(),
+    );
+    const formattedGstNo = (editForm.gstNo || "").trim().toUpperCase();
+    const formattedPhone = (editForm.phoneno || "").trim();
 
-      applyCustomer(updated);
+    if (!formattedName) {
+      toast.error("Customer name is required");
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const payload = isGstCustomer
+        ? {
+            name: formattedName,
+            address: formattedAddress,
+            delivery_address: formattedDeliveryAddress,
+            gst_no: formattedGstNo,
+          }
+        : {
+            name: formattedName,
+            phonenumber: formattedPhone,
+          };
+
+      const updated = isGstCustomer
+        ? await updateGstCustomer(targetId, payload)
+        : await updateCustomer(targetId, payload);
+
+      if (updated && (updated.documentId || updated.id || updated.name)) {
+        applyCustomer(updated);
+      } else {
+        setSelectedCustomerID(targetId);
+        setCustomerName(formattedName);
+        if (isGstCustomer) {
+          setAddress(formattedAddress);
+          setDeliveryAddress(formattedDeliveryAddress);
+          setGstNo(formattedGstNo);
+        } else {
+          setPhoneno(formattedPhone);
+        }
+      }
+
+      if (typeof setCustomerData === "function") {
+        setCustomerData((prev) =>
+          (prev || []).map((c) =>
+            c.documentId === targetId || c.id === targetId
+              ? { ...c, ...payload }
+              : c,
+          ),
+        );
+      }
+
       setOpen(false);
+      setEditingCustomerId(null);
       toast.success("Customer updated successfully");
-      fetchCustomers(); // refresh list
+      if (typeof fetchCustomers === "function") {
+        await fetchCustomers();
+      }
     } catch (error) {
       console.error("Failed to update customer:", error);
       toast.error("Failed to update customer");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const nameOptions = useMemo(
-    () => [...new Set((customerData || []).map((c) => c.name).filter(Boolean))],
+    () => [
+      ...new Set(
+        (customerData || [])
+          .map((c) => capitalizeFirstLetter(c.name))
+          .filter(Boolean),
+      ),
+    ],
     [customerData],
   );
 
   const phoneOptions = useMemo(
     () => [
-      ...new Set((customerData || []).map((c) => c.phonenumber).filter(Boolean)),
+      ...new Set(
+        (customerData || []).map((c) => c.phonenumber).filter(Boolean),
+      ),
     ],
     [customerData],
   );
 
   const addressOptions = useMemo(
     () => [
-      ...new Set((customerData || []).map((c) => c.address).filter(Boolean)),
+      ...new Set(
+        (customerData || [])
+          .map((c) => capitalizeFirstLetter(c.address))
+          .filter(Boolean),
+      ),
     ],
     [customerData],
   );
@@ -289,14 +410,18 @@ const CustomerField = ({
   const deliveryAddressOptions = useMemo(
     () => [
       ...new Set(
-        (customerData || []).map((c) => c.delivery_address).filter(Boolean),
+        (customerData || [])
+          .map((c) => capitalizeFirstLetter(c.delivery_address))
+          .filter(Boolean),
       ),
     ],
     [customerData],
   );
 
   const gstOptions = useMemo(
-    () => [...new Set((customerData || []).map((c) => c.gst_no).filter(Boolean))],
+    () => [
+      ...new Set((customerData || []).map((c) => c.gst_no).filter(Boolean)),
+    ],
     [customerData],
   );
 
@@ -307,7 +432,7 @@ const CustomerField = ({
       <AutocompleteField
         label="Customer Name"
         value={customerName}
-        onInputChange={(e, v) => handleNameInputChange(v)}
+        onInputChange={(e, v, reason) => handleNameInputChange(v, reason)}
         onChange={(e, v) => handleCustomerChange(v, "name")}
         onBlur={handleNameBlur}
         options={nameOptions}
@@ -348,7 +473,7 @@ const CustomerField = ({
 
             {SelectCustomerID && (
               <div className="h-9">
-                <EditButton onClick={() => setOpen(true)} />
+                <EditButton onClick={handleOpenModal} />
               </div>
             )}
           </div>
@@ -367,7 +492,7 @@ const CustomerField = ({
           />
           {SelectCustomerID && (
             <div className="h-9">
-              <EditButton onClick={() => setOpen(true)} />
+              <EditButton onClick={handleOpenModal} />
             </div>
           )}
         </div>
@@ -379,14 +504,22 @@ const CustomerField = ({
           <div className="absolute inset-0 flex items-center justify-center z-[999]">
             <div className="relative w-full max-w-[24rem] rounded-lg shadow bg-white p-4">
               <div className="flex justify-end mb-2">
-                <ClearIcon onClick={() => setOpen(false)} />
+                <ClearIcon onClick={handleCloseModal} />
               </div>
 
               <InputField
                 name="customerName"
                 placeholder="Customer Name"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                value={editForm.name}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, name: e.target.value }))
+                }
+                onBlur={() =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    name: capitalizeFirstLetter(prev.name || ""),
+                  }))
+                }
               />
 
               {isGstCustomer ? (
@@ -394,35 +527,68 @@ const CustomerField = ({
                   <InputField
                     name="address"
                     placeholder="Address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    value={editForm.address}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        address: e.target.value,
+                      }))
+                    }
+                    onBlur={() =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        address: capitalizeFirstLetter(prev.address || ""),
+                      }))
+                    }
                   />
                   <InputField
                     name="gst_no"
                     placeholder="GST No"
-                    value={gstNo}
+                    value={editForm.gstNo}
                     onChange={(e) =>
-                      setGstNo((e.target.value || "").toUpperCase())
+                      setEditForm((prev) => ({
+                        ...prev,
+                        gstNo: (e.target.value || "").toUpperCase(),
+                      }))
                     }
                   />
                   <InputField
                     name="delivery_address"
                     placeholder="Delivery Address"
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    value={editForm.deliveryAddress}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        deliveryAddress: e.target.value,
+                      }))
+                    }
+                    onBlur={() =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        deliveryAddress: capitalizeFirstLetter(
+                          prev.deliveryAddress || "",
+                        ),
+                      }))
+                    }
                   />
                 </>
               ) : (
                 <InputField
                   name="phoneno"
                   placeholder="Phone Number"
-                  value={phoneno}
-                  onChange={(e) => setPhoneno(e.target.value)}
+                  value={editForm.phoneno}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      phoneno: e.target.value,
+                    }))
+                  }
                 />
               )}
 
               <Button
-                label="Update"
+                label={isUpdating ? "Updating..." : "Update"}
+                disabled={isUpdating}
                 className="bg-[#9E77D2] w-full text-white mt-3"
                 onClick={handleUpdate}
               />
@@ -431,7 +597,7 @@ const CustomerField = ({
 
           <div
             className="absolute inset-0 bg-black/50 z-[998]"
-            onClick={() => setOpen(false)}
+            onClick={handleCloseModal}
           />
         </>
       )}
