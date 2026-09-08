@@ -48,10 +48,10 @@ import {
   SaveIcon,
   SavePdfIcon,
 } from "../../components/icons";
-import LocalSalesExportModal from "../../components/LocalSalesExportModal/LocalSalesExportModal";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RightIcon from "../../components/icons/RightIcon";
 import InputField from "../../components/InputField/InputField";
+import LocalSalesExportModal from "../../components/LocalSalesExportModal/LocalSalesExportModal";
 import SelectField from "../../components/SelectField/SelectField";
 import { useAuth } from "../../context/auth-context";
 import { useFinancialYear } from "../../context/financial-year-context";
@@ -131,16 +131,34 @@ const LocalPartyList = () => {
       const startDate = dayjs(from).startOf("day").toISOString();
       const endDate = dayjs(to).endOf("day").toISOString();
 
-      query.push(`filters[$or][0][date][$gte]=${encodeURIComponent(startDate)}`);
+      query.push(
+        `filters[$or][0][date][$gte]=${encodeURIComponent(startDate)}`,
+      );
       query.push(`filters[$or][0][date][$lte]=${encodeURIComponent(endDate)}`);
-      query.push(`filters[$or][1][gpay][date][$gte]=${encodeURIComponent(startDate)}`);
-      query.push(`filters[$or][1][gpay][date][$lte]=${encodeURIComponent(endDate)}`);
-      query.push(`filters[$or][2][cash][date][$gte]=${encodeURIComponent(startDate)}`);
-      query.push(`filters[$or][2][cash][date][$lte]=${encodeURIComponent(endDate)}`);
+      query.push(
+        `filters[$or][1][gpay][date][$gte]=${encodeURIComponent(startDate)}`,
+      );
+      query.push(
+        `filters[$or][1][gpay][date][$lte]=${encodeURIComponent(endDate)}`,
+      );
+      query.push(
+        `filters[$or][2][cash][date][$gte]=${encodeURIComponent(startDate)}`,
+      );
+      query.push(
+        `filters[$or][2][cash][date][$lte]=${encodeURIComponent(endDate)}`,
+      );
     }
 
     return `?${query.join("&")}`;
-  }, [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
+  }, [
+    page,
+    rowsPerPage,
+    searchCustomer,
+    fromDate,
+    toDate,
+    fyFromDate,
+    fyToDate,
+  ]);
 
   /* ================= LOAD DATA ================= */
 
@@ -525,7 +543,7 @@ const LocalPartyList = () => {
                   </td>
 
                   <td>
-                    {item.balance_amount === 0 || item.balance_amount === null
+                    {item.total_amount === 0 || item.total_amount === null
                       ? "-"
                       : formattedAmount(item.total_amount)}
                   </td>

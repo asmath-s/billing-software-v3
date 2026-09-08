@@ -731,9 +731,10 @@ const Dashboard = () => {
                   localExpenseAmount?.total?.total_rec_gpay +
                   gstSalesSummary?.total_gpay +
                   gstSalesSummary?.total_account +
-                  localSalesAmount?.local_pending?.total_balance +
-                  localSalesAmount?.local_party?.total_balance +
-                  localExpenseAmount?.total?.total_rec_account,
+                  localExpenseAmount?.total?.total_rec_account +
+                  localSalesAmount?.local_total?.total_balance +
+                  gstSalesSummary?.total_balance,
+
                 color: "text-green-600",
                 bg: "bg-green-50",
               },
@@ -743,8 +744,9 @@ const Dashboard = () => {
                   localExpenseAmount?.total?.total_exp_cash +
                   localExpenseAmount?.total?.total_exp_gpay +
                   gstExpenseSummary?.total_account +
-                  gstExpenseSummary?.total_balance +
-                  localExpenseAmount?.total?.total_exp_account,
+                  localExpenseAmount?.total?.total_exp_account +
+                  gstExpenseSummary?.total_balance,
+
                 color: "text-red-600",
                 bg: "bg-red-50",
               },
@@ -758,14 +760,15 @@ const Dashboard = () => {
                   localExpenseAmount?.total?.total_rec_gpay +
                   gstSalesSummary?.total_gpay +
                   gstSalesSummary?.total_account +
-                  localSalesAmount?.local_pending?.total_balance +
-                  localSalesAmount?.local_party?.total_balance +
-                  localExpenseAmount?.total?.total_rec_account -
+                  localExpenseAmount?.total?.total_rec_account +
+                  localSalesAmount?.local_total?.total_balance +
+                  gstSalesSummary?.total_balance -
                   (localExpenseAmount?.total?.total_exp_cash +
                     localExpenseAmount?.total?.total_exp_gpay +
                     gstExpenseSummary?.total_account +
-                    gstExpenseSummary?.total_balance +
-                    localExpenseAmount?.total?.total_exp_account),
+                    localExpenseAmount?.total?.total_exp_account +
+                    gstExpenseSummary?.total_balance),
+
                 color: balanceColor(
                   localSalesAmount?.local_total?.total_cash +
                     localExpenseAmount?.total?.total_rec_cash +
@@ -774,14 +777,14 @@ const Dashboard = () => {
                     localExpenseAmount?.total?.total_rec_gpay +
                     gstSalesSummary?.total_gpay +
                     gstSalesSummary?.total_account +
-                    localSalesAmount?.local_pending?.total_balance +
-                    localSalesAmount?.local_party?.total_balance +
-                    localExpenseAmount?.total?.total_rec_account -
+                    localExpenseAmount?.total?.total_rec_account +
+                    localSalesAmount?.local_total?.total_balance +
+                    gstSalesSummary?.total_balance -
                     (localExpenseAmount?.total?.total_exp_cash +
                       localExpenseAmount?.total?.total_exp_gpay +
                       gstExpenseSummary?.total_account +
-                      gstExpenseSummary?.total_balance +
-                      localExpenseAmount?.total?.total_exp_account),
+                      localExpenseAmount?.total?.total_exp_account +
+                      gstExpenseSummary?.total_balance),
                 ),
                 bg: "bg-blue-50",
               },
