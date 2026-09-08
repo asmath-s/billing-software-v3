@@ -217,7 +217,6 @@ const Dashboard = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-
   return (
     <MainLayout>
       <div className="min-h-full bg-slate-50/50 pb-8">
@@ -818,9 +817,7 @@ const Dashboard = () => {
                   },
                   {
                     label: "Local Need to Get",
-                    value:
-                      localSalesAmount?.local_pending?.total_balance +
-                      localSalesAmount?.local_party?.total_balance,
+                    value: localSalesAmount?.local_total?.total_balance,
                     channel: "account",
                   },
                   {
