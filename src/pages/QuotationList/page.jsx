@@ -35,6 +35,7 @@ const QuotationList = () => {
   // Selected quotation for modal preview or direct print
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewLetterhead, setPreviewLetterhead] = useState(false);
 
   // Delete confirmation
   const [deleteId, setDeleteId] = useState(null);
@@ -108,7 +109,26 @@ const QuotationList = () => {
 
   // Compute Grand Total of a quote
   const calculateTotal = (quote) => {
+    const cols = quote.columns || [];
+    const hasAmountCol =
+      cols.length === 0 ||
+      cols.some(
+        (c) =>
+          c.key === "amount" ||
+          c.type === "amount" ||
+          c.id === "col_amount" ||
+          c.label?.toLowerCase()?.includes("amount"),
+      );
+    if (!hasAmountCol) return null;
+
     const rows = quote.rows || [];
+    const hasRowAmt = rows.some((r) => {
+      const amt = parseFloat(r.amount);
+      const calc = parseFloat(r.qty) * parseFloat(r.rate);
+      return (!isNaN(amt) && amt > 0) || (!isNaN(calc) && calc > 0);
+    });
+    if (!hasRowAmt) return null;
+
     const subtotal = rows.reduce((sum, r) => {
       const amt =
         parseFloat(r.amount) || parseFloat(r.qty) * parseFloat(r.rate) || 0;
@@ -229,7 +249,9 @@ const QuotationList = () => {
                       </td>
 
                       <td className="py-3 px-3 text-right font-bold text-gray-900">
-                        ₹ {formattedAmount(total)}
+                        {total !== null && total > 0
+                          ? `₹ ${formattedAmount(total)}`
+                          : "-"}
                       </td>
 
                       <td className="py-3 px-3 text-center">
@@ -314,6 +336,30 @@ const QuotationList = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-md border border-gray-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewLetterhead(false)}
+                    className={`px-2.5 py-1 rounded font-medium transition cursor-pointer ${
+                      !previewLetterhead
+                        ? "bg-white text-gray-900 shadow-xs"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                  >
+                    With Header
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewLetterhead(true)}
+                    className={`px-2.5 py-1 rounded font-medium transition cursor-pointer ${
+                      previewLetterhead
+                        ? "bg-white text-gray-900 shadow-xs"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                  >
+                    Letterhead (Print View)
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => triggerDirectPrint(selectedQuote)}
@@ -324,7 +370,7 @@ const QuotationList = () => {
                 <button
                   type="button"
                   onClick={() => setShowPreviewModal(false)}
-                  className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-3 py-1.5 rounded cursor-pointer"
+                  className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-3.5 py-1.5 rounded cursor-pointer"
                 >
                   Close
                 </button>
@@ -334,7 +380,7 @@ const QuotationList = () => {
             {/* Modal Body: Rendered Quotation */}
             <div className="p-6 overflow-y-auto bg-gray-200/70 flex justify-center">
               <div className="bg-white shadow-md">
-                <QuotationPrint {...selectedQuote} />
+                <QuotationPrint {...selectedQuote} printMode={previewLetterhead} />
               </div>
             </div>
           </div>
@@ -373,9 +419,11 @@ const QuotationList = () => {
         </div>
       )}
 
-      {/* Hidden Print Container */}
+      {/* Hidden Print Container (Always prints with empty top header matching GST sales print) */}
       <div className="hidden">
-        {selectedQuote && <QuotationPrint ref={printRef} {...selectedQuote} />}
+        {selectedQuote && (
+          <QuotationPrint ref={printRef} {...selectedQuote} printMode={true} />
+        )}
       </div>
     </MainLayout>
   );

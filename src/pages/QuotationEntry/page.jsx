@@ -35,14 +35,6 @@ const DEFAULT_BOTTOM_TEXT = `<p>For GST Bill : 18% extra</p>`;
 
 const DEFAULT_COLUMNS = [
   {
-    id: "col_sno",
-    label: "S.No",
-    key: "sno",
-    align: "center",
-    width: "8%",
-    type: "text",
-  },
-  {
     id: "col_desc",
     label: "Description / Particulars",
     key: "description",
@@ -60,7 +52,7 @@ const DEFAULT_COLUMNS = [
   },
   {
     id: "col_rate",
-    label: "Rate (₹)",
+    label: "Per Sq.ft (₹)",
     key: "rate",
     align: "right",
     width: "16%",
@@ -93,6 +85,9 @@ const QuotationEntry = () => {
   const [customerName, setCustomerName] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+
+  // Letterhead toggle for live preview (printing always uses printMode=true)
+  const [previewLetterhead, setPreviewLetterhead] = useState(false);
 
   // Rich Text Editors
   const [topText, setTopText] = useState(DEFAULT_TOP_TEXT);
@@ -445,29 +440,55 @@ const QuotationEntry = () => {
 
       {/* ────────────────── SECTION 5: LIVE PREVIEW ON THE BOTTOM ────────────────── */}
       <div className="mt-8 bg-white border border-[#E0E1E3] rounded-lg p-5 shadow-xs space-y-4">
-        <div className="border-b border-gray-100 pb-3">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-gray-700">
-            5. Live Quotation Preview
-          </h2>
-          <p className="text-xs text-gray-500">
-            Real-time representation of your document as it will appear when
-            printed or shared.
-          </p>
+        <div className="border-b border-gray-100 pb-3 flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-700">
+              5. Live Quotation Preview
+            </h2>
+            <p className="text-xs text-gray-500">
+              Real-time representation of your document as it will appear when
+              printed or shared.
+            </p>
+          </div>
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-md border border-gray-200 text-xs">
+            <button
+              type="button"
+              onClick={() => setPreviewLetterhead(false)}
+              className={`px-3 py-1.5 rounded-md font-medium transition cursor-pointer ${
+                !previewLetterhead
+                  ? "bg-white text-gray-900 shadow-xs"
+                  : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              With Header
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewLetterhead(true)}
+              className={`px-3 py-1.5 rounded-md font-medium transition cursor-pointer ${
+                previewLetterhead
+                  ? "bg-white text-gray-900 shadow-xs"
+                  : "text-gray-500 hover:text-gray-900"
+              }`}
+            >
+              Letterhead (Print View)
+            </button>
+          </div>
         </div>
 
         <div className="p-4 sm:p-8 bg-gray-100 rounded-lg flex justify-center overflow-x-auto border border-gray-200">
           <div className="bg-white shadow-md">
-            <QuotationPrint {...quotationProps} />
+            <QuotationPrint {...quotationProps} printMode={previewLetterhead} />
           </div>
         </div>
       </div>
 
-      {/* Hidden Print Component */}
+      {/* Hidden Print Component (Always empty top header with 190px space matching GST print) */}
       <div style={{ display: "none" }}>
-        <QuotationPrint ref={printRef} {...quotationProps} />
+        <QuotationPrint ref={printRef} {...quotationProps} printMode={true} />
       </div>
 
-      {/* Offscreen Image Component for html-to-image PNG Export */}
+      {/* Offscreen Image Component for html-to-image PNG Export (Retains full header for digital sharing) */}
       <div
         style={{
           position: "fixed",
@@ -479,7 +500,7 @@ const QuotationEntry = () => {
           pointerEvents: "none",
         }}
       >
-        <QuotationPrint ref={imageRef} {...quotationProps} />
+        <QuotationPrint ref={imageRef} {...quotationProps} printMode={false} />
       </div>
     </MainLayout>
   );

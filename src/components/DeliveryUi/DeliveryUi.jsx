@@ -94,15 +94,15 @@ const DeliveryUi = forwardRef((props, ref) => {
 
                   return (
                     <tr className="h-[24px]" key={index}>
-                      <td className="w-[48%] !h-[24px] !p-[0px] !pr-[5px] capitalize">
+                      <td className="w-[48%] !h-[24px] !p-[0px] !pr-[5px] capitalize text-[12px]">
                         {capitalizeFirstLetter(data?.instruction || "")}
                       </td>
 
-                      <td className="w-[18%] !h-[24px] !p-[0px] text-center">
+                      <td className="w-[18%] !h-[24px] !p-[0px] text-center text-[12px]">
                         {isFlex ? `${data.width} X ${data.height}` : ""}
                       </td>
 
-                      <td className="w-[12%] !h-[24px] !p-[0px] text-center">
+                      <td className="w-[12%] !h-[24px] !p-[0px] text-center text-[12px]">
                         {data?.piece_count || ""}
                       </td>
                     </tr>

@@ -79,6 +79,8 @@ const DynamicQuotationTable = ({
       const r = parseFloat(colKey === "rate" ? val : currentRow.rate) || 0;
       if (q && r) {
         currentRow.amount = (q * r).toFixed(2);
+      } else {
+        currentRow.amount = "";
       }
     }
 
@@ -172,12 +174,59 @@ const DynamicQuotationTable = ({
     setEditingColId(null);
   };
 
-  // Calculate totals
-  const subtotal = rows.reduce((sum, r) => {
-    const amt =
-      parseFloat(r.amount) || parseFloat(r.qty) * parseFloat(r.rate) || 0;
-    return sum + amt;
-  }, 0);
+  // Check if Amount column exists
+  const hasAmountColumn = columns.some(
+    (col) =>
+      col.key === "amount" ||
+      col.type === "amount" ||
+      col.id === "col_amount" ||
+      col.label?.toLowerCase()?.includes("amount"),
+  );
+
+  const handleToggleAmountColumn = () => {
+    if (hasAmountColumn) {
+      // Remove Amount column
+      const filtered = columns.filter(
+        (c) =>
+          c.key !== "amount" &&
+          c.type !== "amount" &&
+          c.id !== "col_amount" &&
+          !c.label?.toLowerCase()?.includes("amount"),
+      );
+      if (filtered.length >= 2) {
+        onColumnsChange(filtered);
+      } else {
+        alert("At least 2 columns must be kept in the table.");
+      }
+    } else {
+      // Add Amount column back
+      const amountCol = {
+        id: "col_amount",
+        label: "Amount (₹)",
+        key: "amount",
+        align: "right",
+        width: "16%",
+        type: "amount",
+      };
+      onColumnsChange([...columns, amountCol]);
+    }
+  };
+
+  // Check if any row has an amount entered
+  const hasAnyRowAmount = rows.some((r) => {
+    const amt = parseFloat(r.amount);
+    const calculated = parseFloat(r.qty) * parseFloat(r.rate);
+    return (!isNaN(amt) && amt > 0) || (!isNaN(calculated) && calculated > 0);
+  });
+
+  // Calculate totals only when Amount column is present
+  const subtotal = hasAmountColumn
+    ? rows.reduce((sum, r) => {
+        const amt =
+          parseFloat(r.amount) || parseFloat(r.qty) * parseFloat(r.rate) || 0;
+        return sum + amt;
+      }, 0)
+    : 0;
 
   const taxAmount = (subtotal * (parseFloat(taxPercent) || 0)) / 100;
   const discount = parseFloat(discountAmount) || 0;
@@ -185,11 +234,39 @@ const DynamicQuotationTable = ({
   const roundedGrandTotal = Math.round(grandTotal);
   const roundOff = roundedGrandTotal - grandTotal;
 
+  // Show financial summary only if amount column exists and has values
+  const showFinancialSummary =
+    hasAmountColumn && hasAnyRowAmount && roundedGrandTotal > 0;
+
   return (
     <div className="border border-[#E0E1E3] rounded-lg bg-white overflow-hidden shadow-xs">
       {/* Top action bar */}
       <div className="p-3 bg-gray-50 border-b border-[#E0E1E3] flex flex-wrap justify-between items-center gap-2">
-        <div className="flex w-full justify-end gap-2">
+        <div className="text-xs text-gray-500 font-medium">
+          {hasAmountColumn
+            ? "Table with Amount & Totals"
+            : "Table without Amount (Totals Hidden)"}
+        </div>
+        <div className="flex items-center gap-2">
+          {hasAmountColumn ? (
+            <button
+              type="button"
+              onClick={handleToggleAmountColumn}
+              className="flex items-center gap-1 text-xs bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-3 py-1.5 rounded cursor-pointer transition-colors"
+              title="Remove Amount column and hide totals"
+            >
+              - Remove Amount Column
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleToggleAmountColumn}
+              className="flex items-center gap-1 text-xs bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-3 py-1.5 rounded cursor-pointer transition-colors"
+              title="Add Amount column and calculate totals"
+            >
+              + Add Amount Column
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowAddColModal(true)}
@@ -384,72 +461,74 @@ const DynamicQuotationTable = ({
           + Add Row
         </button>
 
-        {/* Calculation Box */}
-        <div className="w-full sm:w-80 space-y-2 text-xs">
-          <div className="flex justify-between items-center text-gray-600">
-            <span className="font-medium">Sub Total:</span>
-            <span className="font-semibold text-gray-800">
-              ₹ {formattedAmount(subtotal.toFixed(2))}
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center text-gray-600">
-            <div className="flex items-center gap-1.5">
-              <span>GST / Tax:</span>
-              <select
-                value={taxPercent}
-                onChange={(e) => onTaxPercentChange(Number(e.target.value))}
-                className="text-xs border border-gray-300 rounded px-1.5 py-0.5 bg-white"
-              >
-                <option value={0}>0%</option>
-                <option value={5}>5%</option>
-                <option value={12}>12%</option>
-                <option value={18}>18%</option>
-                <option value={28}>28%</option>
-              </select>
-            </div>
-            <span className="font-semibold text-gray-800">
-              ₹ {formattedAmount(taxAmount.toFixed(2))}
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center text-gray-600">
-            <div className="flex items-center gap-1.5">
-              <span>Discount (₹):</span>
-              <input
-                type="number"
-                min="0"
-                value={discountAmount || ""}
-                placeholder="0"
-                onChange={(e) =>
-                  onDiscountAmountChange(Number(e.target.value) || 0)
-                }
-                className="text-xs border border-gray-300 rounded px-1.5 py-0.5 w-20 bg-white"
-              ></input>
-            </div>
-            <span className="font-semibold text-green-600">
-              - ₹ {formattedAmount(discount.toFixed(2))}
-            </span>
-          </div>
-
-          {Math.abs(roundOff) > 0.001 && (
-            <div className="flex justify-between items-center text-gray-500 text-[11px]">
-              <span>Round Off:</span>
-              <span>
-                {roundOff >= 0
-                  ? `+ ₹${roundOff.toFixed(2)}`
-                  : `- ₹${Math.abs(roundOff).toFixed(2)}`}
+        {/* Calculation Box (Hidden when Amount column is removed or empty) */}
+        {showFinancialSummary && (
+          <div className="w-full sm:w-80 space-y-2 text-xs">
+            <div className="flex justify-between items-center text-gray-600">
+              <span className="font-medium">Sub Total:</span>
+              <span className="font-semibold text-gray-800">
+                ₹ {formattedAmount(subtotal.toFixed(2))}
               </span>
             </div>
-          )}
 
-          <div className="flex justify-between items-center text-sm font-bold text-gray-900 border-t border-gray-300 pt-2">
-            <span>Grand Total:</span>
-            <span className="text-blue-700 text-base">
-              ₹ {formattedAmount(roundedGrandTotal)}
-            </span>
+            <div className="flex justify-between items-center text-gray-600">
+              <div className="flex items-center gap-1.5">
+                <span>GST / Tax:</span>
+                <select
+                  value={taxPercent}
+                  onChange={(e) => onTaxPercentChange(Number(e.target.value))}
+                  className="text-xs border border-gray-300 rounded px-1.5 py-0.5 bg-white"
+                >
+                  <option value={0}>0%</option>
+                  <option value={5}>5%</option>
+                  <option value={12}>12%</option>
+                  <option value={18}>18%</option>
+                  <option value={28}>28%</option>
+                </select>
+              </div>
+              <span className="font-semibold text-gray-800">
+                ₹ {formattedAmount(taxAmount.toFixed(2))}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center text-gray-600">
+              <div className="flex items-center gap-1.5">
+                <span>Discount (₹):</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={discountAmount || ""}
+                  placeholder="0"
+                  onChange={(e) =>
+                    onDiscountAmountChange(Number(e.target.value) || 0)
+                  }
+                  className="text-xs border border-gray-300 rounded px-1.5 py-0.5 w-20 bg-white"
+                ></input>
+              </div>
+              <span className="font-semibold text-green-600">
+                - ₹ {formattedAmount(discount.toFixed(2))}
+              </span>
+            </div>
+
+            {Math.abs(roundOff) > 0.001 && (
+              <div className="flex justify-between items-center text-gray-500 text-[11px]">
+                <span>Round Off:</span>
+                <span>
+                  {roundOff >= 0
+                    ? `+ ₹${roundOff.toFixed(2)}`
+                    : `- ₹${Math.abs(roundOff).toFixed(2)}`}
+                </span>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center text-sm font-bold text-gray-900 border-t border-gray-300 pt-2">
+              <span>Grand Total:</span>
+              <span className="text-blue-700 text-base">
+                ₹ {formattedAmount(roundedGrandTotal)}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
