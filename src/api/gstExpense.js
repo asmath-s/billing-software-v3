@@ -1,5 +1,5 @@
-import axiosInstance from "./axiosInstance";
 import dayjs from "../utils/dayjs";
+import axiosInstance from "./axiosInstance";
 
 export const getGstExpenseList = async (params = "") => {
   const response = await axiosInstance.get(
@@ -78,6 +78,51 @@ export const fetchAllGstExpensesForExport = async ({
       `filters[date][$lte]=${encodeURIComponent(dayjs(toDate).endOf("day").toISOString())}`,
     );
   }
+
+  do {
+    const pageParams = [
+      ...baseParams,
+      `pagination[page]=${currentPage}`,
+      `pagination[pageSize]=${pageSize}`,
+    ].join("&");
+
+    const res = await getGstExpenseList(pageParams);
+    const records = res?.data || [];
+    const meta = res?.meta?.pagination;
+
+    allRecords = allRecords.concat(records);
+
+    if (meta && typeof meta.pageCount === "number") {
+      pageCount = meta.pageCount;
+    } else {
+      break;
+    }
+
+    currentPage += 1;
+  } while (currentPage <= pageCount);
+
+  return allRecords;
+};
+
+/**
+ * Fetch all unpaid (status = 'status') GST Expense bills for a specific vendor across all pages.
+ * Handles pagination dynamically so all records are retrieved without missing data.
+ */
+export const fetchUnpaidGstExpensesByVendor = async (vendorDocumentId) => {
+  if (!vendorDocumentId) return [];
+
+  let allRecords = [];
+  let currentPage = 1;
+  let pageCount = 1;
+  const pageSize = 100;
+
+  const baseParams = [
+    "sort[0]=date:desc",
+    "filters[bill_no][$notNull]=true",
+    "filters[bill_no][$ne]=",
+    `filters[vendor][documentId][$eq]=${encodeURIComponent(vendorDocumentId)}`,
+    "filters[current_status][$eq]=status",
+  ];
 
   do {
     const pageParams = [

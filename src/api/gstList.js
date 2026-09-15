@@ -109,3 +109,48 @@ export const fetchAllGstSalesForExport = async ({
 
   return allRecords;
 };
+
+/**
+ * Fetch all unpaid (status = 'status') GST Sales bills for a specific customer across all pages.
+ * Handles pagination dynamically so all records are retrieved without missing data.
+ */
+export const fetchUnpaidGstBillsByCustomer = async (customerDocumentId) => {
+  if (!customerDocumentId) return [];
+
+  let allRecords = [];
+  let currentPage = 1;
+  let pageCount = 1;
+  const pageSize = 100;
+
+  const baseParams = [
+    "sort[0]=date:desc",
+    "filters[bill_no][$notNull]=true",
+    "filters[bill_no][$ne]=",
+    `filters[gst_customer][documentId][$eq]=${encodeURIComponent(customerDocumentId)}`,
+    "filters[current_status][$eq]=status",
+  ];
+
+  do {
+    const pageParams = [
+      ...baseParams,
+      `pagination[page]=${currentPage}`,
+      `pagination[pageSize]=${pageSize}`,
+    ].join("&");
+
+    const res = await getGstList(pageParams);
+    const records = res?.data || [];
+    const meta = res?.meta?.pagination;
+
+    allRecords = allRecords.concat(records);
+
+    if (meta && typeof meta.pageCount === "number") {
+      pageCount = meta.pageCount;
+    } else {
+      break;
+    }
+
+    currentPage += 1;
+  } while (currentPage <= pageCount);
+
+  return allRecords;
+};

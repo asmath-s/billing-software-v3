@@ -34,6 +34,7 @@ import { findMatchingEntity } from "../../utils/nameNormalizer";
 import {
   createGstExpenseList,
   deleteGstExpenseList,
+  fetchUnpaidGstExpensesByVendor,
   getGstExpenseList,
   getGstExpenseSummary,
   updateGstExpenseList,
@@ -125,23 +126,39 @@ const GstExpenseList = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [exportModalOpen, setExportModalOpen] = useState(false);
 
+  const [unpaidBills, setUnpaidBills] = useState([]);
+  const [loadingUnpaidBills, setLoadingUnpaidBills] = useState(false);
+
   const [form, setForm] = useState({
     ...INITIAL_FORM_STATE,
     date: setCurrentTime(new Date()),
   });
 
-  const billNosData = useMemo(
-    () =>
-      gstSalesData
-        .filter((item) => item.bill_no && item.current_status !== "paid")
-        .map((item) => ({
+  const billNosData = useMemo(() => {
+    const optionsMap = new Map();
+
+    unpaidBills
+      .filter((item) => item.bill_no && item.current_status !== "paid")
+      .forEach((item) => {
+        optionsMap.set(item.documentId, {
           label: `${item.bill_no} — ₹ ${formattedAmount(item.total_amount)}`,
           value: item.documentId,
           amount: Number(item.total_amount) || 0,
           bill_no: item.bill_no,
-        })),
-    [gstSalesData],
-  );
+        });
+      });
+
+    // Also include any bills currently selected in the form (e.g. during edit)
+    if (Array.isArray(form.sendedBillNo)) {
+      form.sendedBillNo.forEach((b) => {
+        if (b && b.value && !optionsMap.has(b.value)) {
+          optionsMap.set(b.value, b);
+        }
+      });
+    }
+
+    return Array.from(optionsMap.values());
+  }, [unpaidBills, form.sendedBillNo]);
 
   const totalBillAmount = useMemo(
     () => form.sendedBillNo.reduce((sum, item) => sum + (item.amount || 0), 0),
@@ -263,6 +280,24 @@ const GstExpenseList = () => {
     }
   }, [searchCustomer, fromDate, toDate, fyFromDate, fyToDate]);
 
+  const loadUnpaidBills = useCallback(async (vendorDocId) => {
+    if (!vendorDocId) {
+      setUnpaidBills([]);
+      return;
+    }
+    setLoadingUnpaidBills(true);
+    try {
+      const res = await fetchUnpaidGstExpensesByVendor(vendorDocId);
+      setUnpaidBills(res || []);
+    } catch (err) {
+      console.error("Failed to load unpaid bills:", err);
+      toast.error("Failed to load unpaid bills for selected vendor.");
+      setUnpaidBills([]);
+    } finally {
+      setLoadingUnpaidBills(false);
+    }
+  }, []);
+
   /* ─────────────────────────────────────────────
      Effects
   ───────────────────────────────────────────── */
@@ -278,6 +313,13 @@ const GstExpenseList = () => {
     loadGstSalesSummary();
     }
   }, [loadGstSalesSummary, showOverview]);
+  useEffect(() => {
+    if (searchCustomer?.value) {
+      loadUnpaidBills(searchCustomer.value);
+    } else {
+      setUnpaidBills([]);
+    }
+  }, [searchCustomer?.value, loadUnpaidBills]);
 
   /* ─────────────────────────────────────────────
      Form helpers
@@ -386,6 +428,9 @@ const GstExpenseList = () => {
 
       toast.success("Deleted successfully.");
       await loadGstSalesData();
+      if (searchCustomer?.value) {
+        await loadUnpaidBills(searchCustomer.value);
+      }
     } catch (err) {
       console.error("Delete failed:", err);
       toast.error("Failed to delete. Please try again.");
@@ -396,6 +441,9 @@ const GstExpenseList = () => {
     try {
       await updateGstExpenseList(documentId, { current_status: value });
       await loadGstSalesData();
+      if (searchCustomer?.value) {
+        await loadUnpaidBills(searchCustomer.value);
+      }
     } catch (err) {
       console.error("Status update failed:", err);
       toast.error("Failed to update status. Please try again.");
@@ -636,7 +684,16 @@ const GstExpenseList = () => {
               onChange={(_, newValue) => setFormField("sendedBillNo", newValue)}
               disableCloseOnSelect
               getOptionLabel={(option) => option.label}
-              placeholder="Select bill numbers"
+              placeholder={
+                loadingUnpaidBills
+                  ? "Loading unpaid bills..."
+                  : !searchCustomer?.value
+                    ? "Select vendor first"
+                    : billNosData.length === 0
+                      ? "No unpaid bills found"
+                      : "Select bill numbers"
+              }
+              loading={loadingUnpaidBills}
               isOptionEqualToValue={(option, value) =>
                 option.value === value.value
               }
