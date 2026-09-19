@@ -1597,6 +1597,143 @@ const Dashboard = () => {
                       gstExpenseSummary?.total_balance),
                 ),
                 bg: "bg-blue-50",
+                tooltip: (
+                  <BalanceTableTooltip
+                    title="Finalize Balance Breakdown"
+                    rows={[
+                      {
+                        label: "Unapproved",
+                        rec:
+                          (Number(localSalesAmount?.local_list?.total_cash) || 0) +
+                          (Number(localSalesAmount?.local_list?.total_gpay) || 0) +
+                          (Number(localSalesAmount?.local_list?.total_balance) || 0) +
+                          (Number(localExpenseAmount?.expense?.total_rec_cash) || 0) +
+                          (Number(localExpenseAmount?.expense?.total_rec_gpay) || 0) +
+                          (Number(localExpenseAmount?.expense?.total_rec_account) || 0),
+                        exp:
+                          (Number(localExpenseAmount?.expense?.total_exp_cash) || 0) +
+                          (Number(localExpenseAmount?.expense?.total_exp_gpay) || 0) +
+                          (Number(localExpenseAmount?.expense?.total_exp_account) || 0),
+                        highlight: true,
+                      },
+                      {
+                        label: "Paid",
+                        rec:
+                          (Number(localSalesAmount?.local_paid?.total_cash) || 0) +
+                          (Number(localSalesAmount?.local_paid?.total_gpay) || 0) +
+                          (Number(localSalesAmount?.local_paid?.total_balance) || 0),
+                        exp: 0,
+                      },
+                      {
+                        label: "Pending",
+                        rec:
+                          (Number(localSalesAmount?.local_pending?.total_cash) || 0) +
+                          (Number(localSalesAmount?.local_pending?.total_gpay) || 0) +
+                          (Number(localSalesAmount?.local_pending?.total_balance) || 0),
+                        exp: 0,
+                      },
+                      {
+                        label: "Party",
+                        rec:
+                          (Number(localSalesAmount?.local_party?.total_cash) || 0) +
+                          (Number(localSalesAmount?.local_party?.total_gpay) || 0) +
+                          (Number(localSalesAmount?.local_party?.total_balance) || 0),
+                        exp: 0,
+                      },
+                      {
+                        label: "Approved",
+                        rec:
+                          (Number(localExpenseAmount?.approved?.total_rec_cash) || 0) +
+                          (Number(localExpenseAmount?.approved?.total_rec_gpay) || 0) +
+                          (Number(localExpenseAmount?.approved?.total_rec_account) || 0),
+                        exp:
+                          (Number(localExpenseAmount?.approved?.total_exp_cash) || 0) +
+                          (Number(localExpenseAmount?.approved?.total_exp_gpay) || 0) +
+                          (Number(localExpenseAmount?.approved?.total_exp_account) || 0),
+                      },
+                      {
+                        label: "Production",
+                        rec:
+                          (Number(localExpenseAmount?.production?.total_rec_cash) || 0) +
+                          (Number(localExpenseAmount?.production?.total_rec_gpay) || 0) +
+                          (Number(localExpenseAmount?.production?.total_rec_account) || 0),
+                        exp:
+                          (Number(localExpenseAmount?.production?.total_exp_cash) || 0) +
+                          (Number(localExpenseAmount?.production?.total_exp_gpay) || 0) +
+                          (Number(localExpenseAmount?.production?.total_exp_account) || 0),
+                      },
+                      {
+                        label: "Hub",
+                        rec:
+                          (Number(localExpenseAmount?.hub?.total_rec_cash) || 0) +
+                          (Number(localExpenseAmount?.hub?.total_rec_gpay) || 0) +
+                          (Number(localExpenseAmount?.hub?.total_rec_account) || 0),
+                        exp:
+                          (Number(localExpenseAmount?.hub?.total_exp_cash) || 0) +
+                          (Number(localExpenseAmount?.hub?.total_exp_gpay) || 0) +
+                          (Number(localExpenseAmount?.hub?.total_exp_account) || 0),
+                      },
+                      {
+                        label: "Admin",
+                        rec:
+                          (Number(localExpenseAmount?.admin?.total_rec_cash) || 0) +
+                          (Number(localExpenseAmount?.admin?.total_rec_gpay) || 0) +
+                          (Number(localExpenseAmount?.admin?.total_rec_account) || 0),
+                        exp:
+                          (Number(localExpenseAmount?.admin?.total_exp_cash) || 0) +
+                          (Number(localExpenseAmount?.admin?.total_exp_gpay) || 0) +
+                          (Number(localExpenseAmount?.admin?.total_exp_account) || 0),
+                      },
+                      {
+                        label: "GST",
+                        rec:
+                          (Number(gstSalesSummary?.total_cash) || 0) +
+                          (Number(gstSalesSummary?.total_gpay) || 0) +
+                          (Number(gstSalesSummary?.total_account) || 0) +
+                          (Number(gstSalesSummary?.total_balance) || 0),
+                        exp:
+                          (Number(gstExpenseSummary?.total_account) || 0) +
+                          (Number(gstExpenseSummary?.total_balance) || 0),
+                      },
+                    ]}
+                    totalRec={
+                      localSalesAmount?.local_total?.total_cash +
+                      localExpenseAmount?.total?.total_rec_cash +
+                      gstSalesSummary?.total_cash +
+                      localSalesAmount?.local_total?.total_gpay +
+                      localExpenseAmount?.total?.total_rec_gpay +
+                      gstSalesSummary?.total_gpay +
+                      gstSalesSummary?.total_account +
+                      localExpenseAmount?.total?.total_rec_account +
+                      localSalesAmount?.local_total?.total_balance +
+                      gstSalesSummary?.total_balance
+                    }
+                    totalExp={
+                      localExpenseAmount?.total?.total_exp_cash +
+                      localExpenseAmount?.total?.total_exp_gpay +
+                      gstExpenseSummary?.total_account +
+                      localExpenseAmount?.total?.total_exp_account +
+                      gstExpenseSummary?.total_balance
+                    }
+                    totalBal={
+                      localSalesAmount?.local_total?.total_cash +
+                      localExpenseAmount?.total?.total_rec_cash +
+                      gstSalesSummary?.total_cash +
+                      localSalesAmount?.local_total?.total_gpay +
+                      localExpenseAmount?.total?.total_rec_gpay +
+                      gstSalesSummary?.total_gpay +
+                      gstSalesSummary?.total_account +
+                      localExpenseAmount?.total?.total_rec_account +
+                      localSalesAmount?.local_total?.total_balance +
+                      gstSalesSummary?.total_balance -
+                      (localExpenseAmount?.total?.total_exp_cash +
+                        localExpenseAmount?.total?.total_exp_gpay +
+                        gstExpenseSummary?.total_account +
+                        localExpenseAmount?.total?.total_exp_account +
+                        gstExpenseSummary?.total_balance)
+                    }
+                  />
+                ),
               },
             ]}
             panels={[
