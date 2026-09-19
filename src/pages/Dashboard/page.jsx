@@ -1,5 +1,6 @@
+import Tooltip from "@mui/joy/Tooltip";
 import { motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { getAdminExpenseAmounts } from "../../api/adminExpense";
 import { getGstExpenseSummary } from "../../api/gstExpense";
 import { getGstSalesSummary } from "../../api/gstList";
@@ -40,31 +41,263 @@ const CHANNEL_ICON = {
    exactly as in the original implementation.
 ------------------------------------------------------------------*/
 
-const Item = ({ label, value, color = "text-gray-800", channel }) => (
-  <div className="group flex min-h-[38px] items-center justify-between gap-3 border-b border-slate-100 py-2 last:border-b-0">
-    <span className="flex min-w-0 items-center gap-2 text-[15px] font-medium text-slate-500">
-      {channel && (
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100">
-          {CHANNEL_ICON[channel]}
-        </span>
+const BreakdownTooltip = ({ title, sections, items }) => {
+  const contentSections = sections || (items ? [{ items }] : []);
+
+  return (
+    <div className="rounded-xl border border-slate-700/80 bg-slate-900/95 p-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md min-w-[210px] max-w-[280px]">
+      {title && (
+        <div className="mb-2 pb-1.5 border-b border-slate-800 font-semibold text-white tracking-wide">
+          {title}
+        </div>
       )}
-      <span className="truncate">{label}</span>
-    </span>
-    <span className={`shrink-0 text-[15px] font-semibold ${color}`}>
-      ₹ {formatAmount(value)}
-    </span>
+      <div className="space-y-2.5">
+        {contentSections.map((sec, idx) => (
+          <div key={idx} className="space-y-1">
+            {sec.title && (
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                {sec.title}
+              </div>
+            )}
+            <div className="space-y-1">
+              {sec.items?.map((it, itemIdx) => {
+                const val = Number(it.value || 0);
+                const isZero = val === 0;
+                return (
+                  <div
+                    key={itemIdx}
+                    className={`flex items-center justify-between gap-3 text-[12px] ${
+                      isZero ? "text-slate-400" : "text-slate-100 font-medium"
+                    }`}
+                  >
+                    <span className="truncate">{it.label}</span>
+                    <span className="shrink-0 font-semibold">
+                      : ₹ {formatAmount(val)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const BalanceTableTooltip = ({
+  title,
+  rows = [],
+  totalRec = 0,
+  totalExp = 0,
+  totalBal = 0,
+}) => (
+  <div className="rounded-xl border border-slate-700/80 bg-slate-900/95 p-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md min-w-[340px] max-w-[440px]">
+    {title && (
+      <div className="mb-2 pb-1.5 border-b border-slate-800 font-semibold text-white tracking-wide text-xs">
+        {title}
+      </div>
+    )}
+    <div className="overflow-hidden rounded-lg border border-slate-700/80 bg-slate-800/40">
+      <table className="w-full text-right border-collapse text-[11px]">
+        <thead>
+          <tr className="border-b border-slate-700 bg-slate-800/90 font-semibold text-slate-300">
+            <th className="px-2.5 py-1.5 text-left border-r border-slate-700/80">
+              Category
+            </th>
+            <th className="px-2.5 py-1.5 border-r border-slate-700/80">
+              Receive
+            </th>
+            <th className="px-2.5 py-1.5 border-r border-slate-700/80">
+              Expense
+            </th>
+            <th className="px-2.5 py-1.5">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const rec = Number(r.rec || 0);
+            const exp = Number(r.exp || 0);
+            const bal = Number(r.bal !== undefined ? r.bal : rec - exp);
+            const isAllZero = rec === 0 && exp === 0 && bal === 0;
+
+            return (
+              <tr
+                key={i}
+                className={`border-b border-slate-800/60 transition-colors hover:bg-slate-800/40 ${
+                  r.highlight ? "bg-amber-950/25" : ""
+                }`}
+              >
+                <td
+                  className={`px-2.5 py-1 text-left font-medium border-r border-slate-700/80 ${
+                    r.highlight
+                      ? "text-amber-300 font-semibold"
+                      : isAllZero
+                        ? "text-slate-400"
+                        : "text-slate-200"
+                  }`}
+                >
+                  {r.label}
+                </td>
+                <td
+                  className={`px-2.5 py-1 border-r border-slate-700/80 font-mono ${
+                    rec === 0
+                      ? "text-slate-500"
+                      : "text-emerald-400 font-medium"
+                  }`}
+                >
+                  ₹ {formatAmount(rec)}
+                </td>
+                <td
+                  className={`px-2.5 py-1 border-r border-slate-700/80 font-mono ${
+                    exp === 0 ? "text-slate-500" : "text-red-400 font-medium"
+                  }`}
+                >
+                  ₹ {formatAmount(exp)}
+                </td>
+                <td
+                  className={`px-2.5 py-1 font-mono font-semibold ${
+                    bal === 0
+                      ? "text-slate-500"
+                      : bal > 0
+                        ? "text-blue-400"
+                        : "text-red-400"
+                  }`}
+                >
+                  ₹ {formatAmount(bal)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-slate-700 bg-slate-800/90 font-bold text-[12px] text-white">
+            <td className="px-2.5 py-1.5 text-left border-r border-slate-700/80">
+              Total
+            </td>
+            <td className="px-2.5 py-1.5 border-r border-slate-700/80 text-emerald-400 font-mono">
+              ₹ {formatAmount(totalRec)}
+            </td>
+            <td className="px-2.5 py-1.5 border-r border-slate-700/80 text-red-400 font-mono">
+              ₹ {formatAmount(totalExp)}
+            </td>
+            <td
+              className={`px-2.5 py-1.5 font-mono ${
+                Number(totalBal || 0) >= 0 ? "text-blue-400" : "text-red-400"
+              }`}
+            >
+              ₹ {formatAmount(totalBal)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
   </div>
 );
 
-const SummaryTile = ({ title, value, color, bg, caption }) => (
-  <div className={`${bg} rounded-xl border border-white/80 px-4 py-3.5`}>
-    <p className="text-sm text-slate-500">{title}</p>
-    <h3 className={`mt-1 text-xl font-bold tracking-tight ${color}`}>
-      ₹ {formatAmount(value)}
-    </h3>
-    {caption && <p className="mt-1 text-xs text-slate-400">{caption}</p>}
-  </div>
-);
+const Item = ({ label, value, color = "text-gray-800", channel, tooltip }) => {
+  const content = (
+    <div
+      className={`group flex min-h-[38px] items-center justify-between gap-3 border-b border-slate-100 py-2 last:border-b-0 ${
+        tooltip
+          ? "cursor-help transition-colors hover:bg-slate-100/60 rounded-md px-1.5 -mx-1.5"
+          : ""
+      }`}
+    >
+      <span className="flex min-w-0 items-center gap-2 text-[15px] font-medium text-slate-500">
+        {channel && (
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-100">
+            {CHANNEL_ICON[channel]}
+          </span>
+        )}
+        <span className="truncate">{label}</span>
+        {tooltip && (
+          <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-200/80 text-[10px] font-semibold text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700 transition-colors">
+            i
+          </span>
+        )}
+      </span>
+      <span className={`shrink-0 text-[15px] font-semibold ${color}`}>
+        ₹ {formatAmount(value)}
+      </span>
+    </div>
+  );
+
+  if (!tooltip) return content;
+
+  const tooltipTitle = React.isValidElement(tooltip) ? (
+    tooltip
+  ) : typeof tooltip === "object" && tooltip !== null ? (
+    <BreakdownTooltip {...tooltip} />
+  ) : (
+    tooltip
+  );
+
+  return (
+    <Tooltip
+      title={tooltipTitle}
+      placement="top"
+      arrow
+      variant="plain"
+      sx={{
+        bgcolor: "transparent",
+        p: 0,
+        boxShadow: "none",
+      }}
+    >
+      {content}
+    </Tooltip>
+  );
+};
+
+const SummaryTile = ({ title, value, color, bg, caption, tooltip }) => {
+  const content = (
+    <div
+      className={`${bg} rounded-xl border border-white/80 px-4 py-3.5 ${
+        tooltip ? "cursor-help transition-transform hover:-translate-y-0.5" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">{title}</p>
+        {tooltip && (
+          <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-black/5 text-[10px] font-semibold text-slate-500">
+            i
+          </span>
+        )}
+      </div>
+      <h3 className={`mt-1 text-xl font-bold tracking-tight ${color}`}>
+        ₹ {formatAmount(value)}
+      </h3>
+      {caption && <p className="mt-1 text-xs text-slate-400">{caption}</p>}
+    </div>
+  );
+
+  if (!tooltip) return content;
+
+  const tooltipTitle = React.isValidElement(tooltip) ? (
+    tooltip
+  ) : typeof tooltip === "object" && tooltip !== null ? (
+    <BreakdownTooltip {...tooltip} />
+  ) : (
+    tooltip
+  );
+
+  return (
+    <Tooltip
+      title={tooltipTitle}
+      placement="top"
+      arrow
+      variant="plain"
+      sx={{
+        bgcolor: "transparent",
+        p: 0,
+        boxShadow: "none",
+      }}
+    >
+      {content}
+    </Tooltip>
+  );
+};
 
 const DetailPanel = ({ title, color, items = [] }) => (
   <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
@@ -632,8 +865,66 @@ const Dashboard = () => {
                       localSalesAmount?.local_total?.total_cash +
                       localExpenseAmount?.total?.total_rec_cash +
                       gstSalesSummary?.total_cash,
-
                     channel: "cash",
+                    tooltip: {
+                      title: "Cash Breakdown",
+                      sections: [
+                        {
+                          title: "Sales Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value: localSalesAmount?.local_list?.total_cash,
+                            },
+                            {
+                              label: "Paid",
+                              value: localSalesAmount?.local_paid?.total_cash,
+                            },
+                            {
+                              label: "Pending",
+                              value:
+                                localSalesAmount?.local_pending?.total_cash,
+                            },
+                            {
+                              label: "Party",
+                              value: localSalesAmount?.local_party?.total_cash,
+                            },
+                            {
+                              label: "GST",
+                              value: gstSalesSummary?.total_cash,
+                            },
+                          ],
+                        },
+                        {
+                          title: "Expense Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value:
+                                localExpenseAmount?.expense?.total_rec_cash,
+                            },
+                            {
+                              label: "Approved",
+                              value:
+                                localExpenseAmount?.approved?.total_rec_cash,
+                            },
+                            {
+                              label: "Production",
+                              value:
+                                localExpenseAmount?.production?.total_rec_cash,
+                            },
+                            {
+                              label: "Hub",
+                              value: localExpenseAmount?.hub?.total_rec_cash,
+                            },
+                            {
+                              label: "Admin",
+                              value: localExpenseAmount?.admin?.total_rec_cash,
+                            },
+                          ],
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "GPay",
@@ -642,6 +933,65 @@ const Dashboard = () => {
                       localExpenseAmount?.total?.total_rec_gpay +
                       gstSalesSummary?.total_gpay,
                     channel: "gpay",
+                    tooltip: {
+                      title: "GPay Breakdown",
+                      sections: [
+                        {
+                          title: "Sales Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value: localSalesAmount?.local_list?.total_gpay,
+                            },
+                            {
+                              label: "Paid",
+                              value: localSalesAmount?.local_paid?.total_gpay,
+                            },
+                            {
+                              label: "Pending",
+                              value:
+                                localSalesAmount?.local_pending?.total_gpay,
+                            },
+                            {
+                              label: "Party",
+                              value: localSalesAmount?.local_party?.total_gpay,
+                            },
+                            {
+                              label: "GST",
+                              value: gstSalesSummary?.total_gpay,
+                            },
+                          ],
+                        },
+                        {
+                          title: "Expense Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value:
+                                localExpenseAmount?.expense?.total_rec_gpay,
+                            },
+                            {
+                              label: "Approved",
+                              value:
+                                localExpenseAmount?.approved?.total_rec_gpay,
+                            },
+                            {
+                              label: "Production",
+                              value:
+                                localExpenseAmount?.production?.total_rec_gpay,
+                            },
+                            {
+                              label: "Hub",
+                              value: localExpenseAmount?.hub?.total_rec_gpay,
+                            },
+                            {
+                              label: "Admin",
+                              value: localExpenseAmount?.admin?.total_rec_gpay,
+                            },
+                          ],
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "Account",
@@ -649,6 +999,50 @@ const Dashboard = () => {
                       gstSalesSummary?.total_account +
                       localExpenseAmount?.total?.total_rec_account,
                     channel: "account",
+                    tooltip: {
+                      title: "Account Breakdown",
+                      sections: [
+                        {
+                          title: "GST Sales",
+                          items: [
+                            {
+                              label: "GST",
+                              value: gstSalesSummary?.total_account,
+                            },
+                          ],
+                        },
+                        {
+                          title: "Expense Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value:
+                                localExpenseAmount?.expense?.total_rec_account,
+                            },
+                            {
+                              label: "Approved",
+                              value:
+                                localExpenseAmount?.approved?.total_rec_account,
+                            },
+                            {
+                              label: "Production",
+                              value:
+                                localExpenseAmount?.production
+                                  ?.total_rec_account,
+                            },
+                            {
+                              label: "Hub",
+                              value: localExpenseAmount?.hub?.total_rec_account,
+                            },
+                            {
+                              label: "Admin",
+                              value:
+                                localExpenseAmount?.admin?.total_rec_account,
+                            },
+                          ],
+                        },
+                      ],
+                    },
                   },
                 ],
               },
@@ -660,11 +1054,61 @@ const Dashboard = () => {
                     label: "Cash",
                     value: localExpenseAmount?.total?.total_exp_cash,
                     channel: "cash",
+                    tooltip: {
+                      title: "Cash Expense Breakdown",
+                      items: [
+                        {
+                          label: "Unapproved",
+                          value: localExpenseAmount?.expense?.total_exp_cash,
+                        },
+                        {
+                          label: "Approved",
+                          value: localExpenseAmount?.approved?.total_exp_cash,
+                        },
+                        {
+                          label: "Production",
+                          value: localExpenseAmount?.production?.total_exp_cash,
+                        },
+                        {
+                          label: "Hub",
+                          value: localExpenseAmount?.hub?.total_exp_cash,
+                        },
+                        {
+                          label: "Admin",
+                          value: localExpenseAmount?.admin?.total_exp_cash,
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "GPay",
                     value: localExpenseAmount?.total?.total_exp_gpay,
                     channel: "gpay",
+                    tooltip: {
+                      title: "GPay Expense Breakdown",
+                      items: [
+                        {
+                          label: "Unapproved",
+                          value: localExpenseAmount?.expense?.total_exp_gpay,
+                        },
+                        {
+                          label: "Approved",
+                          value: localExpenseAmount?.approved?.total_exp_gpay,
+                        },
+                        {
+                          label: "Production",
+                          value: localExpenseAmount?.production?.total_exp_gpay,
+                        },
+                        {
+                          label: "Hub",
+                          value: localExpenseAmount?.hub?.total_exp_gpay,
+                        },
+                        {
+                          label: "Admin",
+                          value: localExpenseAmount?.admin?.total_exp_gpay,
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "Account",
@@ -672,6 +1116,50 @@ const Dashboard = () => {
                       gstExpenseSummary?.total_account +
                       localExpenseAmount?.total?.total_exp_account,
                     channel: "account",
+                    tooltip: {
+                      title: "Account Expense Breakdown",
+                      sections: [
+                        {
+                          title: "GST Expense",
+                          items: [
+                            {
+                              label: "GST",
+                              value: gstExpenseSummary?.total_account,
+                            },
+                          ],
+                        },
+                        {
+                          title: "Local Expense",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value:
+                                localExpenseAmount?.expense?.total_exp_account,
+                            },
+                            {
+                              label: "Approved",
+                              value:
+                                localExpenseAmount?.approved?.total_exp_account,
+                            },
+                            {
+                              label: "Production",
+                              value:
+                                localExpenseAmount?.production
+                                  ?.total_exp_account,
+                            },
+                            {
+                              label: "Hub",
+                              value: localExpenseAmount?.hub?.total_exp_account,
+                            },
+                            {
+                              label: "Admin",
+                              value:
+                                localExpenseAmount?.admin?.total_exp_account,
+                            },
+                          ],
+                        },
+                      ],
+                    },
                   },
                 ],
               },
@@ -687,6 +1175,113 @@ const Dashboard = () => {
                       gstSalesSummary?.total_cash -
                       localExpenseAmount?.total?.total_exp_cash,
                     channel: "cash",
+                    tooltip: (
+                      <BalanceTableTooltip
+                        title="Cash Balance Breakdown"
+                        rows={[
+                          {
+                            label: "Unapproved",
+                            rec:
+                              (Number(
+                                localSalesAmount?.local_list?.total_cash,
+                              ) || 0) +
+                              (Number(
+                                localExpenseAmount?.expense?.total_rec_cash,
+                              ) || 0),
+                            exp:
+                              Number(
+                                localExpenseAmount?.expense?.total_exp_cash,
+                              ) || 0,
+                            highlight: true,
+                          },
+                          {
+                            label: "Paid",
+                            rec:
+                              Number(
+                                localSalesAmount?.local_paid?.total_cash,
+                              ) || 0,
+                            exp: 0,
+                          },
+                          {
+                            label: "Pending",
+                            rec:
+                              Number(
+                                localSalesAmount?.local_pending?.total_cash,
+                              ) || 0,
+                            exp: 0,
+                          },
+                          {
+                            label: "Party",
+                            rec:
+                              Number(
+                                localSalesAmount?.local_party?.total_cash,
+                              ) || 0,
+                            exp: 0,
+                          },
+                          {
+                            label: "Approved",
+                            rec:
+                              Number(
+                                localExpenseAmount?.approved?.total_rec_cash,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.approved?.total_exp_cash,
+                              ) || 0,
+                          },
+                          {
+                            label: "Production",
+                            rec:
+                              Number(
+                                localExpenseAmount?.production?.total_rec_cash,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.production?.total_exp_cash,
+                              ) || 0,
+                          },
+                          {
+                            label: "Hub",
+                            rec:
+                              Number(
+                                localExpenseAmount?.hub?.total_rec_cash,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.hub?.total_exp_cash,
+                              ) || 0,
+                          },
+                          {
+                            label: "Admin",
+                            rec:
+                              Number(
+                                localExpenseAmount?.admin?.total_rec_cash,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.admin?.total_exp_cash,
+                              ) || 0,
+                          },
+                          {
+                            label: "GST",
+                            rec: Number(gstSalesSummary?.total_cash) || 0,
+                            exp: Number(gstExpenseSummary?.total_cash) || 0,
+                          },
+                        ]}
+                        totalRec={
+                          localSalesAmount?.local_total?.total_cash +
+                          localExpenseAmount?.total?.total_rec_cash +
+                          gstSalesSummary?.total_cash
+                        }
+                        totalExp={localExpenseAmount?.total?.total_exp_cash}
+                        totalBal={
+                          localSalesAmount?.local_total?.total_cash +
+                          localExpenseAmount?.total?.total_rec_cash +
+                          gstSalesSummary?.total_cash -
+                          localExpenseAmount?.total?.total_exp_cash
+                        }
+                      />
+                    ),
                   },
                   {
                     label: "GPay",
@@ -696,6 +1291,113 @@ const Dashboard = () => {
                       gstSalesSummary?.total_gpay -
                       localExpenseAmount?.total?.total_exp_gpay,
                     channel: "gpay",
+                    tooltip: (
+                      <BalanceTableTooltip
+                        title="GPay Balance Breakdown"
+                        rows={[
+                          {
+                            label: "Unapproved",
+                            rec:
+                              (Number(
+                                localSalesAmount?.local_list?.total_gpay,
+                              ) || 0) +
+                              (Number(
+                                localExpenseAmount?.expense?.total_rec_gpay,
+                              ) || 0),
+                            exp:
+                              Number(
+                                localExpenseAmount?.expense?.total_exp_gpay,
+                              ) || 0,
+                            highlight: true,
+                          },
+                          {
+                            label: "Paid",
+                            rec:
+                              Number(
+                                localSalesAmount?.local_paid?.total_gpay,
+                              ) || 0,
+                            exp: 0,
+                          },
+                          {
+                            label: "Pending",
+                            rec:
+                              Number(
+                                localSalesAmount?.local_pending?.total_gpay,
+                              ) || 0,
+                            exp: 0,
+                          },
+                          {
+                            label: "Party",
+                            rec:
+                              Number(
+                                localSalesAmount?.local_party?.total_gpay,
+                              ) || 0,
+                            exp: 0,
+                          },
+                          {
+                            label: "Approved",
+                            rec:
+                              Number(
+                                localExpenseAmount?.approved?.total_rec_gpay,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.approved?.total_exp_gpay,
+                              ) || 0,
+                          },
+                          {
+                            label: "Production",
+                            rec:
+                              Number(
+                                localExpenseAmount?.production?.total_rec_gpay,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.production?.total_exp_gpay,
+                              ) || 0,
+                          },
+                          {
+                            label: "Hub",
+                            rec:
+                              Number(
+                                localExpenseAmount?.hub?.total_rec_gpay,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.hub?.total_exp_gpay,
+                              ) || 0,
+                          },
+                          {
+                            label: "Admin",
+                            rec:
+                              Number(
+                                localExpenseAmount?.admin?.total_rec_gpay,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.admin?.total_exp_gpay,
+                              ) || 0,
+                          },
+                          {
+                            label: "GST",
+                            rec: Number(gstSalesSummary?.total_gpay) || 0,
+                            exp: Number(gstExpenseSummary?.total_gpay) || 0,
+                          },
+                        ]}
+                        totalRec={
+                          localSalesAmount?.local_total?.total_gpay +
+                          localExpenseAmount?.total?.total_rec_gpay +
+                          gstSalesSummary?.total_gpay
+                        }
+                        totalExp={localExpenseAmount?.total?.total_exp_gpay}
+                        totalBal={
+                          localSalesAmount?.local_total?.total_gpay +
+                          localExpenseAmount?.total?.total_rec_gpay +
+                          gstSalesSummary?.total_gpay -
+                          localExpenseAmount?.total?.total_exp_gpay
+                        }
+                      />
+                    ),
                   },
                   {
                     label: "Account",
@@ -705,6 +1407,117 @@ const Dashboard = () => {
                       (gstExpenseSummary?.total_account +
                         localExpenseAmount?.total?.total_exp_account),
                     channel: "account",
+                    tooltip: (
+                      <BalanceTableTooltip
+                        title="Account Balance Breakdown"
+                        rows={[
+                          {
+                            label: "Unapproved",
+                            rec:
+                              (Number(
+                                localSalesAmount?.local_list?.total_account,
+                              ) || 0) +
+                              (Number(
+                                localExpenseAmount?.expense?.total_rec_account,
+                              ) || 0),
+                            exp:
+                              Number(
+                                localExpenseAmount?.expense?.total_exp_account,
+                              ) || 0,
+                            highlight: true,
+                          },
+                          {
+                            label: "Paid",
+                            rec:
+                              Number(
+                                localSalesAmount?.local_paid?.total_account,
+                              ) || 0,
+                            exp: 0,
+                          },
+                          {
+                            label: "Pending",
+                            rec:
+                              Number(
+                                localSalesAmount?.local_pending?.total_account,
+                              ) || 0,
+                            exp: 0,
+                          },
+                          {
+                            label: "Party",
+                            rec:
+                              Number(
+                                localSalesAmount?.local_party?.total_account,
+                              ) || 0,
+                            exp: 0,
+                          },
+                          {
+                            label: "Approved",
+                            rec:
+                              Number(
+                                localExpenseAmount?.approved?.total_rec_account,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.approved?.total_exp_account,
+                              ) || 0,
+                          },
+                          {
+                            label: "Production",
+                            rec:
+                              Number(
+                                localExpenseAmount?.production
+                                  ?.total_rec_account,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.production
+                                  ?.total_exp_account,
+                              ) || 0,
+                          },
+                          {
+                            label: "Hub",
+                            rec:
+                              Number(
+                                localExpenseAmount?.hub?.total_rec_account,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.hub?.total_exp_account,
+                              ) || 0,
+                          },
+                          {
+                            label: "Admin",
+                            rec:
+                              Number(
+                                localExpenseAmount?.admin?.total_rec_account,
+                              ) || 0,
+                            exp:
+                              Number(
+                                localExpenseAmount?.admin?.total_exp_account,
+                              ) || 0,
+                          },
+                          {
+                            label: "GST",
+                            rec: Number(gstSalesSummary?.total_account) || 0,
+                            exp: Number(gstExpenseSummary?.total_account) || 0,
+                          },
+                        ]}
+                        totalRec={
+                          gstSalesSummary?.total_account +
+                          localExpenseAmount?.total?.total_rec_account
+                        }
+                        totalExp={
+                          gstExpenseSummary?.total_account +
+                          localExpenseAmount?.total?.total_exp_account
+                        }
+                        totalBal={
+                          gstSalesSummary?.total_account +
+                          localExpenseAmount?.total?.total_rec_account -
+                          (gstExpenseSummary?.total_account +
+                            localExpenseAmount?.total?.total_exp_account)
+                        }
+                      />
+                    ),
                   },
                 ],
               },
@@ -734,7 +1547,6 @@ const Dashboard = () => {
                   localExpenseAmount?.total?.total_rec_account +
                   localSalesAmount?.local_total?.total_balance +
                   gstSalesSummary?.total_balance,
-
                 color: "text-green-600",
                 bg: "bg-green-50",
               },
@@ -746,7 +1558,6 @@ const Dashboard = () => {
                   gstExpenseSummary?.total_account +
                   localExpenseAmount?.total?.total_exp_account +
                   gstExpenseSummary?.total_balance,
-
                 color: "text-red-600",
                 bg: "bg-red-50",
               },
@@ -768,7 +1579,6 @@ const Dashboard = () => {
                     gstExpenseSummary?.total_account +
                     localExpenseAmount?.total?.total_exp_account +
                     gstExpenseSummary?.total_balance),
-
                 color: balanceColor(
                   localSalesAmount?.local_total?.total_cash +
                     localExpenseAmount?.total?.total_rec_cash +
@@ -800,8 +1610,66 @@ const Dashboard = () => {
                       localSalesAmount?.local_total?.total_cash +
                       localExpenseAmount?.total?.total_rec_cash +
                       gstSalesSummary?.total_cash,
-
                     channel: "cash",
+                    tooltip: {
+                      title: "Cash Breakdown",
+                      sections: [
+                        {
+                          title: "Sales Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value: localSalesAmount?.local_list?.total_cash,
+                            },
+                            {
+                              label: "Paid",
+                              value: localSalesAmount?.local_paid?.total_cash,
+                            },
+                            {
+                              label: "Pending",
+                              value:
+                                localSalesAmount?.local_pending?.total_cash,
+                            },
+                            {
+                              label: "Party",
+                              value: localSalesAmount?.local_party?.total_cash,
+                            },
+                            {
+                              label: "GST",
+                              value: gstSalesSummary?.total_cash,
+                            },
+                          ],
+                        },
+                        {
+                          title: "Expense Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value:
+                                localExpenseAmount?.expense?.total_rec_cash,
+                            },
+                            {
+                              label: "Approved",
+                              value:
+                                localExpenseAmount?.approved?.total_rec_cash,
+                            },
+                            {
+                              label: "Production",
+                              value:
+                                localExpenseAmount?.production?.total_rec_cash,
+                            },
+                            {
+                              label: "Hub",
+                              value: localExpenseAmount?.hub?.total_rec_cash,
+                            },
+                            {
+                              label: "Admin",
+                              value: localExpenseAmount?.admin?.total_rec_cash,
+                            },
+                          ],
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "GPay",
@@ -810,6 +1678,65 @@ const Dashboard = () => {
                       localExpenseAmount?.total?.total_rec_gpay +
                       gstSalesSummary?.total_gpay,
                     channel: "gpay",
+                    tooltip: {
+                      title: "GPay Breakdown",
+                      sections: [
+                        {
+                          title: "Sales Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value: localSalesAmount?.local_list?.total_gpay,
+                            },
+                            {
+                              label: "Paid",
+                              value: localSalesAmount?.local_paid?.total_gpay,
+                            },
+                            {
+                              label: "Pending",
+                              value:
+                                localSalesAmount?.local_pending?.total_gpay,
+                            },
+                            {
+                              label: "Party",
+                              value: localSalesAmount?.local_party?.total_gpay,
+                            },
+                            {
+                              label: "GST",
+                              value: gstSalesSummary?.total_gpay,
+                            },
+                          ],
+                        },
+                        {
+                          title: "Expense Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value:
+                                localExpenseAmount?.expense?.total_rec_gpay,
+                            },
+                            {
+                              label: "Approved",
+                              value:
+                                localExpenseAmount?.approved?.total_rec_gpay,
+                            },
+                            {
+                              label: "Production",
+                              value:
+                                localExpenseAmount?.production?.total_rec_gpay,
+                            },
+                            {
+                              label: "Hub",
+                              value: localExpenseAmount?.hub?.total_rec_gpay,
+                            },
+                            {
+                              label: "Admin",
+                              value: localExpenseAmount?.admin?.total_rec_gpay,
+                            },
+                          ],
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "Account",
@@ -817,16 +1744,106 @@ const Dashboard = () => {
                       gstSalesSummary?.total_account +
                       localExpenseAmount?.total?.total_rec_account,
                     channel: "account",
+                    tooltip: {
+                      title: "Account Breakdown",
+                      sections: [
+                        {
+                          title: "GST Sales",
+                          items: [
+                            {
+                              label: "GST",
+                              value: gstSalesSummary?.total_account,
+                            },
+                          ],
+                        },
+                        {
+                          title: "Expense Receive",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value:
+                                localExpenseAmount?.expense?.total_rec_account,
+                            },
+                            {
+                              label: "Approved",
+                              value:
+                                localExpenseAmount?.approved?.total_rec_account,
+                            },
+                            {
+                              label: "Production",
+                              value:
+                                localExpenseAmount?.production
+                                  ?.total_rec_account,
+                            },
+                            {
+                              label: "Hub",
+                              value: localExpenseAmount?.hub?.total_rec_account,
+                            },
+                            {
+                              label: "Admin",
+                              value:
+                                localExpenseAmount?.admin?.total_rec_account,
+                            },
+                          ],
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "Local Need to Get",
                     value: localSalesAmount?.local_total?.total_balance,
                     channel: "account",
+                    tooltip: {
+                      title: "Local Need to Get Breakdown",
+                      items: [
+                        {
+                          label: "Unapproved",
+                          value: localSalesAmount?.local_list?.total_balance,
+                        },
+                        {
+                          label: "Paid",
+                          value: localSalesAmount?.local_paid?.total_balance,
+                        },
+                        {
+                          label: "Pending",
+                          value: localSalesAmount?.local_pending?.total_balance,
+                        },
+                        {
+                          label: "Party",
+                          value: localSalesAmount?.local_party?.total_balance,
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "GST Need to Get",
                     value: gstSalesSummary?.total_balance,
                     channel: "account",
+                    tooltip: {
+                      title: "GST Need to Get Breakdown",
+                      items: [
+                        {
+                          label: "Total Sales",
+                          value: gstSalesSummary?.total_sales,
+                        },
+                        {
+                          label: "Total Cash",
+                          value: gstSalesSummary?.total_cash,
+                        },
+                        {
+                          label: "Total GPay",
+                          value: gstSalesSummary?.total_gpay,
+                        },
+                        {
+                          label: "Total Account",
+                          value: gstSalesSummary?.total_account,
+                        },
+                        {
+                          label: "Balance",
+                          value: gstSalesSummary?.total_balance,
+                        },
+                      ],
+                    },
                   },
                 ],
               },
@@ -838,11 +1855,61 @@ const Dashboard = () => {
                     label: "Cash",
                     value: localExpenseAmount?.total?.total_exp_cash,
                     channel: "cash",
+                    tooltip: {
+                      title: "Cash Expense Breakdown",
+                      items: [
+                        {
+                          label: "Unapproved",
+                          value: localExpenseAmount?.expense?.total_exp_cash,
+                        },
+                        {
+                          label: "Approved",
+                          value: localExpenseAmount?.approved?.total_exp_cash,
+                        },
+                        {
+                          label: "Production",
+                          value: localExpenseAmount?.production?.total_exp_cash,
+                        },
+                        {
+                          label: "Hub",
+                          value: localExpenseAmount?.hub?.total_exp_cash,
+                        },
+                        {
+                          label: "Admin",
+                          value: localExpenseAmount?.admin?.total_exp_cash,
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "GPay",
                     value: localExpenseAmount?.total?.total_exp_gpay,
                     channel: "gpay",
+                    tooltip: {
+                      title: "GPay Expense Breakdown",
+                      items: [
+                        {
+                          label: "Unapproved",
+                          value: localExpenseAmount?.expense?.total_exp_gpay,
+                        },
+                        {
+                          label: "Approved",
+                          value: localExpenseAmount?.approved?.total_exp_gpay,
+                        },
+                        {
+                          label: "Production",
+                          value: localExpenseAmount?.production?.total_exp_gpay,
+                        },
+                        {
+                          label: "Hub",
+                          value: localExpenseAmount?.hub?.total_exp_gpay,
+                        },
+                        {
+                          label: "Admin",
+                          value: localExpenseAmount?.admin?.total_exp_gpay,
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "Account",
@@ -850,11 +1917,80 @@ const Dashboard = () => {
                       gstExpenseSummary?.total_account +
                       localExpenseAmount?.total?.total_exp_account,
                     channel: "account",
+                    tooltip: {
+                      title: "Account Expense Breakdown",
+                      sections: [
+                        {
+                          title: "GST Expense",
+                          items: [
+                            {
+                              label: "GST",
+                              value: gstExpenseSummary?.total_account,
+                            },
+                          ],
+                        },
+                        {
+                          title: "Local Expense",
+                          items: [
+                            {
+                              label: "Unapproved",
+                              value:
+                                localExpenseAmount?.expense?.total_exp_account,
+                            },
+                            {
+                              label: "Approved",
+                              value:
+                                localExpenseAmount?.approved?.total_exp_account,
+                            },
+                            {
+                              label: "Production",
+                              value:
+                                localExpenseAmount?.production
+                                  ?.total_exp_account,
+                            },
+                            {
+                              label: "Hub",
+                              value: localExpenseAmount?.hub?.total_exp_account,
+                            },
+                            {
+                              label: "Admin",
+                              value:
+                                localExpenseAmount?.admin?.total_exp_account,
+                            },
+                          ],
+                        },
+                      ],
+                    },
                   },
                   {
                     label: "GST Need to Pay",
                     value: gstExpenseSummary?.total_balance,
                     channel: "account",
+                    tooltip: {
+                      title: "GST Need to Pay Breakdown",
+                      items: [
+                        {
+                          label: "Total Expense",
+                          value: gstExpenseSummary?.total_expense,
+                        },
+                        {
+                          label: "Total Cash",
+                          value: gstExpenseSummary?.total_cash,
+                        },
+                        {
+                          label: "Total GPay",
+                          value: gstExpenseSummary?.total_gpay,
+                        },
+                        {
+                          label: "Total Account",
+                          value: gstExpenseSummary?.total_account,
+                        },
+                        {
+                          label: "Balance",
+                          value: gstExpenseSummary?.total_balance,
+                        },
+                      ],
+                    },
                   },
                 ],
               },
