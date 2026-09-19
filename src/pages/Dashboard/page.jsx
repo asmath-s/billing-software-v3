@@ -92,7 +92,7 @@ const BalanceTableTooltip = ({
   totalExp = 0,
   totalBal = 0,
 }) => (
-  <div className="rounded-xl border border-slate-700/80 bg-slate-900/95 p-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md min-w-[340px] max-w-[440px]">
+  <div className="rounded-xl border border-slate-700/80 bg-slate-900/95 p-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md min-w-[360px] max-w-[460px]">
     {title && (
       <div className="mb-2 pb-1.5 border-b border-slate-800 font-semibold text-white tracking-wide text-xs">
         {title}
@@ -102,7 +102,7 @@ const BalanceTableTooltip = ({
       <table className="w-full text-right border-collapse text-[11px]">
         <thead>
           <tr className="border-b border-slate-700 bg-slate-800/90 font-semibold text-slate-300">
-            <th className="px-2.5 py-1.5 text-left border-r border-slate-700/80">
+            <th className="px-2.5 py-1.5 text-left border-r border-slate-700/80 whitespace-nowrap">
               Category
             </th>
             <th className="px-2.5 py-1.5 border-r border-slate-700/80">
@@ -129,7 +129,7 @@ const BalanceTableTooltip = ({
                 }`}
               >
                 <td
-                  className={`px-2.5 py-1 text-left font-medium border-r border-slate-700/80 ${
+                  className={`px-2.5 py-1 text-left font-medium border-r border-slate-700/80 whitespace-nowrap ${
                     r.highlight
                       ? "text-amber-300 font-semibold"
                       : isAllZero
@@ -1180,14 +1180,20 @@ const Dashboard = () => {
                         title="Cash Balance Breakdown"
                         rows={[
                           {
-                            label: "Unapproved",
+                            label: "Sales Unapproved",
                             rec:
-                              (Number(
+                              Number(
                                 localSalesAmount?.local_list?.total_cash,
-                              ) || 0) +
-                              (Number(
+                              ) || 0,
+                            exp: 0,
+                            highlight: true,
+                          },
+                          {
+                            label: "Expense Unapproved",
+                            rec:
+                              Number(
                                 localExpenseAmount?.expense?.total_rec_cash,
-                              ) || 0),
+                              ) || 0,
                             exp:
                               Number(
                                 localExpenseAmount?.expense?.total_exp_cash,
@@ -1296,14 +1302,20 @@ const Dashboard = () => {
                         title="GPay Balance Breakdown"
                         rows={[
                           {
-                            label: "Unapproved",
+                            label: "Sales Unapproved",
                             rec:
-                              (Number(
+                              Number(
                                 localSalesAmount?.local_list?.total_gpay,
-                              ) || 0) +
-                              (Number(
+                              ) || 0,
+                            exp: 0,
+                            highlight: true,
+                          },
+                          {
+                            label: "Expense Unapproved",
+                            rec:
+                              Number(
                                 localExpenseAmount?.expense?.total_rec_gpay,
-                              ) || 0),
+                              ) || 0,
                             exp:
                               Number(
                                 localExpenseAmount?.expense?.total_exp_gpay,
@@ -1412,14 +1424,20 @@ const Dashboard = () => {
                         title="Account Balance Breakdown"
                         rows={[
                           {
-                            label: "Unapproved",
+                            label: "Sales Unapproved",
                             rec:
-                              (Number(
+                              Number(
                                 localSalesAmount?.local_list?.total_account,
-                              ) || 0) +
-                              (Number(
+                              ) || 0,
+                            exp: 0,
+                            highlight: true,
+                          },
+                          {
+                            label: "Expense Unapproved",
+                            rec:
+                              Number(
                                 localExpenseAmount?.expense?.total_rec_account,
-                              ) || 0),
+                              ) || 0,
                             exp:
                               Number(
                                 localExpenseAmount?.expense?.total_exp_account,
@@ -1602,11 +1620,17 @@ const Dashboard = () => {
                     title="Finalize Balance Breakdown"
                     rows={[
                       {
-                        label: "Unapproved",
+                        label: "Sales Unapproved",
                         rec:
                           (Number(localSalesAmount?.local_list?.total_cash) || 0) +
                           (Number(localSalesAmount?.local_list?.total_gpay) || 0) +
-                          (Number(localSalesAmount?.local_list?.total_balance) || 0) +
+                          (Number(localSalesAmount?.local_list?.total_balance) || 0),
+                        exp: 0,
+                        highlight: true,
+                      },
+                      {
+                        label: "Expense Unapproved",
+                        rec:
                           (Number(localExpenseAmount?.expense?.total_rec_cash) || 0) +
                           (Number(localExpenseAmount?.expense?.total_rec_gpay) || 0) +
                           (Number(localExpenseAmount?.expense?.total_rec_account) || 0),
