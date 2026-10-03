@@ -137,56 +137,59 @@ const PrintUipdf = forwardRef((props, ref) => {
                   </tr>
                 ))}
               </tbody>
-          <tfoot style={{ background: "#fff" }}>
-            <tr>
-              <td colSpan="3" style={{ height: "25px", padding: "0" }}>
-                <div className="flex flex-col items-end mr-2">
-                  <p className="text-[12px] font-medium">Total </p>
-                  {props.advance !== 0 && props.balance > 0 && (
-                    <>
-                      <p className="text-[12px] font-medium">Advance </p>
-                      <p className="text-[12px] font-medium">Blance </p>
-                    </>
-                  )}
-                </div>
-              </td>
-              <td style={{ paddingRight: "0" }}>
-                <div className="flex flex-col items-end ">
-                  <p className="text-[12px] font-medium !pr-[4px]">
-                    {" "}
-                    ₹ {props.amount}
-                  </p>
-                  {props.advance !== 0 && props.balance > 0 && (
-                    <>
+              <tfoot style={{ background: "#fff" }}>
+                <tr>
+                  <td colSpan="3" style={{ height: "25px", padding: "0" }}>
+                    <div className="flex flex-col items-end mr-2">
+                      <p className="text-[12px] font-medium">Total </p>
+                      {props.advance !== 0 && props.balance > 0 && (
+                        <>
+                          <p className="text-[12px] font-medium">Advance </p>
+                          <p className="text-[12px] font-medium">Blance </p>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                  <td style={{ paddingRight: "0" }}>
+                    <div className="flex flex-col items-end ">
                       <p className="text-[12px] font-medium !pr-[4px]">
                         {" "}
-                        ₹ {props.advance}
+                        ₹ {props.amount}
                       </p>
-                      <p className="text-[12px] font-semibold border-t !pr-[4px]">
-                        {" "}
-                        ₹ {props.balance}
+                      {props.advance !== 0 && props.balance > 0 && (
+                        <>
+                          <p className="text-[12px] font-medium !pr-[4px]">
+                            {" "}
+                            ₹ {props.advance}
+                          </p>
+                          <p className="text-[12px] font-semibold border-t !pr-[4px]">
+                            {" "}
+                            ₹ {props.balance}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td
+                    colSpan="4"
+                    style={{ background: "#fff", padding: "0px" }}
+                  >
+                    <div className="flex flex-col items-end gap-3 border-b-5 border-[#2A3042] pt-[1px] pr-2">
+                      <p className="font-semibold text-[12px]">
+                        For Rayyan Graphics
                       </p>
-                    </>
-                  )}
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td colSpan="4" style={{ background: "#fff", padding: "0px" }}>
-                <div className="flex flex-col items-end gap-3 border-b-5 border-[#2A3042] pt-[1px] pr-2">
-                  <p className="font-semibold text-[12px]">
-                    For Rayyan Graphics
-                  </p>
-                  <span className="text-[12px]">Authorised Signatory</span>
-                </div>
-              </td>
-            </tr>
-          </tfoot>
-        </Table>
+                      <span className="text-[12px]">Authorised Signatory</span>
+                    </div>
+                  </td>
+                </tr>
+              </tfoot>
+            </Table>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
   );
 });
 

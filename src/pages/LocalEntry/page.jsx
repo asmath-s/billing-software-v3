@@ -39,10 +39,7 @@ import { LOCALENTRY } from "../../router/paths";
 import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { setCurrentTime } from "../../utils/DatewithTime";
 import { formattedAmount } from "../../utils/FormatAmount";
-import {
-  findMatchingEntity,
-  isNameMatch,
-} from "../../utils/nameNormalizer";
+import { findMatchingEntity, isNameMatch } from "../../utils/nameNormalizer";
 import { transformBillingData } from "../../utils/transformBillingData";
 
 const num = (v) => Number(v) || 0;
@@ -252,7 +249,11 @@ const LocalEntry = () => {
 
       // 2. Search local customerList
       if (!finalCustomerId) {
-        const localMatch = findMatchingEntity(trimmedName, customerList, "name");
+        const localMatch = findMatchingEntity(
+          trimmedName,
+          customerList,
+          "name",
+        );
         if (localMatch) {
           finalCustomerId = localMatch.documentId;
           setCustomerId(finalCustomerId);
@@ -264,7 +265,11 @@ const LocalEntry = () => {
         try {
           const latestCustomers = await getCustomers();
           setCustomerList(latestCustomers || []);
-          const dbMatch = findMatchingEntity(trimmedName, latestCustomers, "name");
+          const dbMatch = findMatchingEntity(
+            trimmedName,
+            latestCustomers,
+            "name",
+          );
           if (dbMatch) {
             finalCustomerId = dbMatch.documentId;
             setCustomerId(finalCustomerId);
@@ -661,7 +666,15 @@ const LocalEntry = () => {
 
           <Button
             type="submit"
-            label={loading ? (documentId ? "Updating..." : "Saving...") : (documentId ? "Update" : "Save")}
+            label={
+              loading
+                ? documentId
+                  ? "Updating..."
+                  : "Saving..."
+                : documentId
+                  ? "Update"
+                  : "Save"
+            }
             icon1={<SaveIcon color="#fff" />}
             icon2={<SaveIcon color="#fff" />}
             disabled={loading}

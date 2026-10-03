@@ -58,8 +58,7 @@ const NORMAL_CALCULATED_CUSTOMERS = [
 ];
 
 const GstEntry = () => {
-  const { user } = useAuth();
-  const role = user?.role?.name?.toLowerCase();
+  const { role } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("editId");
