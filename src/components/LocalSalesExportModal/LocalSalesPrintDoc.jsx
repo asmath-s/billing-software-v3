@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
+import Logo from "../../assets/rayyanflexlogo.png";
 import dayjs from "../../utils/dayjs";
 import { formattedAmount } from "../../utils/FormatAmount";
-import Logo from "../../assets/rayyanflexlogo.png";
 
 const LocalSalesPrintDoc = forwardRef((props, ref) => {
   const {
@@ -35,17 +35,30 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
     return sum + itemGpay;
   }, 0);
 
+  const totalNoRecieved = (records || []).reduce((sum, item) => {
+    const itemNoRecieved = (item?.no_recieved || []).reduce(
+      (nrSum, nr) => nrSum + (Number(nr?.amount) || 0),
+      0,
+    );
+    return sum + itemNoRecieved;
+  }, 0);
+
   const totalBalance = (records || []).reduce(
     (sum, item) => sum + (Number(item?.balance_amount) || 0),
     0,
   );
 
   const hasDateFilter = Boolean(fromDate && toDate);
-  const hasCustomerFilter = Boolean(selectedCustomer?.label || selectedCustomer?.name);
+  const hasCustomerFilter = Boolean(
+    selectedCustomer?.label || selectedCustomer?.name,
+  );
   const customerName = selectedCustomer?.label || selectedCustomer?.name || "";
 
   return (
-    <div ref={ref} className="p-8 bg-white text-gray-900 font-sans print-document">
+    <div
+      ref={ref}
+      className="p-8 bg-white text-gray-900 font-sans print-document"
+    >
       {/* ── STYLES FOR PRINT / A4 OUTPUT ── */}
       <style>{`
         @page {
@@ -77,7 +90,11 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
       <div className="border-b-2 border-gray-800 pb-4 mb-4">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
-            <img src={Logo} alt="Rayyan Flex" className="h-12 w-auto object-contain" />
+            <img
+              src={Logo}
+              alt="Rayyan Flex"
+              className="h-12 w-auto object-contain"
+            />
             <div>
               <h1 className="text-xl font-bold tracking-tight text-gray-900 uppercase">
                 RAYYAN GRAPHICS / FLEX
@@ -102,7 +119,9 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
       {/* ── APPLIED FILTERS INFO BOX ── */}
       <div className="bg-gray-50 border border-gray-200 rounded-md p-3 mb-4 text-xs grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div>
-          <span className="text-gray-500 font-medium block">Customer Filter:</span>
+          <span className="text-gray-500 font-medium block">
+            Customer Filter:
+          </span>
           <span className="font-semibold text-gray-800">
             {hasCustomerFilter ? customerName : "All Customers (No Filter)"}
           </span>
@@ -118,8 +137,12 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
         </div>
 
         <div>
-          <span className="text-gray-500 font-medium block">Total Entries:</span>
-          <span className="font-semibold text-gray-800">{records.length} records</span>
+          <span className="text-gray-500 font-medium block">
+            Total Entries:
+          </span>
+          <span className="font-semibold text-gray-800">
+            {records.length} records
+          </span>
         </div>
       </div>
 
@@ -128,15 +151,36 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
         <table className="w-full border-collapse border border-gray-300 text-xs">
           <thead>
             <tr className="bg-gray-800 text-white">
-              <th className="border border-gray-300 py-2 px-2 text-center w-10">#</th>
-              <th className="border border-gray-300 py-2 px-2 text-center w-20">Date</th>
-              <th className="border border-gray-300 py-2 px-2 text-center w-16">Bill No</th>
-              <th className="border border-gray-300 py-2 px-2 text-left w-28">Customer</th>
-              <th className="border border-gray-300 py-2 px-2 text-left">Particulars</th>
-              <th className="border border-gray-300 py-2 px-2 text-right w-20">Total (₹)</th>
-              <th className="border border-gray-300 py-2 px-2 text-right w-20">Cash (₹)</th>
-              <th className="border border-gray-300 py-2 px-2 text-right w-20">GPay (₹)</th>
-              <th className="border border-gray-300 py-2 px-2 text-right w-20">Balance (₹)</th>
+              <th className="border border-gray-300 py-2 px-2 text-center w-10">
+                #
+              </th>
+              <th className="border border-gray-300 py-2 px-2 text-center w-20">
+                Date
+              </th>
+              <th className="border border-gray-300 py-2 px-2 text-center w-16">
+                Bill No
+              </th>
+              <th className="border border-gray-300 py-2 px-2 text-left w-28">
+                Customer
+              </th>
+              <th className="border border-gray-300 py-2 px-2 text-left">
+                Particulars
+              </th>
+              <th className="border border-gray-300 py-2 px-2 text-right w-20">
+                Total (₹)
+              </th>
+              <th className="border border-gray-300 py-2 px-2 text-right w-20">
+                Cash (₹)
+              </th>
+              <th className="border border-gray-300 py-2 px-2 text-right w-20">
+                GPay (₹)
+              </th>
+              <th className="border border-gray-300 py-2 px-2 text-right w-20">
+                No Received (₹)
+              </th>
+              <th className="border border-gray-300 py-2 px-2 text-right w-20">
+                Balance (₹)
+              </th>
             </tr>
           </thead>
 
@@ -150,6 +194,11 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
                 (sum, g) => sum + (Number(g.amount) || 0),
                 0,
               );
+              const itemNoRecieved = (item.no_recieved || []).reduce(
+                (sum, nr) => sum + (Number(nr.amount) || 0),
+                0,
+              );
+
               const particularsText = (item.particulars || [])
                 .map((p) => p.text)
                 .join(", ");
@@ -183,6 +232,11 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
                   <td className="border border-gray-300 py-1.5 px-2 text-right text-gray-800">
                     {itemGpay > 0 ? formattedAmount(itemGpay) : "-"}
                   </td>
+
+                  <td className="border border-gray-300 py-1.5 px-2 text-right text-gray-800">
+                    {itemNoRecieved > 0 ? formattedAmount(itemNoRecieved) : "-"}
+                  </td>
+
                   <td
                     className={`border border-gray-300 py-1.5 px-2 text-right font-bold ${
                       Number(item.balance_amount) > 0
@@ -199,7 +253,10 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
 
           <tfoot>
             <tr className="bg-gray-100 font-bold border-t-2 border-gray-800 page-break-inside-avoid">
-              <td colSpan={5} className="border border-gray-300 py-2 px-3 text-right uppercase text-xs">
+              <td
+                colSpan={5}
+                className="border border-gray-300 py-2 px-3 text-right uppercase text-xs"
+              >
                 Totals ({records.length} records):
               </td>
               <td className="border border-gray-300 py-2 px-2 text-right text-xs font-bold text-gray-900">
@@ -211,6 +268,11 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
               <td className="border border-gray-300 py-2 px-2 text-right text-xs font-bold text-gray-900">
                 ₹ {formattedAmount(totalGpay)}
               </td>
+
+              <td className="border border-gray-300 py-2 px-2 text-right text-xs font-bold text-gray-900">
+                ₹ {formattedAmount(totalNoRecieved)}
+              </td>
+
               <td className="border border-gray-300 py-2 px-2 text-right text-xs font-extrabold text-red-600">
                 ₹ {formattedAmount(totalBalance)}
               </td>
@@ -223,23 +285,46 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
       <div className="flex justify-end mb-8 page-break-inside-avoid">
         <div className="w-80 border border-gray-300 rounded-md overflow-hidden text-xs bg-gray-50/50">
           <div className="flex justify-between py-1.5 px-3 border-b border-gray-200">
-            <span className="font-semibold text-gray-600 uppercase">Total Sales:</span>
-            <span className="font-bold text-gray-900">₹ {formattedAmount(totalSales)}</span>
+            <span className="font-semibold text-gray-600 uppercase">
+              Total Sales:
+            </span>
+            <span className="font-bold text-gray-900">
+              ₹ {formattedAmount(totalSales)}
+            </span>
           </div>
 
           <div className="flex justify-between py-1.5 px-3 border-b border-gray-200">
-            <span className="font-semibold text-gray-600 uppercase">Total Cash:</span>
-            <span className="font-bold text-gray-900">₹ {formattedAmount(totalCash)}</span>
+            <span className="font-semibold text-gray-600 uppercase">
+              Total Cash:
+            </span>
+            <span className="font-bold text-gray-900">
+              ₹ {formattedAmount(totalCash)}
+            </span>
           </div>
 
           <div className="flex justify-between py-1.5 px-3 border-b border-gray-200">
-            <span className="font-semibold text-gray-600 uppercase">Total GPay:</span>
-            <span className="font-bold text-gray-900">₹ {formattedAmount(totalGpay)}</span>
+            <span className="font-semibold text-gray-600 uppercase">
+              Total GPay:
+            </span>
+            <span className="font-bold text-gray-900">
+              ₹ {formattedAmount(totalGpay)}
+            </span>
+          </div>
+
+          <div className="flex justify-between py-1.5 px-3 border-b border-gray-200">
+            <span className="font-semibold text-gray-600 uppercase">
+              Total No Received:
+            </span>
+            <span className="font-bold text-gray-900">
+              ₹ {formattedAmount(totalNoRecieved)}
+            </span>
           </div>
 
           <div className="flex justify-between py-2 px-3 bg-gray-100 text-sm font-extrabold border-t border-gray-300">
             <span className="uppercase text-gray-900">Total Balance:</span>
-            <span className={totalBalance > 0 ? "text-red-600" : "text-green-700"}>
+            <span
+              className={totalBalance > 0 ? "text-red-600" : "text-green-700"}
+            >
               ₹ {formattedAmount(totalBalance)}
             </span>
           </div>
@@ -250,11 +335,15 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
       <div className="pt-4 border-t border-gray-300 flex justify-between items-end text-xs text-gray-600 page-break-inside-avoid">
         <div>
           <p className="italic">* Computer-generated accounting statement.</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">Printed from Rayyan Flex ERP System</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">
+            Printed from Rayyan Flex ERP System
+          </p>
         </div>
 
         <div className="text-right">
-          <p className="font-semibold text-gray-800 uppercase">For RAYYAN GRAPHICS / FLEX</p>
+          <p className="font-semibold text-gray-800 uppercase">
+            For RAYYAN GRAPHICS / FLEX
+          </p>
           <div className="h-12"></div>
           <p className="font-medium text-gray-700 border-t border-gray-400 pt-1">
             Authorized Signatory

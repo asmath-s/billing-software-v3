@@ -44,6 +44,7 @@ import {
   CheckBoxIcon,
   CheckIcon,
   GpayIcon,
+  MoneyReceiveIcon,
   PendingIcon,
   SaveIcon,
   SavePdfIcon,
@@ -304,6 +305,17 @@ const LocalPartyList = () => {
             ]
           : [],
 
+      no_recieved:
+        customType === "no_recieved"
+          ? [
+              {
+                date,
+                amount: Number(receivedAmount),
+              },
+            ]
+          : [],
+
+      custom_type: customType,
       received_amount: Number(receivedAmount),
       balance_amount: 0,
       total_amount: 0,
@@ -321,6 +333,9 @@ const LocalPartyList = () => {
     }
 
     loadLocalPartyData();
+    if (showOverview) {
+      loadLocalTotalAmount();
+    }
 
     setEditId("");
     setDate(new Date());
@@ -331,6 +346,7 @@ const LocalPartyList = () => {
   };
 
   const handleEdit = (item) => {
+    console.log("Editing item:", item);
     setEditId(item.documentId);
     setDate(new Date(item.date));
     setSearchCustomer({
@@ -338,7 +354,7 @@ const LocalPartyList = () => {
       value: item.customer?.documentId,
     });
     setParticulars(item.particulars?.[0]?.text || "");
-    setCustomType(item.cash?.length ? "cash" : "gpay");
+    setCustomType(item.custom_type);
     setReceivedAmount(
       item.custom_type === "cash"
         ? item.cash?.[0]?.amount || 0
@@ -393,6 +409,12 @@ const LocalPartyList = () => {
             amount={localAmount?.local_party?.total_gpay}
             icon={<GpayIcon color="#292D32" width="34" height="34" />}
             titleColor="text-green-800"
+          />
+          <CardUI
+            title="Total No Received"
+            amount={localAmount?.local_party?.total_no_recieved}
+            icon={<MoneyReceiveIcon color="#292D32" width="34" height="34" />}
+            titleColor="text-orange-800"
           />
           <CardUI
             title="Total Balance"
@@ -470,6 +492,7 @@ const LocalPartyList = () => {
             options={[
               { value: "cash", label: "Cash" },
               { value: "gpay", label: "Gpay" },
+              { value: "no_recieved", label: "No Received" },
             ]}
             value={customType}
             onChange={(e) => setCustomType(e.target.value)}
@@ -502,14 +525,15 @@ const LocalPartyList = () => {
         <Table borderAxis="both" hoverRow>
           <thead>
             <tr>
-              <th className="w-[10%]">Date</th>
+              <th className="w-[9%]">Date</th>
               <th className="w-[10%]">Customer</th>
-              <th className="w-[11%]">Phone</th>
-              <th className="w-[30%]">Particulars</th>
+              <th className="w-[10%]">Phone</th>
+              <th className="w-[23%]">Particulars</th>
               <th className="w-[7%]">Total</th>
-              <th className="w-[14%]">Cash</th>
-              <th className="w-[16%]">GPay</th>
-              <th className="w-[7%]">Balance</th>
+              <th className="w-[11%]">Cash</th>
+              <th className="w-[11%]">GPay</th>
+              <th className="w-[11%]">No Received</th>
+              <th className="w-[8%]">Balance</th>
               <th className="w-[10%]">Action</th>
             </tr>
           </thead>
@@ -517,13 +541,13 @@ const LocalPartyList = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="text-center py-4">
+                <td colSpan={10} className="text-center py-4">
                   Loading...
                 </td>
               </tr>
             ) : localData.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-4 text-gray-500">
+                <td colSpan={10} className="text-center py-4 text-gray-500">
                   No records found
                 </td>
               </tr>
@@ -573,6 +597,18 @@ const LocalPartyList = () => {
                             </div>
                           ))}
                   </td>
+
+                  <td>
+                    {item.custom_type === "no_recieved"
+                      ? item.no_recieved.map((n) => (
+                          <div key={n.id}>
+                            {dayjs(n.date).format("DD/MM/YY")} -{" "}
+                            {formattedAmount(n.amount)}
+                          </div>
+                        ))
+                      : "-"}
+                  </td>
+
                   <td className={item.balance_amount > 0 ? "text-red-500" : ""}>
                     {item.balance_amount === 0 || item.balance_amount === null
                       ? "-"
@@ -610,7 +646,7 @@ const LocalPartyList = () => {
 
           <tfoot>
             <tr>
-              <td colSpan={9}>
+              <td colSpan={10}>
                 <Box
                   sx={{
                     display: "flex",
