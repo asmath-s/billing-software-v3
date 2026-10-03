@@ -38,11 +38,11 @@ const PrintUipdf = forwardRef((props, ref) => {
   }
 
   return (
-    <div className="w-[794px] h-[548px]" ref={ref}>
+    <div className="w-[390px] h-[145mm]" ref={ref}>
       <div className="relative">
-        <div className="w-[794px] h-[548px] my-0 mx-auto pt-[0px] pb-[10px] px-[10px]">
+        <div className="w-[390px] my-0 mx-auto pt-[0px] pb-[10px] px-[10px]">
           <div className="flex justify-between items-center border-b pb-[2px]">
-            <img src={Logo} width={180} height={200} alt="Logo" />
+            <img src={Logo} width={100} height={100} alt="Logo" />
 
             <p className="absolute right-[45%] top-[18px] text-center text-[14px]">
               Bill No: {props.billNo}
