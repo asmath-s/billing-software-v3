@@ -573,33 +573,29 @@ const LocalPartyList = () => {
                   </td>
 
                   <td>
-                    {item.custom_type === "cash"
-                      ? formattedAmount(item.cash_received)
-                      : item.cash?.length === 0
-                        ? "-"
-                        : item.cash.map((c) => (
-                            <div key={c.id}>
-                              {dayjs(c.date).format("DD/MM/YY")} -{" "}
-                              {formattedAmount(c.amount)}
-                            </div>
-                          ))}
+                    {item.cash.length > 0
+                      ? item.cash.map((c) => (
+                          <div key={c.id}>
+                            {dayjs(c.date).format("DD/MM/YY")} -{" "}
+                            {formattedAmount(c.amount)}
+                          </div>
+                        ))
+                      : "-"}
                   </td>
 
                   <td>
-                    {item.custom_type === "gpay"
-                      ? formattedAmount(item.gpay_received)
-                      : item.gpay?.length === 0
-                        ? "-"
-                        : item.gpay.map((g) => (
-                            <div key={g.id}>
-                              {dayjs(g.date).format("DD/MM/YY")} -{" "}
-                              {formattedAmount(g.amount)}
-                            </div>
-                          ))}
+                    {item.gpay.length > 0
+                      ? item.gpay.map((g) => (
+                          <div key={g.id}>
+                            {dayjs(g.date).format("DD/MM/YY")} -{" "}
+                            {formattedAmount(g.amount)}
+                          </div>
+                        ))
+                      : "-"}
                   </td>
 
                   <td>
-                    {item.custom_type === "no_recieved"
+                    {item.no_recieved.length > 0
                       ? item.no_recieved.map((n) => (
                           <div key={n.id}>
                             {dayjs(n.date).format("DD/MM/YY")} -{" "}
