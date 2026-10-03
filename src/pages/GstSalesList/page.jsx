@@ -42,6 +42,7 @@ import {
 } from "../../api/gstList";
 import Button from "../../components/Button/Button";
 import Filter from "../../components/Fitler/Filter";
+import GstSalesExportModal from "../../components/GstSalesExportModal/GstSalesExportModal";
 import {
   AccountIcon,
   CashIcon,
@@ -54,7 +55,6 @@ import {
   SaveIcon,
   SavePdfIcon,
 } from "../../components/icons";
-import GstSalesExportModal from "../../components/GstSalesExportModal/GstSalesExportModal";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RefreshIcon from "../../components/icons/RefreshIcon";
 import RightIcon from "../../components/icons/RightIcon";
@@ -211,7 +211,16 @@ const GstSalesList = () => {
 
       return params.toString();
     },
-    [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate, statusFilter],
+    [
+      page,
+      rowsPerPage,
+      searchCustomer,
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+      statusFilter,
+    ],
   );
 
   /* ─────────────────────────────────────────────
@@ -732,8 +741,7 @@ const GstSalesList = () => {
           <InputField
             label="Received Amount"
             name="received_amount"
-            type="number"
-            min={0}
+            type="text"
             placeholder="Enter amount"
             value={form.receivedAmount}
             onChange={(e) => setFormField("receivedAmount", e.target.value)}

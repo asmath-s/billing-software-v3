@@ -495,8 +495,7 @@ const DynamicQuotationTable = ({
               <div className="flex items-center gap-1.5">
                 <span>Discount (₹):</span>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
                   value={discountAmount || ""}
                   placeholder="0"
                   onChange={(e) =>

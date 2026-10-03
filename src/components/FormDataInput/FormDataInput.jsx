@@ -37,10 +37,7 @@ export const calculateFlexTotal = (
       return Number(calculated.toFixed(2));
     }
 
-    if (
-      calculated >= 100 &&
-      (area >= 10 || area * pieces >= 20 || rate > 10)
-    ) {
+    if (calculated >= 100 && (area >= 10 || area * pieces >= 20 || rate > 10)) {
       return Number(calculated.toFixed(2));
     } else {
       return 100 * pieces;
@@ -197,8 +194,7 @@ const FormDataInput = ({
 
               <InputField
                 placeholder="Width"
-                type="number"
-                step="any"
+                type="text"
                 value={row.width === 0 ? "" : row.width}
                 onChange={(e) => updateRow(index, "width", e.target.value)}
                 required
@@ -206,8 +202,7 @@ const FormDataInput = ({
 
               <InputField
                 placeholder="Height"
-                type="number"
-                step="any"
+                type="text"
                 value={row.height === 0 ? "" : row.height}
                 onChange={(e) => updateRow(index, "height", e.target.value)}
                 required
@@ -226,8 +221,7 @@ const FormDataInput = ({
 
               <InputField
                 placeholder="Sq.ft Rate"
-                type="number"
-                step="any"
+                type="text"
                 value={row.sq_ft_price === 0 ? "" : row.sq_ft_price}
                 onChange={(e) =>
                   updateRow(index, "sq_ft_price", e.target.value)
@@ -237,7 +231,7 @@ const FormDataInput = ({
 
               <InputField
                 placeholder="Piece Count"
-                type="number"
+                type="text"
                 value={row.piece_count === 0 ? "" : row.piece_count}
                 onChange={(e) =>
                   updateRow(index, "piece_count", e.target.value)
@@ -275,7 +269,7 @@ const FormDataInput = ({
 
               <InputField
                 placeholder="Piece Count"
-                type="number"
+                type="text"
                 value={row.piece_count === 0 ? "" : row.piece_count}
                 onChange={(e) =>
                   updateRow(index, "piece_count", e.target.value)
@@ -284,8 +278,7 @@ const FormDataInput = ({
 
               <InputField
                 placeholder="Amount"
-                type="number"
-                step="any"
+                type="text"
                 value={row.per_piece_amount === 0 ? "" : row.per_piece_amount}
                 onChange={(e) =>
                   updateRow(index, "per_piece_amount", e.target.value)

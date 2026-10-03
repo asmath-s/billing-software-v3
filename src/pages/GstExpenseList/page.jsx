@@ -42,6 +42,7 @@ import {
 import { getVendors } from "../../api/vendor";
 import Button from "../../components/Button/Button";
 import Filter from "../../components/Fitler/Filter";
+import GstExpenseExportModal from "../../components/GstExpenseExportModal/GstExpenseExportModal";
 import {
   AccountIcon,
   CashIcon,
@@ -54,7 +55,6 @@ import {
   SaveIcon,
   SavePdfIcon,
 } from "../../components/icons";
-import GstExpenseExportModal from "../../components/GstExpenseExportModal/GstExpenseExportModal";
 import LeftArrowIcon from "../../components/icons/LeftArrowIcon";
 import RefreshIcon from "../../components/icons/RefreshIcon";
 import RightIcon from "../../components/icons/RightIcon";
@@ -208,7 +208,16 @@ const GstExpenseList = () => {
 
       return params.toString();
     },
-    [page, rowsPerPage, searchCustomer, fromDate, toDate, fyFromDate, fyToDate, statusFilter],
+    [
+      page,
+      rowsPerPage,
+      searchCustomer,
+      fromDate,
+      toDate,
+      fyFromDate,
+      fyToDate,
+      statusFilter,
+    ],
   );
 
   /* ─────────────────────────────────────────────
@@ -309,8 +318,8 @@ const GstExpenseList = () => {
     loadGstSalesData();
   }, [loadGstSalesData]);
   useEffect(() => {
-    if(showOverview) {
-    loadGstSalesSummary();
+    if (showOverview) {
+      loadGstSalesSummary();
     }
   }, [loadGstSalesSummary, showOverview]);
   useEffect(() => {
@@ -733,8 +742,7 @@ const GstExpenseList = () => {
           <InputField
             label="Sended Amount"
             name="sended_amount"
-            type="number"
-            min={0}
+            type="text"
             placeholder="Enter amount"
             value={form.sendedAmount}
             onChange={(e) => setFormField("sendedAmount", e.target.value)}
