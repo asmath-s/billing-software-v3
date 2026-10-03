@@ -704,6 +704,9 @@ const LocalPartyList = () => {
         sectionTitle="Local Sales – Party List"
         status="party"
         customerOptions={customerOptions}
+        initialCustomer={searchCustomer}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
       />
     </MainLayout>
   );

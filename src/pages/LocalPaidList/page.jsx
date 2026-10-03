@@ -471,6 +471,9 @@ const LocalPaidList = () => {
         sectionTitle="Local Sales – Approved List"
         status="paid"
         customerOptions={customerOptions}
+        initialCustomer={searchCustomer}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
       />
     </MainLayout>
   );

@@ -58,7 +58,7 @@ export const fetchAllLocalSalesForExport = async ({
   let allRecords = [];
   let currentPage = 1;
   let pageCount = 1;
-  const pageSize = 25;
+  const pageSize = 100;
 
   const baseParams = [
     "populate=*",
@@ -69,7 +69,7 @@ export const fetchAllLocalSalesForExport = async ({
 
   if (customerDocumentId) {
     baseParams.push(
-      `filters[customer][documentId][$eq]=${encodeURIComponent(customerDocumentId)}`,
+      `filters[customer][documentId][$eq]=${encodeURIComponent(String(customerDocumentId).trim())}`,
     );
   }
 

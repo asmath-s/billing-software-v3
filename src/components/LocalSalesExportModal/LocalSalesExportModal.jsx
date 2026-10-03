@@ -16,6 +16,9 @@ const LocalSalesExportModal = ({
   sectionTitle = "Local Sales – Approved List",
   status = "paid",
   customerOptions = [],
+  initialCustomer = null,
+  initialFromDate = null,
+  initialToDate = null,
 }) => {
   const printRef = useRef(null);
 
@@ -28,6 +31,26 @@ const LocalSalesExportModal = ({
   const [printData, setPrintData] = useState(null);
   const [triggerPrintNow, setTriggerPrintNow] = useState(false);
 
+  // Sync initial filters whenever modal opens
+  useEffect(() => {
+    if (open) {
+      let resolvedCustomer = initialCustomer || null;
+      if (typeof resolvedCustomer === "string" && customerOptions.length > 0) {
+        resolvedCustomer =
+          findMatchingEntity(resolvedCustomer, customerOptions, "label") ||
+          resolvedCustomer;
+      } else if (resolvedCustomer && resolvedCustomer.value) {
+        const match = customerOptions.find(
+          (c) => c.value === resolvedCustomer.value,
+        );
+        if (match) resolvedCustomer = match;
+      }
+      setSelectedCustomer(resolvedCustomer);
+      setFromDate(initialFromDate || null);
+      setToDate(initialToDate || null);
+    }
+  }, [open, initialCustomer, initialFromDate, initialToDate, customerOptions]);
+
   const handleResetAndClose = useCallback(() => {
     if (loading) return;
     setSelectedCustomer(null);
@@ -39,9 +62,16 @@ const LocalSalesExportModal = ({
   }, [loading, onClose]);
 
   // Print hook
+  const activeCustomerLabel =
+    printData?.selectedCustomer?.label ||
+    printData?.selectedCustomer?.name ||
+    selectedCustomer?.label ||
+    selectedCustomer?.name ||
+    "";
+
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `${sectionTitle.replace(/[^\w\d-_]/g, "_")}_${selectedCustomer?.label ? selectedCustomer.label.replace(/[^\w\d-_]/g, "_") + "_" : ""}${dayjs().format("YYYYMMDD_HHmm")}`,
+    documentTitle: `${sectionTitle.replace(/[^\w\d-_]/g, "_")}_${activeCustomerLabel ? activeCustomerLabel.replace(/[^\w\d-_]/g, "_") + "_" : ""}${dayjs().format("YYYYMMDD_HHmm")}`,
     onAfterPrint: () => {
       setTriggerPrintNow(false);
     },
@@ -75,9 +105,28 @@ const LocalSalesExportModal = ({
     setLoadingMsg("Fetching local sales records and generating PDF...");
 
     try {
+      // Resolve customerDocumentId robustly
+      let customerDocumentId = selectedCustomer?.value;
+      if (!customerDocumentId && selectedCustomer) {
+        const queryTerm =
+          typeof selectedCustomer === "string"
+            ? selectedCustomer
+            : selectedCustomer?.label || selectedCustomer?.name || "";
+        const match =
+          findMatchingEntity(queryTerm, customerOptions, "label") ||
+          customerOptions.find(
+            (c) =>
+              c.value === selectedCustomer ||
+              c.label?.toLowerCase() === queryTerm.toLowerCase(),
+          );
+        if (match?.value) {
+          customerDocumentId = match.value;
+        }
+      }
+
       const records = await fetchAllLocalSalesForExport({
         status,
-        customerDocumentId: selectedCustomer?.value,
+        customerDocumentId,
         fromDate,
         toDate,
       });
@@ -89,10 +138,20 @@ const LocalSalesExportModal = ({
         return;
       }
 
+      const resolvedPrintCustomer =
+        typeof selectedCustomer === "string"
+          ? customerOptions.find((c) => c.value === customerDocumentId) || {
+              label: selectedCustomer,
+            }
+          : selectedCustomer ||
+            (customerDocumentId
+              ? customerOptions.find((c) => c.value === customerDocumentId)
+              : null);
+
       setPrintData({
         title: sectionTitle,
         status,
-        selectedCustomer,
+        selectedCustomer: resolvedPrintCustomer,
         fromDate,
         toDate,
         records,
@@ -144,7 +203,7 @@ const LocalSalesExportModal = ({
             <div>
               <AutocompleteField
                 label="Customer Name (Optional)"
-                value={selectedCustomer || ""}
+                value={selectedCustomer || null}
                 options={customerOptions}
                 onChange={(_, val) => {
                   const resolved =
@@ -152,6 +211,14 @@ const LocalSalesExportModal = ({
                       ? findMatchingEntity(val, customerOptions, "label") || val
                       : val;
                   setSelectedCustomer(resolved);
+                }}
+                isOptionEqualToValue={(option, val) => {
+                  if (!val) return false;
+                  if (typeof val === "string")
+                    return option?.label === val || option?.value === val;
+                  return (
+                    option?.value === val?.value || option?.label === val?.label
+                  );
                 }}
                 placeholder="Select or search customer"
                 disabled={loading}

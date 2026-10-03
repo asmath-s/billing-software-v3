@@ -667,6 +667,9 @@ const LocalPendingList = () => {
         sectionTitle="Local Sales – Pending List"
         status="pending"
         customerOptions={customerOptions}
+        initialCustomer={searchCustomer}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
       />
     </MainLayout>
   );

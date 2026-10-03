@@ -218,13 +218,20 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
                     {item.bill_no || "-"}
                   </td>
                   <td className="border border-gray-300 py-1.5 px-2 text-gray-900 font-normal break-words">
-                    {item.customer?.name || "-"}
+                    <div>{item.customer?.name || "-"}</div>
+                    {item.customer?.phonenumber && (
+                      <div className="text-[10px] text-gray-500 font-mono">
+                        {item.customer.phonenumber}
+                      </div>
+                    )}
                   </td>
                   <td className="border border-gray-300 py-1.5 px-2 text-gray-700 text-[11px] break-words">
                     {particularsText || "-"}
                   </td>
                   <td className="border border-gray-300 py-1.5 px-2 text-right font-semibold text-gray-900">
-                    {formattedAmount(item.total_amount || 0)}
+                    {Number(item.total_amount) > 0
+                      ? formattedAmount(item.total_amount)
+                      : "-"}
                   </td>
                   <td className="border border-gray-300 py-1.5 px-2 text-right text-gray-800">
                     {itemCash > 0 ? formattedAmount(itemCash) : "-"}
@@ -244,7 +251,9 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
                         : "text-gray-900"
                     }`}
                   >
-                    {formattedAmount(item.balance_amount || 0)}
+                    {Number(item.balance_amount) > 0
+                      ? formattedAmount(item.balance_amount)
+                      : "-"}
                   </td>
                 </tr>
               );
