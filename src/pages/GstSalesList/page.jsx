@@ -937,6 +937,10 @@ const GstSalesList = () => {
         onClose={() => setExportModalOpen(false)}
         customerOptions={customerOptions}
         role={role}
+        summaryData={gstSalesSummary}
+        initialCustomer={searchCustomer}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
       />
     </MainLayout>
   );

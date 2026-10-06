@@ -10,20 +10,39 @@ const GstSalesPrintDoc = forwardRef((props, ref) => {
     fromDate = null,
     toDate = null,
     records = [],
+    summary = null,
+    summaryData = null,
     generatedAt = new Date(),
   } = props;
 
-  const totalDebit = (records || []).reduce(
-    (sum, item) => sum + (Number(item?.total_amount) || 0),
-    0,
-  );
+  const activeSummary = summary || summaryData;
 
-  const totalCredit = (records || []).reduce(
-    (sum, item) => sum + (Number(item?.received_amount) || 0),
-    0,
-  );
+  const totalDebit =
+    activeSummary?.total_sales !== undefined
+      ? Number(activeSummary.total_sales || 0)
+      : (records || []).reduce(
+          (sum, item) => sum + (Number(item?.total_amount) || 0),
+          0,
+        );
 
-  const balance = totalDebit - totalCredit;
+  const summaryCredit = activeSummary
+    ? Number(activeSummary.total_cash || 0) +
+      Number(activeSummary.total_gpay || 0) +
+      Number(activeSummary.total_account || 0)
+    : null;
+
+  const totalCredit =
+    summaryCredit !== null
+      ? summaryCredit
+      : (records || []).reduce(
+          (sum, item) => sum + (Number(item?.received_amount) || 0),
+          0,
+        );
+
+  const balance =
+    activeSummary?.total_balance !== undefined
+      ? Number(activeSummary.total_balance || 0)
+      : totalDebit - totalCredit;
 
   const hasDateFilter = Boolean(fromDate && toDate);
   const hasCustomerFilter = Boolean(selectedCustomer?.label || selectedCustomer?.name);
@@ -53,7 +72,7 @@ const GstSalesPrintDoc = forwardRef((props, ref) => {
             display: table-header-group;
           }
           tfoot {
-            display: table-footer-group;
+            display: table-row-group;
           }
         }
       `}</style>
@@ -149,9 +168,8 @@ const GstSalesPrintDoc = forwardRef((props, ref) => {
                 </tr>
               );
             })}
-          </tbody>
 
-          <tfoot>
+            {/* ── TOTALS (END OF DATA ONLY) ── */}
             <tr className="bg-gray-100 font-bold border-t-2 border-gray-800 page-break-inside-avoid">
               <td colSpan={3} className="border border-gray-300 py-2 px-3 text-right uppercase text-xs">
                 Totals ({records.length} records):
@@ -163,7 +181,7 @@ const GstSalesPrintDoc = forwardRef((props, ref) => {
                 ₹ {formattedAmount(totalCredit)}
               </td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
       </div>
 

@@ -707,6 +707,7 @@ const LocalPartyList = () => {
         initialCustomer={searchCustomer}
         initialFromDate={fromDate}
         initialToDate={toDate}
+        summaryData={localAmount}
       />
     </MainLayout>
   );

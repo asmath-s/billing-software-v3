@@ -676,6 +676,10 @@ const LocalProductionList = () => {
         onClose={() => setExportModalOpen(false)}
         sectionTitle="Local Expense – Production"
         status="production"
+        summaryData={localExpenseAmount}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
+        initialInstruction={searchInstruction}
       />
     </MainLayout>
   );

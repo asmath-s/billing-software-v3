@@ -6,47 +6,71 @@ import { formattedAmount } from "../../utils/FormatAmount";
 const LocalSalesPrintDoc = forwardRef((props, ref) => {
   const {
     title = "Local Sales Report",
-    status: _status = "paid",
+    status = "paid",
     selectedCustomer = null,
     fromDate = null,
     toDate = null,
     records = [],
+    summary = null,
+    summaryData = null,
     generatedAt = new Date(),
   } = props;
 
-  const totalSales = (records || []).reduce(
-    (sum, item) => sum + (Number(item?.total_amount) || 0),
-    0,
-  );
+  const activeSummary = summary || summaryData;
+  const statusKey = `local_${status || "paid"}`;
+  const statusSummary =
+    activeSummary?.[statusKey] || activeSummary?.[status] || activeSummary;
 
-  const totalCash = (records || []).reduce((sum, item) => {
-    const itemCash = (item?.cash || []).reduce(
-      (cSum, c) => cSum + (Number(c?.amount) || 0),
-      0,
-    );
-    return sum + itemCash;
-  }, 0);
+  const totalCash =
+    statusSummary?.total_cash !== undefined
+      ? Number(statusSummary.total_cash || 0)
+      : (records || []).reduce((sum, item) => {
+          const itemCash = (item?.cash || []).reduce(
+            (cSum, c) => cSum + (Number(c?.amount) || 0),
+            0,
+          );
+          return sum + itemCash;
+        }, 0);
 
-  const totalGpay = (records || []).reduce((sum, item) => {
-    const itemGpay = (item?.gpay || []).reduce(
-      (gSum, g) => gSum + (Number(g?.amount) || 0),
-      0,
-    );
-    return sum + itemGpay;
-  }, 0);
+  const totalGpay =
+    statusSummary?.total_gpay !== undefined
+      ? Number(statusSummary.total_gpay || 0)
+      : (records || []).reduce((sum, item) => {
+          const itemGpay = (item?.gpay || []).reduce(
+            (gSum, g) => gSum + (Number(g?.amount) || 0),
+            0,
+          );
+          return sum + itemGpay;
+        }, 0);
 
-  const totalNoRecieved = (records || []).reduce((sum, item) => {
-    const itemNoRecieved = (item?.no_recieved || []).reduce(
-      (nrSum, nr) => nrSum + (Number(nr?.amount) || 0),
-      0,
-    );
-    return sum + itemNoRecieved;
-  }, 0);
+  const totalNoRecieved =
+    statusSummary?.total_no_recieved !== undefined
+      ? Number(statusSummary.total_no_recieved || 0)
+      : (records || []).reduce((sum, item) => {
+          const itemNoRecieved = (item?.no_recieved || []).reduce(
+            (nrSum, nr) => nrSum + (Number(nr?.amount) || 0),
+            0,
+          );
+          return sum + itemNoRecieved;
+        }, 0);
 
-  const totalBalance = (records || []).reduce(
-    (sum, item) => sum + (Number(item?.balance_amount) || 0),
-    0,
-  );
+  const totalBalance =
+    statusSummary?.total_balance !== undefined
+      ? Number(statusSummary.total_balance || 0)
+      : (records || []).reduce(
+          (sum, item) => sum + (Number(item?.balance_amount) || 0),
+          0,
+        );
+
+  const totalSales =
+    statusSummary?.total_sales !== undefined
+      ? Number(statusSummary.total_sales || 0)
+      : statusSummary
+        ? totalCash + totalGpay + totalNoRecieved + (totalBalance > 0 ? totalBalance : 0)
+        : (records || []).reduce(
+            (sum, item) => sum + (Number(item?.total_amount) || 0),
+            0,
+          );
 
   const hasDateFilter = Boolean(fromDate && toDate);
   const hasCustomerFilter = Boolean(
@@ -81,7 +105,7 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
             display: table-header-group;
           }
           tfoot {
-            display: table-footer-group;
+            display: table-row-group;
           }
         }
       `}</style>
@@ -258,9 +282,8 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
                 </tr>
               );
             })}
-          </tbody>
 
-          <tfoot>
+            {/* ── TOTALS (END OF DATA ONLY) ── */}
             <tr className="bg-gray-100 font-bold border-t-2 border-gray-800 page-break-inside-avoid">
               <td
                 colSpan={5}
@@ -286,7 +309,7 @@ const LocalSalesPrintDoc = forwardRef((props, ref) => {
                 ₹ {formattedAmount(totalBalance)}
               </td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
       </div>
 

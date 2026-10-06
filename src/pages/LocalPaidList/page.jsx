@@ -474,6 +474,7 @@ const LocalPaidList = () => {
         initialCustomer={searchCustomer}
         initialFromDate={fromDate}
         initialToDate={toDate}
+        summaryData={localAmount}
       />
     </MainLayout>
   );

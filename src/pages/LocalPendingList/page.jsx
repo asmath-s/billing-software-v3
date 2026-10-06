@@ -670,6 +670,7 @@ const LocalPendingList = () => {
         initialCustomer={searchCustomer}
         initialFromDate={fromDate}
         initialToDate={toDate}
+        summaryData={localAmount}
       />
     </MainLayout>
   );

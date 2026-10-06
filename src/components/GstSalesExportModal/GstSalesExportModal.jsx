@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "react-toastify";
 import dayjs from "../../utils/dayjs";
-import { fetchAllGstSalesForExport } from "../../api/gstList";
+import {
+  fetchAllGstSalesForExport,
+  getGstSalesSummary,
+} from "../../api/gstList";
 import { findMatchingEntity } from "../../utils/nameNormalizer";
 import AutocompleteField from "../AutocompleteField/AutocompleteField";
 import Button from "../Button/Button";
@@ -15,6 +18,10 @@ const GstSalesExportModal = ({
   onClose,
   customerOptions = [],
   role = "",
+  initialCustomer = null,
+  initialFromDate = null,
+  initialToDate = null,
+  summaryData = null,
 }) => {
   const printRef = useRef(null);
 
@@ -26,6 +33,14 @@ const GstSalesExportModal = ({
 
   const [printData, setPrintData] = useState(null);
   const [triggerPrintNow, setTriggerPrintNow] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setSelectedCustomer(initialCustomer || null);
+      setFromDate(initialFromDate || null);
+      setToDate(initialToDate || null);
+    }
+  }, [open, initialCustomer, initialFromDate, initialToDate]);
 
   const handleResetAndClose = useCallback(() => {
     if (loading) return;
@@ -74,12 +89,33 @@ const GstSalesExportModal = ({
     setLoadingMsg("Fetching GST sales records and generating PDF...");
 
     try {
-      const records = await fetchAllGstSalesForExport({
-        customerDocumentId: selectedCustomer?.value,
-        fromDate,
-        toDate,
-        role,
-      });
+      const params = new URLSearchParams();
+      if (selectedCustomer?.value) {
+        params.set(
+          "filters[gst_customer][documentId][$eq]",
+          selectedCustomer.value,
+        );
+      }
+      if (fromDate && toDate) {
+        params.set("fromDate", dayjs(fromDate).format("YYYY-MM-DD"));
+        params.set("toDate", dayjs(toDate).format("YYYY-MM-DD"));
+      }
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+
+      const [records, summaryRes] = await Promise.all([
+        fetchAllGstSalesForExport({
+          customerDocumentId: selectedCustomer?.value,
+          fromDate,
+          toDate,
+          role,
+        }),
+        getGstSalesSummary(queryString).catch((err) => {
+          console.error("Failed to fetch GST sales summary for export:", err);
+          return null;
+        }),
+      ]);
+
+      const summary = summaryRes || summaryData;
 
       if (!records || records.length === 0) {
         toast.error("No GST Sales records found for the selected filters.");
@@ -94,6 +130,7 @@ const GstSalesExportModal = ({
         fromDate,
         toDate,
         records,
+        summary,
         generatedAt: new Date(),
       });
 

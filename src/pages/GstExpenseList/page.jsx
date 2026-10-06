@@ -938,6 +938,10 @@ const GstExpenseList = () => {
         onClose={() => setExportModalOpen(false)}
         vendorOptions={customerOptions}
         role={role}
+        summaryData={gstSalesSummary}
+        initialVendor={searchCustomer}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
       />
     </MainLayout>
   );

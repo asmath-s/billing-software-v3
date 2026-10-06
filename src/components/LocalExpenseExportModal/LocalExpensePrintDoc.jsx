@@ -11,13 +11,32 @@ const LocalExpensePrintDoc = forwardRef((props, ref) => {
     toDate = null,
     instruction = "",
     records = [],
+    summary = null,
+    summaryData = null,
     generatedAt = new Date(),
   } = props;
 
-  const totalAmount = (records || []).reduce(
-    (sum, item) => sum + (Number(item?.amount) || 0),
-    0,
-  );
+  const activeSummary = summary || summaryData;
+  const statusSummary = activeSummary?.[status] || activeSummary;
+
+  const summaryTotal = statusSummary
+    ? (Number(statusSummary.total_exp_cash || 0) +
+       Number(statusSummary.total_exp_gpay || 0) +
+       Number(statusSummary.total_exp_account || 0) +
+       Number(statusSummary.total_rec_cash || 0) +
+       Number(statusSummary.total_rec_gpay || 0) +
+       Number(statusSummary.total_rec_account || 0))
+    : null;
+
+  const totalAmount =
+    statusSummary?.total_amount !== undefined
+      ? Number(statusSummary.total_amount)
+      : summaryTotal !== null && summaryTotal !== undefined
+        ? summaryTotal
+        : (records || []).reduce(
+            (sum, item) => sum + (Number(item?.amount) || 0),
+            0,
+          );
 
   const hasDateFilter = Boolean(fromDate && toDate);
   const hasInstructionFilter = Boolean(instruction && instruction.trim());
@@ -46,7 +65,7 @@ const LocalExpensePrintDoc = forwardRef((props, ref) => {
             display: table-header-group;
           }
           tfoot {
-            display: table-footer-group;
+            display: table-row-group;
           }
         }
       `}</style>
@@ -146,9 +165,8 @@ const LocalExpensePrintDoc = forwardRef((props, ref) => {
                 </td>
               </tr>
             ))}
-          </tbody>
 
-          <tfoot>
+            {/* ── GRAND TOTAL (END OF DATA ONLY) ── */}
             <tr className="bg-gray-100 font-bold border-t-2 border-gray-800 page-break-inside-avoid">
               <td colSpan={5} className="border border-gray-300 py-2.5 px-3 text-right uppercase text-xs">
                 Grand Total ({records.length} items):
@@ -157,7 +175,7 @@ const LocalExpensePrintDoc = forwardRef((props, ref) => {
                 ₹ {formattedAmount(totalAmount)}
               </td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
       </div>
 

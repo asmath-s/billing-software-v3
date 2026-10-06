@@ -3,6 +3,7 @@ import { useReactToPrint } from "react-to-print";
 import { toast } from "react-toastify";
 import dayjs from "../../utils/dayjs";
 import { fetchAllLocalSalesForExport } from "../../api/localList";
+import { getLocalAmounts } from "../../api/localAmount";
 import { findMatchingEntity } from "../../utils/nameNormalizer";
 import AutocompleteField from "../AutocompleteField/AutocompleteField";
 import Button from "../Button/Button";
@@ -19,6 +20,7 @@ const LocalSalesExportModal = ({
   initialCustomer = null,
   initialFromDate = null,
   initialToDate = null,
+  summaryData = null,
 }) => {
   const printRef = useRef(null);
 
@@ -124,12 +126,32 @@ const LocalSalesExportModal = ({
         }
       }
 
-      const records = await fetchAllLocalSalesForExport({
-        status,
-        customerDocumentId,
-        fromDate,
-        toDate,
-      });
+      const query = [];
+      if (customerDocumentId) {
+        query.push(
+          `filters[customer][documentId][$eq]=${encodeURIComponent(customerDocumentId)}`,
+        );
+      }
+      if (fromDate && toDate) {
+        query.push(`fromDate=${encodeURIComponent(fromDate)}`);
+        query.push(`toDate=${encodeURIComponent(toDate)}`);
+      }
+      const queryString = query.length ? `?${query.join("&")}` : "";
+
+      const [records, summaryRes] = await Promise.all([
+        fetchAllLocalSalesForExport({
+          status,
+          customerDocumentId,
+          fromDate,
+          toDate,
+        }),
+        getLocalAmounts(queryString).catch((err) => {
+          console.error("Local amounts summary fetch failed for export:", err);
+          return null;
+        }),
+      ]);
+
+      const summary = summaryRes || summaryData;
 
       if (!records || records.length === 0) {
         toast.error("No Local Sales records found for the selected filters.");
@@ -155,6 +177,7 @@ const LocalSalesExportModal = ({
         fromDate,
         toDate,
         records,
+        summary,
         generatedAt: new Date(),
       });
 

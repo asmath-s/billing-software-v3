@@ -571,6 +571,10 @@ const LocalHubList = () => {
         onClose={() => setExportModalOpen(false)}
         sectionTitle="Local Expense – Hub"
         status="hub"
+        summaryData={localExpenseAmount}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
+        initialInstruction={searchInstruction}
       />
     </MainLayout>
   );

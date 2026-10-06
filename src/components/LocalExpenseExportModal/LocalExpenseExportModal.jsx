@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "react-toastify";
 import dayjs from "../../utils/dayjs";
-import { fetchAllLocalExpensesForExport } from "../../api/localExpense";
+import {
+  fetchAllLocalExpensesForExport,
+  getLocalExpenseAmounts,
+} from "../../api/localExpense";
 import Button from "../Button/Button";
 import InputField from "../InputField/InputField";
 import { DateUiPicker } from "../Datepicker/Datepicker";
@@ -14,6 +17,10 @@ const LocalExpenseExportModal = ({
   onClose,
   sectionTitle = "Local Expense – Approved",
   status = "approved",
+  initialFromDate = null,
+  initialToDate = null,
+  initialInstruction = "",
+  summaryData = null,
 }) => {
   const printRef = useRef(null);
 
@@ -25,6 +32,14 @@ const LocalExpenseExportModal = ({
 
   const [printData, setPrintData] = useState(null);
   const [triggerPrintNow, setTriggerPrintNow] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setFromDate(initialFromDate || null);
+      setToDate(initialToDate || null);
+      setInstruction(initialInstruction || "");
+    }
+  }, [open, initialFromDate, initialToDate, initialInstruction]);
 
   const handleResetAndClose = useCallback(() => {
     if (loading) return;
@@ -73,12 +88,34 @@ const LocalExpenseExportModal = ({
     setLoadingMsg("Fetching expense data and generating PDF...");
 
     try {
-      const records = await fetchAllLocalExpensesForExport({
-        status,
-        fromDate,
-        toDate,
-        instruction,
-      });
+      const query = [];
+      if (fromDate && toDate) {
+        query.push(`fromDate=${fromDate}`);
+        query.push(`toDate=${toDate}`);
+      }
+      if (instruction.trim()) {
+        query.push(
+          `filters[instruction][$containsi]=${encodeURIComponent(
+            instruction.trim(),
+          )}`,
+        );
+      }
+      const queryString = query.length ? `?${query.join("&")}` : "";
+
+      const [records, summaryRes] = await Promise.all([
+        fetchAllLocalExpensesForExport({
+          status,
+          fromDate,
+          toDate,
+          instruction,
+        }),
+        getLocalExpenseAmounts(queryString).catch((err) => {
+          console.error("Local expense amounts summary fetch failed for export:", err);
+          return null;
+        }),
+      ]);
+
+      const summary = summaryRes || summaryData;
 
       if (!records || records.length === 0) {
         toast.error("No expense records found for the selected filters.");
@@ -95,6 +132,7 @@ const LocalExpenseExportModal = ({
         toDate,
         instruction,
         records,
+        summary,
         generatedAt: new Date(),
       });
 

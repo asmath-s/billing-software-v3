@@ -551,6 +551,10 @@ const LocalExpenseApprove = () => {
         onClose={() => setExportModalOpen(false)}
         sectionTitle="Local Expense – Approved"
         status="approved"
+        summaryData={localExpenseAmount}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
+        initialInstruction={searchInstruction}
       />
     </MainLayout>
   );

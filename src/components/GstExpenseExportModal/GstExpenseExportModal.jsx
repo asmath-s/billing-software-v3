@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "react-toastify";
 import dayjs from "../../utils/dayjs";
-import { fetchAllGstExpensesForExport } from "../../api/gstExpense";
+import {
+  fetchAllGstExpensesForExport,
+  getGstExpenseSummary,
+} from "../../api/gstExpense";
 import { findMatchingEntity } from "../../utils/nameNormalizer";
 import AutocompleteField from "../AutocompleteField/AutocompleteField";
 import Button from "../Button/Button";
@@ -15,6 +18,10 @@ const GstExpenseExportModal = ({
   onClose,
   vendorOptions = [],
   role = "",
+  initialVendor = null,
+  initialFromDate = null,
+  initialToDate = null,
+  summaryData = null,
 }) => {
   const printRef = useRef(null);
 
@@ -26,6 +33,14 @@ const GstExpenseExportModal = ({
 
   const [printData, setPrintData] = useState(null);
   const [triggerPrintNow, setTriggerPrintNow] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setSelectedVendor(initialVendor || null);
+      setFromDate(initialFromDate || null);
+      setToDate(initialToDate || null);
+    }
+  }, [open, initialVendor, initialFromDate, initialToDate]);
 
   const handleResetAndClose = useCallback(() => {
     if (loading) return;
@@ -74,12 +89,30 @@ const GstExpenseExportModal = ({
     setLoadingMsg("Fetching GST expense records and generating PDF...");
 
     try {
-      const records = await fetchAllGstExpensesForExport({
-        vendorDocumentId: selectedVendor?.value,
-        fromDate,
-        toDate,
-        role,
-      });
+      const params = new URLSearchParams();
+      if (selectedVendor?.value) {
+        params.set("filters[vendor][documentId][$eq]", selectedVendor.value);
+      }
+      if (fromDate && toDate) {
+        params.set("fromDate", dayjs(fromDate).format("YYYY-MM-DD"));
+        params.set("toDate", dayjs(toDate).format("YYYY-MM-DD"));
+      }
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+
+      const [records, summaryRes] = await Promise.all([
+        fetchAllGstExpensesForExport({
+          vendorDocumentId: selectedVendor?.value,
+          fromDate,
+          toDate,
+          role,
+        }),
+        getGstExpenseSummary(queryString).catch((err) => {
+          console.error("Failed to fetch GST expense summary for export:", err);
+          return null;
+        }),
+      ]);
+
+      const summary = summaryRes || summaryData;
 
       if (!records || records.length === 0) {
         toast.error("No GST Expense records found for the selected filters.");
@@ -94,6 +127,7 @@ const GstExpenseExportModal = ({
         fromDate,
         toDate,
         records,
+        summary,
         generatedAt: new Date(),
       });
 
