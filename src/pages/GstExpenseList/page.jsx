@@ -28,6 +28,7 @@ import MainLayout from "../../layouts/MainLayout";
 import { GSTEXPENSEENTRY } from "../../router/paths";
 import dayjs from "../../utils/dayjs";
 import { resolveApiDateRange } from "../../utils/financialYear";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import { formattedAmount } from "../../utils/FormatAmount";
 import { findMatchingEntity } from "../../utils/nameNormalizer";
 
@@ -341,13 +342,15 @@ const GstExpenseList = () => {
     setForm({ ...INITIAL_FORM_STATE, date: setCurrentTime(new Date()) });
 
   const buildPayload = () => {
-    console.log(form.sendedBillNo, "form.sendedBillNo");
     return {
       date: form.date,
       vendor: searchCustomer?.value ?? null,
       sended_bill_nos: form.sendedBillNo,
       sended_method: form.customType,
       sended_amount: Number(form.sendedAmount),
+      particulars: form.particulars?.trim()
+        ? [{ text: capitalizeFirstLetter(form.particulars.trim()) }]
+        : [],
     };
   };
 
@@ -413,6 +416,7 @@ const GstExpenseList = () => {
       customType: item.sended_method ?? "cash",
       sendedAmount: item.sended_amount || "",
       sendedBillNo: item.sended_bill_nos || [],
+      particulars: item.particulars?.[0]?.text || "",
     });
   };
 
@@ -649,7 +653,7 @@ const GstExpenseList = () => {
 
       {/* ── Add / Edit form ── */}
       <form onSubmit={handleSubmit} className="mt-8">
-        <div className="grid grid-cols-6 gap-4 ">
+        <div className="grid grid-cols-7 gap-4 ">
           {/* Date */}
           <DateUiPicker
             value={form.date}
@@ -727,6 +731,19 @@ const GstExpenseList = () => {
             />
           </div>
 
+          {/* Instruction */}
+          <InputField
+            placeholder="Instruction"
+            value={form.particulars}
+            onChange={(e) => setFormField("particulars", e.target.value)}
+            onBlur={() =>
+              setFormField(
+                "particulars",
+                capitalizeFirstLetter(form.particulars || ""),
+              )
+            }
+          />
+
           {/* Payment method */}
           <SelectField
             label="Sended In"
@@ -768,18 +785,19 @@ const GstExpenseList = () => {
         <Table borderAxis="both" hoverRow stickyHeader>
           <thead>
             <tr>
-              <th style={{ width: "9%" }}>Date</th>
+              <th style={{ width: "8%" }}>Date</th>
               <th style={{ width: "6%" }}>Bill No</th>
-              <th style={{ width: "12%" }}>Customer</th>
-              <th style={{ width: "8%" }}>Base Amount</th>
-              <th style={{ width: "8%" }}>Tax</th>
-              <th style={{ width: "9%" }}>Total Amount</th>
-              <th style={{ width: "14%" }}>Sended Bill Nos</th>
-              <th style={{ width: "14%" }}>Sended Method</th>
-              <th style={{ width: "10%" }}>Sended Amount</th>
+              <th style={{ width: "11%" }}>Customer</th>
+              <th style={{ width: "14%" }}>Particulars</th>
+              <th style={{ width: "7%" }}>Base Amount</th>
+              <th style={{ width: "7%" }}>Tax</th>
+              <th style={{ width: "8%" }}>Total Amount</th>
+              <th style={{ width: "12%" }}>Sended Bill Nos</th>
+              <th style={{ width: "10%" }}>Sended Method</th>
+              <th style={{ width: "9%" }}>Sended Amount</th>
               <th style={{ width: "8%" }}>Action</th>
               {role === "superadmin" && (
-                <th style={{ width: "12%" }}>Status</th>
+                <th style={{ width: "9%" }}>Status</th>
               )}
             </tr>
           </thead>
@@ -787,7 +805,7 @@ const GstExpenseList = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={role === "superadmin" ? 11 : 10}>
+                <td colSpan={role === "superadmin" ? 12 : 11}>
                   <div className="flex justify-center py-6 text-gray-400 text-sm">
                     Loading…
                   </div>
@@ -795,7 +813,7 @@ const GstExpenseList = () => {
               </tr>
             ) : gstSalesData.length === 0 ? (
               <tr>
-                <td colSpan={role === "superadmin" ? 11 : 10}>
+                <td colSpan={role === "superadmin" ? 12 : 11}>
                   <div className="flex justify-center py-6 text-gray-400 text-sm">
                     No records found.
                   </div>
@@ -810,6 +828,15 @@ const GstExpenseList = () => {
                     className={`${item.current_status === "status" && "text-red-600"}`}
                   >
                     {item.vendor?.name || "-"}
+                  </td>
+                  <td>
+                    {item.particulars?.length > 0
+                      ? item.particulars.map((p, idx) => (
+                          <div key={p.id || idx}>{p.text}</div>
+                        ))
+                      : typeof item.instruction === "string" && item.instruction
+                        ? <div>{item.instruction}</div>
+                        : "-"}
                   </td>
                   <td>
                     {item.base_amount === 0 || item.base_amount === null
@@ -870,7 +897,7 @@ const GstExpenseList = () => {
           {/* ── Pagination footer ── */}
           <tfoot>
             <tr>
-              <td colSpan={role === "superadmin" ? 11 : 10}>
+              <td colSpan={role === "superadmin" ? 12 : 11}>
                 <Box
                   sx={{
                     display: "flex",

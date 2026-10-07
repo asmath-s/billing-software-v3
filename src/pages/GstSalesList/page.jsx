@@ -26,6 +26,7 @@ import EditButton from "../../components/EditButton/EditButton";
 import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
 import { GSTSALESENTRY } from "../../router/paths";
+import { capitalizeFirstLetter } from "../../utils/Captialize";
 import dayjs from "../../utils/dayjs";
 import { resolveApiDateRange } from "../../utils/financialYear";
 import { formattedAmount } from "../../utils/FormatAmount";
@@ -349,6 +350,9 @@ const GstSalesList = () => {
       received_bill_nos: form.recvBillNo,
       received_method: form.customType,
       received_amount: Number(form.receivedAmount),
+      particulars: form.particulars?.trim()
+        ? [{ text: capitalizeFirstLetter(form.particulars.trim()) }]
+        : [],
     };
   };
 
@@ -412,6 +416,7 @@ const GstSalesList = () => {
       customType: item.received_method ?? "cash",
       receivedAmount: item.received_amount || "",
       recvBillNo: item.received_bill_nos || [],
+      particulars: item.particulars?.[0]?.text || "",
     });
   };
 
@@ -648,7 +653,7 @@ const GstSalesList = () => {
 
       {/* ── Add / Edit form ── */}
       <form onSubmit={handleSubmit} className="mt-8">
-        <div className="grid grid-cols-6 gap-4 ">
+        <div className="grid grid-cols-7 gap-4 ">
           {/* Date */}
           <DateUiPicker
             value={form.date}
@@ -726,6 +731,19 @@ const GstSalesList = () => {
             />
           </div>
 
+          {/* Instruction */}
+          <InputField
+            placeholder="Instruction"
+            value={form.particulars}
+            onChange={(e) => setFormField("particulars", e.target.value)}
+            onBlur={() =>
+              setFormField(
+                "particulars",
+                capitalizeFirstLetter(form.particulars || ""),
+              )
+            }
+          />
+
           {/* Payment method */}
           <SelectField
             label="Received In"
@@ -767,26 +785,25 @@ const GstSalesList = () => {
         <Table borderAxis="both" hoverRow>
           <thead>
             <tr>
-              <th style={{ width: "9%" }}>Date</th>
+              <th style={{ width: "8%" }}>Date</th>
               <th style={{ width: "6%" }}>Bill No</th>
-              <th style={{ width: "12%" }}>Customer</th>
-              <th style={{ width: "8%" }}>Base Amount</th>
-              <th style={{ width: "8%" }}>Tax</th>
-              <th style={{ width: "9%" }}>Total Amount</th>
-              <th style={{ width: "14%" }}>Received Bill Nos</th>
-              <th style={{ width: "14%" }}>Received Method</th>
-              <th style={{ width: "10%" }}>Received Amount</th>
+              <th style={{ width: "11%" }}>Customer</th>
+              <th style={{ width: "14%" }}>Particulars</th>
+              <th style={{ width: "7%" }}>Base Amount</th>
+              <th style={{ width: "7%" }}>Tax</th>
+              <th style={{ width: "8%" }}>Total Amount</th>
+              <th style={{ width: "12%" }}>Received Bill Nos</th>
+              <th style={{ width: "10%" }}>Received Method</th>
+              <th style={{ width: "9%" }}>Received Amount</th>
               <th style={{ width: "8%" }}>Action</th>
-              {role === "superadmin" && (
-                <th style={{ width: "12%" }}>Status</th>
-              )}
+              {role === "superadmin" && <th style={{ width: "9%" }}>Status</th>}
             </tr>
           </thead>
 
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={role === "superadmin" ? 11 : 10}>
+                <td colSpan={role === "superadmin" ? 12 : 11}>
                   <div className="flex justify-center py-6 text-gray-400 text-sm">
                     Loading…
                   </div>
@@ -794,7 +811,7 @@ const GstSalesList = () => {
               </tr>
             ) : gstSalesData.length === 0 ? (
               <tr>
-                <td colSpan={role === "superadmin" ? 11 : 10}>
+                <td colSpan={role === "superadmin" ? 12 : 11}>
                   <div className="flex justify-center py-6 text-gray-400 text-sm">
                     No records found.
                   </div>
@@ -809,6 +826,13 @@ const GstSalesList = () => {
                     className={`${item.current_status === "status" && "text-red-600"}`}
                   >
                     {item.gst_customer?.name || "-"}
+                  </td>
+                  <td>
+                    {!item.bill_no ? (
+                      <p>{item.particulars?.[0]?.text || "-"}</p>
+                    ) : (
+                      "-"
+                    )}
                   </td>
                   <td>
                     {item.base_amount === 0 || item.base_amount === null
@@ -869,7 +893,7 @@ const GstSalesList = () => {
           {/* ── Pagination footer ── */}
           <tfoot>
             <tr>
-              <td colSpan={role === "superadmin" ? 11 : 10}>
+              <td colSpan={role === "superadmin" ? 12 : 11}>
                 <Box
                   sx={{
                     display: "flex",
