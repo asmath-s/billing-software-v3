@@ -16,6 +16,7 @@ import {
   LOCALPARTYLIST,
   LOCALPENDINGLIST,
   LOCALPRODUCTIONLIST,
+  OUTSTANDING,
   PRICELIST,
   QUOTATIONENTRY,
   QUOTATIONLIST,
@@ -33,6 +34,7 @@ import {
   ListIcon,
   LocalExpenseIcon,
   LocalSalesIcon,
+  OutstandingIcon,
   PartyIcon,
   PendingIcon,
   PriceListIcon,
@@ -206,6 +208,15 @@ export const appConfig = [
     icon: AdminIcon,
     path: ADMINLIST,
     elementKey: "AdminList",
+    roles: [ROLES.SuperAdmin, ROLES.Admin],
+  },
+
+  {
+    type: "link",
+    label: "Outstanding",
+    icon: OutstandingIcon,
+    path: OUTSTANDING,
+    elementKey: "Outstanding",
     roles: [ROLES.SuperAdmin, ROLES.Admin],
   },
 

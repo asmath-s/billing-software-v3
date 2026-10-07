@@ -291,10 +291,35 @@ const GstEntry = () => {
 
       const finalCustomerId = await ensureCustomer();
 
-      const sanitizedSizeData = sizeData.map((row) => ({
-        ...row,
-        instruction: capitalizeFirstLetter(row.instruction || ""),
-      }));
+      const sanitizedSizeData = sizeData.map((row) => {
+        const isFlex = row.type === "flex";
+        const isInstruction = row.type === "instruction";
+        return {
+          ...row,
+          width: isFlex
+            ? row.width === "" || row.width === null || row.width === undefined
+              ? 0
+              : Number(row.width)
+            : row.width,
+          height: isFlex
+            ? row.height === "" || row.height === null || row.height === undefined
+              ? 0
+              : Number(row.height)
+            : row.height,
+          sq_ft_price: isFlex
+            ? row.sq_ft_price === "" || row.sq_ft_price === null || row.sq_ft_price === undefined
+              ? 0
+              : Number(row.sq_ft_price)
+            : row.sq_ft_price,
+          piece_count: Number(row.piece_count) || 1,
+          per_piece_amount: isInstruction
+            ? row.per_piece_amount === "" || row.per_piece_amount === null || row.per_piece_amount === undefined
+              ? 0
+              : Number(row.per_piece_amount)
+            : 0,
+          instruction: capitalizeFirstLetter(row.instruction || ""),
+        };
+      });
 
       const payload = {
         bill_no: billNo,

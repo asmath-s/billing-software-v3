@@ -9,13 +9,13 @@ import InputField from "../InputField/InputField";
 
 const createRow = (type) => ({
   type,
-  width: 0,
-  height: 0,
+  width: "",
+  height: "",
   material: "",
-  sq_ft_price: 0,
+  sq_ft_price: "",
   piece_count: 1,
   instruction: "",
-  per_piece_amount: 0,
+  per_piece_amount: "",
   per_piece_total: 0,
 });
 
@@ -93,17 +93,24 @@ const FormDataInput = ({
     if (!lastRow) return true;
 
     if (lastRow.type === "flex") {
-      if (!lastRow.width || !lastRow.height || !lastRow.sq_ft_price) {
+      const width = Number(lastRow.width);
+      const height = Number(lastRow.height);
+      const rate = Number(lastRow.sq_ft_price);
+
+      if (!width || !height || !rate) {
         setErrorMsg("Please complete the current flex row first.");
         return false;
       }
     }
 
     if (lastRow.type === "instruction") {
+      const amount = Number(lastRow.per_piece_amount);
+      const pieces = Number(lastRow.piece_count);
+
       if (
         !lastRow.instruction ||
-        !lastRow.per_piece_amount ||
-        !lastRow.piece_count
+        !amount ||
+        !pieces
       ) {
         setErrorMsg("Please complete the current instruction row first.");
         return false;
@@ -130,24 +137,31 @@ const FormDataInput = ({
   };
 
   /* ---------------- UPDATE ROW ---------------- */
-  const numberFields = [
+  const decimalFields = [
     "width",
     "height",
     "sq_ft_price",
-    "piece_count",
-    "per_piece_total",
     "per_piece_amount",
   ];
 
   const updateRow = (index, name, value) => {
-    const updated = [...sizeData];
+    // For decimal fields, allow digits and at most one decimal point
+    if (decimalFields.includes(name)) {
+      if (value !== "" && !/^\d*\.?\d*$/.test(value)) {
+        return;
+      }
+    } else if (name === "piece_count") {
+      // For piece_count, allow only integer digits
+      if (value !== "" && !/^\d*$/.test(value)) {
+        return;
+      }
+    }
 
-    // convert numeric fields to number
-    updated[index][name] = numberFields.includes(name)
-      ? value === ""
-        ? ""
-        : Number(value)
-      : value;
+    const updated = [...sizeData];
+    updated[index] = {
+      ...updated[index],
+      [name]: value,
+    };
 
     const row = updated[index];
 
@@ -165,10 +179,44 @@ const FormDataInput = ({
 
     /* ---------- INSTRUCTION CALCULATION ---------- */
     if (row.type === "instruction") {
-      row.per_piece_total = pieces * amount;
+      row.per_piece_total = Number((pieces * amount).toFixed(2));
     }
 
     setSizeData(updated);
+  };
+
+  const handleDecimalBlur = (index, name) => {
+    const row = sizeData[index];
+    if (!row) return;
+    let val = String(row[name] ?? "").trim();
+    if (val === "") return;
+    if (val === ".") {
+      updateRow(index, name, "");
+      return;
+    }
+    if (val.startsWith(".")) {
+      val = "0" + val;
+    }
+    if (val.endsWith(".")) {
+      val = val.slice(0, -1);
+    }
+    if (val !== String(row[name])) {
+      updateRow(index, name, val);
+    }
+  };
+
+  const handlePieceCountBlur = (index) => {
+    const row = sizeData[index];
+    if (!row) return;
+    const count = Number(row.piece_count);
+    if (!count || count < 1) {
+      updateRow(index, "piece_count", 1);
+    }
+  };
+
+  const formatValue = (val) => {
+    if (val === 0 || val === null || val === undefined) return "";
+    return val;
   };
 
   return (
@@ -195,16 +243,18 @@ const FormDataInput = ({
               <InputField
                 placeholder="Width"
                 type="text"
-                value={row.width === 0 ? "" : row.width}
+                value={formatValue(row.width)}
                 onChange={(e) => updateRow(index, "width", e.target.value)}
+                onBlur={() => handleDecimalBlur(index, "width")}
                 required
               />
 
               <InputField
                 placeholder="Height"
                 type="text"
-                value={row.height === 0 ? "" : row.height}
+                value={formatValue(row.height)}
                 onChange={(e) => updateRow(index, "height", e.target.value)}
+                onBlur={() => handleDecimalBlur(index, "height")}
                 required
               />
 
@@ -222,20 +272,23 @@ const FormDataInput = ({
               <InputField
                 placeholder="Sq.ft Rate"
                 type="text"
-                value={row.sq_ft_price === 0 ? "" : row.sq_ft_price}
+                value={formatValue(row.sq_ft_price)}
                 onChange={(e) =>
                   updateRow(index, "sq_ft_price", e.target.value)
                 }
+                onBlur={() => handleDecimalBlur(index, "sq_ft_price")}
                 required
               />
 
               <InputField
                 placeholder="Piece Count"
                 type="text"
-                value={row.piece_count === 0 ? "" : row.piece_count}
+                dontallowDecimal
+                value={formatValue(row.piece_count)}
                 onChange={(e) =>
                   updateRow(index, "piece_count", e.target.value)
                 }
+                onBlur={() => handlePieceCountBlur(index)}
                 required
               />
 
@@ -270,19 +323,22 @@ const FormDataInput = ({
               <InputField
                 placeholder="Piece Count"
                 type="text"
-                value={row.piece_count === 0 ? "" : row.piece_count}
+                dontallowDecimal
+                value={formatValue(row.piece_count)}
                 onChange={(e) =>
                   updateRow(index, "piece_count", e.target.value)
                 }
+                onBlur={() => handlePieceCountBlur(index)}
               />
 
               <InputField
                 placeholder="Amount"
                 type="text"
-                value={row.per_piece_amount === 0 ? "" : row.per_piece_amount}
+                value={formatValue(row.per_piece_amount)}
                 onChange={(e) =>
                   updateRow(index, "per_piece_amount", e.target.value)
                 }
+                onBlur={() => handleDecimalBlur(index, "per_piece_amount")}
               />
 
               <Button

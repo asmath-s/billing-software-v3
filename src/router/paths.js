@@ -16,6 +16,7 @@ const GSTDELIVERYSLIP = "/gstsalesdelivery";
 const GSTEXPENSEENTRY = "/gstexpenseentry";
 const GSTEXPENSELIST = "/gstexpenselist";
 const ADMINLIST = "/adminlist";
+const OUTSTANDING = "/outstanding";
 const QUOTATIONENTRY = "/quotationentry";
 const QUOTATIONLIST = "/quotationlist";
 const PRICELIST = "/pricelist";
@@ -39,6 +40,7 @@ export {
   LOCALPENDINGLIST,
   LOCALPRODUCTIONLIST,
   LOGIN,
+  OUTSTANDING,
   PRICELIST,
   QUOTATIONENTRY,
   QUOTATIONLIST,

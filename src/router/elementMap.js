@@ -16,6 +16,7 @@ import LocalPartyList from "../pages/LocalPartyList";
 import LocalPendingList from "../pages/LocalPendingList";
 import LocalProductionList from "../pages/LocalProductionList";
 import Login from "../pages/Login";
+import Outstanding from "../pages/Outstanding";
 import PriceList from "../pages/PriceList";
 import QuotationEntry from "../pages/QuotationEntry";
 import QuotationList from "../pages/QuotationList";
@@ -39,6 +40,7 @@ export const elementMap = {
   LocalPendingList,
   LocalProductionList,
   Login,
+  Outstanding,
   PriceList,
   QuotationEntry,
   QuotationList,
