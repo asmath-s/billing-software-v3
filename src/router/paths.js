@@ -20,6 +20,12 @@ const OUTSTANDING = "/outstanding";
 const QUOTATIONENTRY = "/quotationentry";
 const QUOTATIONLIST = "/quotationlist";
 const PRICELIST = "/pricelist";
+const LOCALCUSTOMERS = "/localcustomers";
+const GSTCUSTOMERS = "/gstcustomers";
+const LOCAL_PURCHASE_HISTORY = "/purshistory/local";
+const GST_PURCHASE_HISTORY = "/purshistory/gst";
+const LOCAL_PURCHASE_HISTORY_DETAIL = "/purshistory/local/:customerId";
+const GST_PURCHASE_HISTORY_DETAIL = "/purshistory/gst/:customerId";
 
 export {
   ADMINLIST,
@@ -30,6 +36,10 @@ export {
   GSTEXPENSELIST,
   GSTSALESENTRY,
   GSTSALESLIST,
+  GSTCUSTOMERS,
+  GST_PURCHASE_HISTORY,
+  GST_PURCHASE_HISTORY_DETAIL,
+  LOCALCUSTOMERS,
   LOCALENTRY,
   LOCALEXPENSEAPPROVE,
   LOCALEXPENSEENTRY,
@@ -39,6 +49,8 @@ export {
   LOCALPARTYLIST,
   LOCALPENDINGLIST,
   LOCALPRODUCTIONLIST,
+  LOCAL_PURCHASE_HISTORY,
+  LOCAL_PURCHASE_HISTORY_DETAIL,
   LOGIN,
   OUTSTANDING,
   PRICELIST,

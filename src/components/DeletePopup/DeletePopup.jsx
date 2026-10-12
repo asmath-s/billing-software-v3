@@ -3,7 +3,11 @@ import Button from "../Button/Button";
 import DeleteButton from "../DeleteButton/DeleteButton";
 import { ClearIcon, WarningIcon } from "../icons";
 
-const DeletePopup = ({ handleDelete, disabled }) => {
+const DeletePopup = ({
+  handleDelete,
+  disabled,
+  message = "Are you sure you want to delete this note?",
+}) => {
   const [PopupOpen, setPopupOpen] = useState(false);
 
   return (
@@ -35,7 +39,7 @@ const DeletePopup = ({ handleDelete, disabled }) => {
             </div>
 
             <div className="my-4">
-              <p>Are you sure you want to delete this note?</p>
+              <p>{message}</p>
             </div>
             <div className="flex gap-2 mt-4 justify-center">
               <Button

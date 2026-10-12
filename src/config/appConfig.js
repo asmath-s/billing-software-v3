@@ -2,11 +2,14 @@ import {
   ADMINLIST,
   ANALYTICS,
   DASHBOARD,
+  GSTCUSTOMERS,
   GSTDELIVERYSLIP,
   GSTEXPENSEENTRY,
   GSTEXPENSELIST,
   GSTSALESENTRY,
   GSTSALESLIST,
+  GST_PURCHASE_HISTORY,
+  LOCALCUSTOMERS,
   LOCALENTRY,
   LOCALEXPENSEAPPROVE,
   LOCALEXPENSEENTRY,
@@ -16,6 +19,7 @@ import {
   LOCALPARTYLIST,
   LOCALPENDINGLIST,
   LOCALPRODUCTIONLIST,
+  LOCAL_PURCHASE_HISTORY,
   OUTSTANDING,
   PRICELIST,
   QUOTATIONENTRY,
@@ -26,6 +30,7 @@ import {
   AdminIcon,
   ApproveListIcon,
   ChartIcon,
+  CustomerIcon,
   DashboardIcon,
   DeliveryIcon,
   EntryIcon,
@@ -203,6 +208,54 @@ export const appConfig = [
   },
 
   {
+    type: "submenu",
+    key: "customers",
+    label: "Customers",
+    icon: CustomerIcon,
+    roles: [ROLES.Admin],
+    children: [
+      {
+        label: "Local Customer",
+        icon: PartyIcon,
+        path: LOCALCUSTOMERS,
+        elementKey: "LocalCustomerList",
+        roles: [ROLES.Admin],
+      },
+      {
+        label: "GST Customer",
+        icon: ListIcon,
+        path: GSTCUSTOMERS,
+        elementKey: "GstCustomerList",
+        roles: [ROLES.Admin],
+      },
+    ],
+  },
+
+  {
+    type: "submenu",
+    key: "pursHistory",
+    label: "Purs History",
+    icon: CustomerIcon,
+    roles: [ROLES.Admin],
+    children: [
+      {
+        label: "Local",
+        icon: LocalSalesIcon,
+        path: LOCAL_PURCHASE_HISTORY,
+        elementKey: "LocalPurchaseHistory",
+        roles: [ROLES.Admin],
+      },
+      {
+        label: "GST",
+        icon: GstSalesIcon,
+        path: GST_PURCHASE_HISTORY,
+        elementKey: "GstPurchaseHistory",
+        roles: [ROLES.Admin],
+      },
+    ],
+  },
+
+  {
     type: "link",
     label: "Admin",
     icon: AdminIcon,
@@ -217,7 +270,7 @@ export const appConfig = [
     icon: OutstandingIcon,
     path: OUTSTANDING,
     elementKey: "Outstanding",
-    roles: [ROLES.SuperAdmin, ROLES.Admin],
+    roles: [ROLES.Admin],
   },
 
   {

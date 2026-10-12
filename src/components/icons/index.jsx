@@ -10,6 +10,7 @@ export { default as ChartIcon } from "./ChartIcon";
 export { default as CheckBoxIcon } from "./CheckBoxIcon";
 export { default as CheckIcon } from "./CheckIcon";
 export { default as ClearIcon } from "./ClearIcon";
+export { default as CustomerIcon } from "./CustomerIcon";
 export { default as DashboardIcon } from "./DashboardIcon";
 export { default as DeleteIcon } from "./DeleteIcon";
 export { default as DeliveryIcon } from "./DeliveryIcon";

@@ -39,6 +39,16 @@ const buildRoutes = () => {
     }
   });
 
+  // 🔹 Standalone detail routes (Purchase History Customer Bills)
+  routes.push({
+    path: "/purshistory/local/:customerId",
+    element: <elementMap.LocalPurchaseHistoryDetail />,
+  });
+  routes.push({
+    path: "/purshistory/gst/:customerId",
+    element: <elementMap.GstPurchaseHistoryDetail />,
+  });
+
   // 🔹 Not Found
   routes.push({
     path: "*",

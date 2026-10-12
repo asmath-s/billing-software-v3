@@ -1,11 +1,15 @@
 import AdminList from "../pages/AdminList";
 import Analytics from "../pages/Analytics";
 import Dashboard from "../pages/Dashboard";
+import GstCustomerList from "../pages/GstCustomerList";
 import GstDeliverySlip from "../pages/GstDeliverySlip";
 import GstEntry from "../pages/GstEntry";
 import GstExpenseEntry from "../pages/GstExpenseEntry";
 import GstExpenseList from "../pages/GstExpenseList";
+import GstPurchaseHistory from "../pages/GstPurchaseHistory";
+import GstPurchaseHistoryDetail from "../pages/GstPurchaseHistoryDetail";
 import GstSalesList from "../pages/GstSalesList";
+import LocalCustomerList from "../pages/LocalCustomerList";
 import LocalEntry from "../pages/LocalEntry";
 import LocalExpenseApprove from "../pages/LocalExpenseApprove";
 import LocalExpenseEntry from "../pages/LocalExpenseEntry";
@@ -15,6 +19,8 @@ import LocalPaidList from "../pages/LocalPaidList";
 import LocalPartyList from "../pages/LocalPartyList";
 import LocalPendingList from "../pages/LocalPendingList";
 import LocalProductionList from "../pages/LocalProductionList";
+import LocalPurchaseHistory from "../pages/LocalPurchaseHistory";
+import LocalPurchaseHistoryDetail from "../pages/LocalPurchaseHistoryDetail";
 import Login from "../pages/Login";
 import Outstanding from "../pages/Outstanding";
 import PriceList from "../pages/PriceList";
@@ -25,11 +31,15 @@ export const elementMap = {
   AdminList,
   Analytics,
   Dashboard,
+  GstCustomerList,
   GstDeliverySlip,
   GstEntry,
   GstExpenseEntry,
   GstExpenseList,
+  GstPurchaseHistory,
+  GstPurchaseHistoryDetail,
   GstSalesList,
+  LocalCustomerList,
   LocalEntry,
   LocalExpenseApprove,
   LocalExpenseEntry,
@@ -39,6 +49,8 @@ export const elementMap = {
   LocalPartyList,
   LocalPendingList,
   LocalProductionList,
+  LocalPurchaseHistory,
+  LocalPurchaseHistoryDetail,
   Login,
   Outstanding,
   PriceList,
