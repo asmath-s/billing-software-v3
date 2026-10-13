@@ -280,6 +280,7 @@ const GstEntry = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
 
     if (!sizeData.length) {
       toast.error("Add at least one item");
@@ -292,8 +293,6 @@ const GstEntry = () => {
       const finalCustomerId = await ensureCustomer();
 
       const sanitizedSizeData = sizeData.map((row) => {
-        const isFlex = row.type === "flex";
-        const isInstruction = row.type === "instruction";
         return {
           ...row,
           width:
@@ -469,7 +468,7 @@ const GstEntry = () => {
           sizeData={sizeData}
           setSizeData={setSizeData}
           customerName={customerName}
-          normalCalculatedCustomer={["Standard Fireworks(P)LTD"]}
+          normalCalculatedCustomer={NORMAL_CALCULATED_CUSTOMERS}
         />
 
         <div className="grid grid-cols-3 gap-4">

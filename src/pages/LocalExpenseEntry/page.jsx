@@ -54,6 +54,7 @@ const LocalExpenseEntry = () => {
   const [localExpenseAmount, setLocalExpenseAmount] = useState([]);
 
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [editId, setEditId] = useState("");
 
   // ✅ APPROVE STATES
@@ -178,6 +179,7 @@ const LocalExpenseEntry = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     const basePayload = {
       date,
@@ -187,6 +189,7 @@ const LocalExpenseEntry = () => {
       amount: amount,
     };
 
+    setSubmitting(true);
     try {
       if (editId) {
         await updateLocalExpense(editId, basePayload);
@@ -198,19 +201,21 @@ const LocalExpenseEntry = () => {
         });
         toast.success("Local expense created successfully");
       }
+
+      loadExpenseData();
+
+      setEditId("");
+      setDate(new Date());
+      setInstruction("");
+      setMethod("expense");
+      setCustomType("cash");
+      setAmount(0);
     } catch (error) {
       console.error("Save failed:", error);
       toast.error("Failed to save");
+    } finally {
+      setSubmitting(false);
     }
-
-    loadExpenseData();
-
-    setEditId("");
-    setDate(new Date());
-    setInstruction("");
-    setMethod("expense");
-    setCustomType("cash");
-    setAmount(0);
   };
 
   /* ================= DELETE ================= */
@@ -459,7 +464,16 @@ const LocalExpenseEntry = () => {
           <div className="flex items-center gap-2">
             <Button
               type={"submit"}
-              label={editId ? "Update" : "Save"}
+              label={
+                submitting
+                  ? editId
+                    ? "Updating..."
+                    : "Saving..."
+                  : editId
+                    ? "Update"
+                    : "Save"
+              }
+              disabled={submitting}
               icon1={<SaveIcon color="#fff" />}
               icon2={<SaveIcon color="#fff" />}
               className={

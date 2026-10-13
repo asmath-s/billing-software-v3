@@ -19,7 +19,7 @@ const createRow = (type) => ({
   per_piece_total: 0,
 });
 
-export const calculateFlexTotal = (
+const calculateFlexTotal = (
   row,
   customerName = "",
   normalCalculatedCustomer = [],

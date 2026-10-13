@@ -17,6 +17,7 @@ import {
 } from "../../components/icons";
 
 import {
+  calculateQuotationGrandTotal,
   deleteQuotation,
   duplicateQuotation,
   getQuotations,
@@ -129,14 +130,11 @@ const QuotationList = () => {
     });
     if (!hasRowAmt) return null;
 
-    const subtotal = rows.reduce((sum, r) => {
-      const amt =
-        parseFloat(r.amount) || parseFloat(r.qty) * parseFloat(r.rate) || 0;
-      return sum + amt;
-    }, 0);
-    const taxAmount = (subtotal * (parseFloat(quote.taxPercent) || 0)) / 100;
-    const discount = parseFloat(quote.discountAmount) || 0;
-    return Math.round(Math.max(0, subtotal + taxAmount - discount));
+    return calculateQuotationGrandTotal(
+      rows,
+      quote.taxPercent,
+      quote.discountAmount,
+    );
   };
 
   return (

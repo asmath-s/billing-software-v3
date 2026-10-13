@@ -6,7 +6,7 @@ import { LocationIcon, MailIcon, PhoneIcon } from "../icons";
 
 const QuotationPrint = forwardRef((props, ref) => {
   const {
-    quotationNo = "",
+    quotationNo: _quotationNo = "",
     date = new Date(),
     customerName = "",
     address = "",

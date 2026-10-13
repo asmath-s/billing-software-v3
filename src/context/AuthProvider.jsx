@@ -1,10 +1,18 @@
 import { useState } from "react";
 import { AuthContext } from "./auth-context";
 
+const safeJsonParse = (str, fallback = null) => {
+  if (!str) return fallback;
+  try {
+    return JSON.parse(str);
+  } catch {
+    return fallback;
+  }
+};
+
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("user");
-    return storedUser ? JSON.parse(storedUser) : null;
+    return safeJsonParse(localStorage.getItem("user"), null);
   });
 
   const [role, setRole] = useState(() => {
@@ -13,20 +21,20 @@ const AuthProvider = ({ children }) => {
 
   const [showOverview, setShowOverview] = useState(() => {
     const storedValue = localStorage.getItem("showOverview");
-
     if (storedValue === null) {
       return false;
     }
-
-    return JSON.parse(storedValue);
+    return safeJsonParse(storedValue, false);
   });
 
   const login = (data) => {
+    if (!data) return;
+    const userData = data.user || data;
     localStorage.setItem("jwt", data.jwt);
-    localStorage.setItem("user", JSON.stringify(data));
+    localStorage.setItem("user", JSON.stringify(userData));
     localStorage.setItem("role", data.role);
 
-    setUser(data.user);
+    setUser(userData);
     setRole(data.role);
   };
 
@@ -42,9 +50,7 @@ const AuthProvider = ({ children }) => {
   const toggleOverview = () => {
     setShowOverview((prev) => {
       const newValue = !prev;
-
       localStorage.setItem("showOverview", JSON.stringify(newValue));
-
       return newValue;
     });
   };

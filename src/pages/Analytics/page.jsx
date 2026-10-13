@@ -22,7 +22,10 @@ import Datepicker from "../../components/Datepicker/Datepicker";
 import { ChartIcon, RefreshIcon } from "../../components/icons";
 import { useFinancialYear } from "../../context/financial-year-context";
 import MainLayout from "../../layouts/MainLayout";
-import { resolveApiDateRange } from "../../utils/financialYear";
+import {
+  getDynamicFinancialYears,
+  resolveApiDateRange,
+} from "../../utils/financialYear";
 
 /* -----------------------------------------------------------------
    Number and Currency Formatter (Indian Currency Format)
@@ -63,7 +66,7 @@ const FY_MONTHS = [
   { name: "Mar", monthIndex: 2, offset: 1, key: 11 },
 ];
 
-const AVAILABLE_YEARS = [2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020];
+const AVAILABLE_YEARS = getDynamicFinancialYears(8);
 
 /* -----------------------------------------------------------------
    Category Matchers

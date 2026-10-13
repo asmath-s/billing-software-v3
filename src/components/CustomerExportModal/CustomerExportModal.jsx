@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import { useReactToPrint } from "react-to-print";
 import { toast } from "react-toastify";
 import dayjs from "../../utils/dayjs";
-import Button from "../Button/Button";
 import { ClearIcon, PrinterIcon, SavePdfIcon } from "../icons";
 import CustomerPrintDoc from "./CustomerPrintDoc";
 
