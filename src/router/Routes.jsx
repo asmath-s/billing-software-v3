@@ -1,8 +1,9 @@
-import { appConfig } from "../config/appConfig";
+import { appConfig, ROLES } from "../config/appConfig";
 import LoginPage from "../pages/Login";
 import NotFound from "../pages/NotFound";
 import { elementMap } from "./elementMap";
 import { LOGIN } from "./paths";
+import ProtectedRoute from "./ProtectedRoute";
 
 const buildRoutes = () => {
   const routes = [];
@@ -19,7 +20,11 @@ const buildRoutes = () => {
       if (Component) {
         routes.push({
           path: item.path,
-          element: <Component />,
+          element: (
+            <ProtectedRoute allowedRoles={item.roles}>
+              <Component />
+            </ProtectedRoute>
+          ),
         });
       }
     }
@@ -32,21 +37,33 @@ const buildRoutes = () => {
         if (Component) {
           routes.push({
             path: child.path,
-            element: <Component />,
+            element: (
+              <ProtectedRoute allowedRoles={child.roles}>
+                <Component />
+              </ProtectedRoute>
+            ),
           });
         }
       });
     }
   });
 
-  // 🔹 Standalone detail routes (Purchase History Customer Bills)
+  // 🔹 Standalone detail routes (Purchase History Customer Bills - Admin only)
   routes.push({
     path: "/purshistory/local/:customerId",
-    element: <elementMap.LocalPurchaseHistoryDetail />,
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.Admin, "admin"]}>
+        <elementMap.LocalPurchaseHistoryDetail />
+      </ProtectedRoute>
+    ),
   });
   routes.push({
     path: "/purshistory/gst/:customerId",
-    element: <elementMap.GstPurchaseHistoryDetail />,
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.Admin, "admin"]}>
+        <elementMap.GstPurchaseHistoryDetail />
+      </ProtectedRoute>
+    ),
   });
 
   // 🔹 Not Found

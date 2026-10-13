@@ -183,6 +183,7 @@ const LocalEntry = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
 
     if (sizeData.length === 0) {
       toast.error("Please add at least one size");

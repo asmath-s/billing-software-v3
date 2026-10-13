@@ -58,6 +58,7 @@ const AdminList = () => {
   const [expenseData, setExpenseData] = useState([]);
   const [adminExpenseAmount, setAdminExpenseAmount] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [editId, setEditId] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -178,17 +179,19 @@ const AdminList = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     const basePayload = {
       date,
       instruction: capitalizeFirstLetter(instruction || ""),
       method,
       custom_type: customType,
-      amount: parseInt(amount),
+      amount: Number(amount) || 0,
       approved: true,
       current_status: "admin",
     };
 
+    setSubmitting(true);
     try {
       if (editId) {
         await updateAdminExpense(editId, basePayload);
@@ -200,20 +203,22 @@ const AdminList = () => {
         });
         toast.success("Admin expense created successfully");
       }
+
+      loadExpenseData();
+      LoadAdminAmount();
+
+      setEditId("");
+      setDate(new Date());
+      setInstruction("");
+      setMethod("expense");
+      setCustomType("cash");
+      setAmount(0);
     } catch (error) {
       console.error("Save failed:", error);
       toast.error("Failed to save");
+    } finally {
+      setSubmitting(false);
     }
-
-    loadExpenseData();
-    LoadAdminAmount();
-
-    setEditId("");
-    setDate(new Date());
-    setInstruction("");
-    setMethod("expense");
-    setCustomType("cash");
-    setAmount(0);
   };
 
   const handleChangePage = (newPage) => {
@@ -378,7 +383,16 @@ const AdminList = () => {
           <div className="flex items-center gap-2">
             <Button
               type={"submit"}
-              label={editId ? "Update" : "Save"}
+              label={
+                submitting
+                  ? editId
+                    ? "Updating..."
+                    : "Saving..."
+                  : editId
+                    ? "Update"
+                    : "Save"
+              }
+              disabled={submitting}
               icon1={<SaveIcon color="#fff" />}
               icon2={<SaveIcon color="#fff" />}
               className={

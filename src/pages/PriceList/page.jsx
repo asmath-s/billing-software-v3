@@ -13,6 +13,8 @@ const PriceList = () => {
           height={854}
           alt="price list"
           className="rounded-xl"
+          loading="lazy"
+          decoding="async"
         />
       </div>
     </MainLayout>

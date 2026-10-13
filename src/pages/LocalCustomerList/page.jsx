@@ -25,14 +25,13 @@ import EditButton from "../../components/EditButton/EditButton";
 import {
   AddIcon,
   ClearIcon,
-  CustomerIcon,
   LeftArrowIcon,
   RightIcon,
   SaveIcon,
   SavePdfIcon,
 } from "../../components/icons";
 import InputField from "../../components/InputField/InputField";
-import { appConfig, ROLES } from "../../config/appConfig";
+import { ROLES } from "../../config/appConfig";
 import { useAuth } from "../../context/auth-context";
 import MainLayout from "../../layouts/MainLayout";
 import { capitalizeFirstLetter } from "../../utils/Captialize";

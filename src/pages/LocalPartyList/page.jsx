@@ -89,6 +89,7 @@ const LocalPartyList = () => {
   const [receivedAmount, setReceivedAmount] = useState(0);
   const [editId, setEditId] = useState("");
   const [particulars, setParticulars] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   /* ================= LOAD CUSTOMERS ================= */
 
@@ -279,6 +280,12 @@ const LocalPartyList = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
+    if (!searchCustomer?.value) {
+      toast.warning("Please select a customer");
+      return;
+    }
 
     const payload = {
       date,
@@ -324,25 +331,33 @@ const LocalPartyList = () => {
       approved: true,
     };
 
-    if (!editId) {
-      await createLocalList(payload);
-      toast.success("Party Amount added successfully");
-    } else {
-      await updateLocalList(editId, payload);
-      toast.success("Party Amount updated successfully");
-    }
+    setSubmitting(true);
+    try {
+      if (!editId) {
+        await createLocalList(payload);
+        toast.success("Party Amount added successfully");
+      } else {
+        await updateLocalList(editId, payload);
+        toast.success("Party Amount updated successfully");
+      }
 
-    loadLocalPartyData();
-    if (showOverview) {
-      loadLocalTotalAmount();
-    }
+      loadLocalPartyData();
+      if (showOverview) {
+        loadLocalTotalAmount();
+      }
 
-    setEditId("");
-    setDate(new Date());
-    setSearchCustomer("");
-    setParticulars("");
-    setCustomType("gpay");
-    setReceivedAmount(0);
+      setEditId("");
+      setDate(new Date());
+      setSearchCustomer("");
+      setParticulars("");
+      setCustomType("gpay");
+      setReceivedAmount(0);
+    } catch (error) {
+      console.error("Party save failed:", error);
+      toast.error("Failed to save party amount");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEdit = (item) => {
@@ -508,7 +523,16 @@ const LocalPartyList = () => {
           <div className="flex items-center gap-2">
             <Button
               type={"submit"}
-              label={editId ? "Update" : "Save"}
+              label={
+                submitting
+                  ? editId
+                    ? "Updating..."
+                    : "Saving..."
+                  : editId
+                    ? "Update"
+                    : "Save"
+              }
+              disabled={submitting}
               icon1={<SaveIcon color="#fff" />}
               icon2={<SaveIcon color="#fff" />}
               className={

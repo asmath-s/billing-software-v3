@@ -124,6 +124,7 @@ const GstSalesList = () => {
   const [totalCount, setTotalCount] = useState(0);
 
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [exportModalOpen, setExportModalOpen] = useState(false);
 
@@ -358,6 +359,7 @@ const GstSalesList = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     if (!searchCustomer?.value) {
       toast.warning("Please select a customer.");
@@ -367,6 +369,7 @@ const GstSalesList = () => {
     const payload = buildPayload();
 
     try {
+      setSubmitting(true);
       if (!form.editId) {
         await createGstList(payload);
 
@@ -400,6 +403,8 @@ const GstSalesList = () => {
     } catch (err) {
       console.error("Submit failed:", err);
       toast.error("Failed to save. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -769,7 +774,16 @@ const GstSalesList = () => {
           <div className="flex items-center gap-2">
             <Button
               type={"submit"}
-              label={form.editId ? "Update" : "Save"}
+              label={
+                submitting
+                  ? form.editId
+                    ? "Updating..."
+                    : "Saving..."
+                  : form.editId
+                    ? "Update"
+                    : "Save"
+              }
+              disabled={submitting}
               icon1={<SaveIcon color="#fff" />}
               icon2={<SaveIcon color="#fff" />}
               className={

@@ -155,6 +155,7 @@ const QuotationEntry = () => {
   // Save / Update Quotation
   const handleSave = async (e) => {
     if (e) e.preventDefault();
+    if (loading) return;
 
     if (!customerName.trim()) {
       toast.error("Customer name is required.");
