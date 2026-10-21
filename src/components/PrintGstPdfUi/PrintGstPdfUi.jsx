@@ -134,9 +134,9 @@ const PrintGstUi = forwardRef((props, ref) => {
 
                 const pieceCount = Number(data.piece_count) || 1;
                 const perPieceRate =
-                  Number(data.per_piece_total) > 0
+                  Number(data.per_piece_total)
                     ? Number(data.per_piece_total) / pieceCount
-                    : Number(data.per_piece_amount) > 0
+                    : Number(data.per_piece_amount)
                       ? Number(data.per_piece_amount)
                       : 0;
 
