@@ -141,12 +141,16 @@ const FormDataInput = ({
     "width",
     "height",
     "sq_ft_price",
-    "per_piece_amount",
   ];
 
   const updateRow = (index, name, value) => {
-    // For decimal fields, allow digits and at most one decimal point
-    if (decimalFields.includes(name)) {
+    // For per_piece_amount, allow optional minus sign, digits, and at most one decimal point
+    if (name === "per_piece_amount") {
+      if (value !== "" && !/^-?\d*\.?\d*$/.test(value)) {
+        return;
+      }
+    } else if (decimalFields.includes(name)) {
+      // For decimal fields, allow digits and at most one decimal point
       if (value !== "" && !/^\d*\.?\d*$/.test(value)) {
         return;
       }
@@ -190,11 +194,13 @@ const FormDataInput = ({
     if (!row) return;
     let val = String(row[name] ?? "").trim();
     if (val === "") return;
-    if (val === ".") {
+    if (val === "." || val === "-" || val === "-.") {
       updateRow(index, name, "");
       return;
     }
-    if (val.startsWith(".")) {
+    if (val.startsWith("-.")) {
+      val = "-0." + val.slice(2);
+    } else if (val.startsWith(".")) {
       val = "0" + val;
     }
     if (val.endsWith(".")) {
